@@ -1,43 +1,22 @@
-use rusb::{Context, DeviceHandle, UsbContext};
+use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
+use mirajazz::device::{list_devices, Device, DeviceQuery};
+use mirajazz::types::{DeviceInput, ImageFormat, ImageMirroring, ImageMode, ImageRotation};
+use std::f64::consts::PI;
 use std::process::Command;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 const VID: u16 = 0x0300;
 const PID: u16 = 0x3010;
-const INTERFACE: u8 = 0;
-const ENDPOINT_IN: u8 = 0x82;   // interface 0, vendor HID
-const ENDPOINT_OUT: u8 = 0x03;
-const PACKET_SIZE: usize = 512;
-const TIMEOUT: Duration = Duration::from_secs(5);
-const READ_TIMEOUT: Duration = Duration::from_millis(500);
 
-const CMD_PREFIX: [u8; 5] = [0x43, 0x52, 0x54, 0x00, 0x00];
-const CMD_CONNECT_BODY: [u8; 7] = [0x43, 0x4F, 0x4E, 0x4E, 0x45, 0x43, 0x54];
-const CMD_DIS_BODY: [u8; 5] = [0x44, 0x49, 0x53, 0x00, 0x00];
-const CMD_CLE_ALL_BODY: [u8; 7] = [0x43, 0x4C, 0x45, 0x00, 0x00, 0x00, 0xFF];
-const CMD_LIG_BODY: [u8; 6] = [0x4C, 0x49, 0x47, 0x00, 0x00, 0x19];
+// usage_page 65440 (0xFFE0) and usage_id 1 are standard for Ajazz/Mirabox vendor HID interfaces
+const QUERY: DeviceQuery = DeviceQuery::new(65440, 1, VID, PID);
 
-fn build_command(body: &[u8]) -> Vec<u8> {
-    let mut pkt = vec![0u8; 517];
-    pkt[..5].copy_from_slice(&CMD_PREFIX);
-    pkt[5..5 + body.len()].copy_from_slice(body);
-    pkt
-}
-
-fn open_terminal() {
-    Command::new("open")
-        .arg("-a")
-        .arg("Terminal")
-        .spawn()
-        .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
-}
-
-fn open_device(ctx: &Context) -> Result<DeviceHandle<Context>, rusb::Error> {
-    ctx.open_device_with_vid_pid(VID, PID).ok_or_else(|| {
-        eprintln!("Device {:04x}:{:04x} not found.", VID, PID);
-        rusb::Error::NoDevice
-    })
-}
+const IMAGE_FORMAT: ImageFormat = ImageFormat {
+    mode: ImageMode::JPEG,
+    size: (100, 100),
+    rotation: ImageRotation::Rot180,
+    mirror: ImageMirroring::None,
+};
 
 fn raw_to_logical(raw: u8) -> Option<u8> {
     match raw {
@@ -48,111 +27,12 @@ fn raw_to_logical(raw: u8) -> Option<u8> {
     }
 }
 
-fn main() {
-    let ctx = Context::new().expect("Failed to create libusb context");
-    let handle = match open_device(&ctx) {
-        Ok(h) => h,
-        Err(_) => std::process::exit(1),
-    };
-    println!("[init] device opened");
-
-    match handle.detach_kernel_driver(INTERFACE) {
-        Ok(()) => println!("[init] iface {INTERFACE}: dext detached"),
-        Err(rusb::Error::NotFound) => println!("[init] iface {INTERFACE}: no driver"),
-        Err(e) => eprintln!("[init] iface {INTERFACE} detach: {e}"),
-    }
-    match handle.claim_interface(INTERFACE) {
-        Ok(()) => println!("[init] iface {INTERFACE}: claimed"),
-        Err(e) => eprintln!("[init] iface {INTERFACE} claim: {e}"),
-    }
-
-    // Query firmware version to confirm control pipe works.
-    let mut fw_buf = [0u8; 512];
-    match handle.read_control(0xA1, 0x01, 0x0100, 0x0000, &mut fw_buf, TIMEOUT) {
-        Ok(n) => {
-            let s = std::str::from_utf8(&fw_buf[..n]).unwrap_or("<non-utf8>");
-            println!("[init] firmware: {s:?}");
-        }
-        Err(e) => eprintln!("[init] firmware query: {e}"),
-    }
-
-    // SET_INTERFACE resets endpoint data toggles and re-arms the pipes.
-    match handle.set_alternate_setting(INTERFACE, 0) {
-        Ok(()) => println!("[init] set_alternate_setting iface {INTERFACE} ok"),
-        Err(e) => eprintln!("[init] set_alternate_setting iface {INTERFACE}: {e}"),
-    }
-
-    // Clear any stalled endpoints left over from dext eviction.
-    for ep in [ENDPOINT_IN, ENDPOINT_OUT] {
-        match handle.clear_halt(ep) {
-            Ok(()) => println!("[init] clear_halt {ep:#04x} ok"),
-            Err(e) => eprintln!("[init] clear_halt {ep:#04x}: {e}"),
-        }
-    }
-
-    let connect_pkt = build_command(&CMD_CONNECT_BODY);
-    match handle.write_interrupt(ENDPOINT_OUT, &connect_pkt, TIMEOUT) {
-        Ok(n) => println!("[init] CONNECT ok ({n}b)"),
-        Err(e) => eprintln!("[init] CONNECT: {e}"),
-    }
-
-    let dis_pkt = build_command(&CMD_DIS_BODY);
-    match handle.write_interrupt(ENDPOINT_OUT, &dis_pkt, TIMEOUT) {
-        Ok(n) => println!("[init] DIS ok ({n}b)"),
-        Err(e) => eprintln!("[init] DIS: {e}"),
-    }
-
-    let cle_pkt = build_command(&CMD_CLE_ALL_BODY);
-    match handle.write_interrupt(ENDPOINT_OUT, &cle_pkt, TIMEOUT) {
-        Ok(n) => println!("[init] CLE ok ({n}b)"),
-        Err(e) => eprintln!("[init] CLE: {e}"),
-    }
-
-    let lig_pkt = build_command(&CMD_LIG_BODY);
-    match handle.write_interrupt(ENDPOINT_OUT, &lig_pkt, TIMEOUT) {
-        Ok(n) => println!("[init] LIG ok ({n}b)"),
-        Err(e) => eprintln!("[init] LIG: {e}"),
-    }
-
-    // Try GET_REPORT via control transfer — some devices route input this way.
-    let mut report_buf = [0u8; PACKET_SIZE];
-    match handle.read_control(0xA1, 0x01, 0x0100, INTERFACE as u16, &mut report_buf, TIMEOUT) {
-        Ok(n) if n > 0 => {
-            let end = report_buf[..n].iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
-            println!("[init] GET_REPORT: {:02x?}", &report_buf[..end.max(1)]);
-        }
-        Ok(_) => println!("[init] GET_REPORT: empty"),
-        Err(e) => eprintln!("[init] GET_REPORT: {e}"),
-    }
-
-    println!("[init] listening — press keys (30s window per poll)\n");
-
-    let mut buf0 = [0u8; PACKET_SIZE];
-    let mut heartbeat = 0u32;
-
-    loop {
-        // Poll vendor HID endpoint — try interrupt then bulk.
-        let r0 = handle.read_interrupt(ENDPOINT_IN, &mut buf0, READ_TIMEOUT)
-            .or_else(|_| handle.read_bulk(ENDPOINT_IN, &mut buf0, READ_TIMEOUT));
-        match r0 {
-            Ok(0) => {}
-            Ok(n) => {
-                let end = buf0[..n].iter().rposition(|&b| b != 0).map_or(0, |i| i + 1);
-                if end > 0 {
-                    println!("[ep82] {:02x?}", &buf0[..end]);
-                    handle_key_event(&buf0);
-                }
-            }
-            Err(rusb::Error::Timeout) => {}
-            Err(e) => eprintln!("[ep82] error: {e}"),
-        }
-
-        heartbeat += 1;
-        if heartbeat % 20 == 0 {
-            // ~10 s heartbeat
-            handle.write_interrupt(ENDPOINT_OUT, &connect_pkt, TIMEOUT).ok();
-        }
-    }
+fn open_terminal() {
+    Command::new("open")
+        .arg("-a")
+        .arg("Terminal")
+        .spawn()
+        .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
 
 fn handle_key_event(buf: &[u8]) {
@@ -170,5 +50,130 @@ fn handle_key_event(buf: &[u8]) {
             }
         }
         None => println!("unknown raw_id={raw_id:#04x} state={state:#04x}"),
+    }
+}
+
+fn bresenham(img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, color: Rgb<u8>) {
+    let dx = (x1 - x0).abs();
+    let dy = (y1 - y0).abs();
+    let sx = if x0 < x1 { 1i32 } else { -1 };
+    let sy = if y0 < y1 { 1i32 } else { -1 };
+    let mut err = dx - dy;
+    let (mut x, mut y) = (x0, y0);
+    loop {
+        if x >= 0 && x < 100 && y >= 0 && y < 100 {
+            img.put_pixel(x as u32, y as u32, color);
+        }
+        if x == x1 && y == y1 { break; }
+        let e2 = 2 * err;
+        if e2 > -dy { err -= dy; x += sx; }
+        if e2 < dx  { err += dx;  y += sy; }
+    }
+}
+
+fn draw_thick_line(img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, color: Rgb<u8>, thickness: i32) {
+    let half = thickness / 2;
+    let dx = (x1 - x0) as f64;
+    let dy = (y1 - y0) as f64;
+    let len = (dx * dx + dy * dy).sqrt();
+    if len == 0.0 { return; }
+    for t in -half..=half {
+        let ox = (-dy / len * t as f64).round() as i32;
+        let oy = ( dx / len * t as f64).round() as i32;
+        bresenham(img, x0 + ox, y0 + oy, x1 + ox, y1 + oy, color);
+    }
+}
+
+fn generate_clock_image() -> RgbImage {
+    let mut img: RgbImage = ImageBuffer::new(100, 100);
+    let (cx, cy) = (50.0f64, 50.0f64);
+
+    for p in img.pixels_mut() { *p = Rgb([18u8, 18u8, 40u8]); }
+
+    for y in 0..100u32 {
+        for x in 0..100u32 {
+            let d = (((x as f64 - cx).powi(2) + (y as f64 - cy).powi(2)) as f64).sqrt();
+            if d <= 44.0 { img.put_pixel(x, y, Rgb([230, 230, 255])); }
+            if d > 41.0 && d <= 44.0 { img.put_pixel(x, y, Rgb([80, 80, 130])); }
+        }
+    }
+
+    for h in 0u32..12 {
+        let a = h as f64 * PI / 6.0 - PI / 2.0;
+        let (r1, r2) = if h % 3 == 0 { (34.0, 41.0) } else { (38.0, 41.0) };
+        bresenham(&mut img,
+            (cx + r1 * a.cos()) as i32, (cy + r1 * a.sin()) as i32,
+            (cx + r2 * a.cos()) as i32, (cy + r2 * a.sin()) as i32,
+            Rgb([40, 40, 80]));
+    }
+
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+    let mins  = (secs / 60 % 60) as f64;
+    let hours = (secs / 3600 % 12) as f64 + mins / 60.0;
+
+    let ha = hours * PI / 6.0 - PI / 2.0;
+    draw_thick_line(&mut img, cx as i32, cy as i32,
+        (cx + 22.0 * ha.cos()) as i32, (cy + 22.0 * ha.sin()) as i32,
+        Rgb([20, 20, 60]), 3);
+
+    let ma = mins * PI / 30.0 - PI / 2.0;
+    draw_thick_line(&mut img, cx as i32, cy as i32,
+        (cx + 33.0 * ma.cos()) as i32, (cy + 33.0 * ma.sin()) as i32,
+        Rgb([20, 20, 60]), 2);
+
+    for dy in -2i32..=2 {
+        for dx in -2i32..=2 {
+            if dx * dx + dy * dy <= 5 {
+                let px = (cx as i32 + dx).max(0) as u32;
+                let py = (cy as i32 + dy).max(0) as u32;
+                if px < 100 && py < 100 { img.put_pixel(px, py, Rgb([20, 20, 60])); }
+            }
+        }
+    }
+
+    img
+}
+
+#[tokio::main]
+async fn main() {
+    let devices = list_devices(&[QUERY]).await.expect("HID enumerate failed");
+    if devices.is_empty() {
+        eprintln!("Device {:04x}:{:04x} not found.", VID, PID);
+        std::process::exit(1);
+    }
+
+    let dev_info = devices.into_iter().next().unwrap();
+    let device = Device::connect(&dev_info, 1, 15, 3).await.expect("connect failed");
+    println!("[init] firmware: {:?}", device.firmware_version);
+
+    device.clear_all_button_images().await.expect("clear failed");
+    device.set_brightness(25).await.expect("brightness failed");
+
+    // Button 3 (logical, 1-based) = index 2 (0-based)
+    println!("[init] sending clock icon to button 3...");
+    let clock_img = generate_clock_image();
+    device
+        .set_button_image(2, IMAGE_FORMAT, DynamicImage::ImageRgb8(clock_img))
+        .await
+        .expect("image failed");
+    device.flush().await.expect("flush failed");
+
+    let reader = device.get_reader(|_, _| Ok(DeviceInput::NoData));
+
+    println!("[init] listening — press keys\n");
+    let mut last_heartbeat = Instant::now();
+
+    loop {
+        match reader.raw_read_data_with_timeout(512, Duration::from_millis(500)).await {
+            Ok(Some(data)) if data.len() >= 11 => handle_key_event(&data),
+            Ok(_) => {}
+            Err(e) => eprintln!("[reader] {e}"),
+        }
+
+        if last_heartbeat.elapsed() >= Duration::from_secs(8) {
+            device.keep_alive().await.ok();
+            last_heartbeat = Instant::now();
+        }
     }
 }
