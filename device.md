@@ -2,7 +2,13 @@
 
 Product page: https://sdk.key123.vip/en/guide/overview.html#stream-dock-293s
 
+> **Source legend used in this document:**
+> - 🔌 **Device** — observed directly from the hardware (USB descriptors, captured packets, live testing)
+> - 🌐 **Online** — sourced from SDK docs, community listings, or reference implementations
+
 ## USB Identity
+
+🔌 **Device** — read from USB descriptors on this specific unit.
 
 | Field        | Value                      |
 | ------------ | -------------------------- |
@@ -12,7 +18,7 @@ Product page: https://sdk.key123.vip/en/guide/overview.html#stream-dock-293s
 | Product name | HOTSPOTEKUSB HID DEMO      |
 | Serial       | 4250D278552D               |
 
-The SDK and community list other known VID/PID pairs for the same device family:
+🌐 **Online** — the SDK and community list other known VID/PID pairs for the same device family:
 
 | VID    | PID    | Variant                   |
 | ------ | ------ | ------------------------- |
@@ -26,12 +32,17 @@ The SDK and community list other known VID/PID pairs for the same device family:
 
 ## Hardware
 
+🌐 **Online** — from SDK / product page.
+
 - 15 LCD buttons (100×100 px per key, JPEG)
 - 3 rotary encoders / knobs
 - Boot logo display (800×480 px, BGR)
 - USB-C, USB 2.0
 
 ## USB Interfaces & Endpoints
+
+🔌 **Device** (interface 0, endpoints `0x03`/`0x82`) — confirmed by live USB capture and `rusb` testing.
+🌐 **Online** (interface 1 / secondary usages) — from SDK HID descriptor documentation.
 
 | Interface | Usage page | Usage  | Direction | Endpoint | Purpose             |
 | --------- | ---------- | ------ | --------- | -------- | ------------------- |
@@ -41,6 +52,8 @@ The SDK and community list other known VID/PID pairs for the same device family:
 | 1         | `0x0001`   | `0x06` | IN        | `0x81`   | Keyboard (unused)   |
 
 ## macOS Access Notes
+
+🔌 **Device** — all observations made on macOS with this specific unit.
 
 - The `AppleUserHIDDrivers` DriverKit dext claims interface 0 exclusively via `kIOHIDOptionsTypeSeizeDevice`.
 - `hidapi` with `set_open_exclusive(true)` fails with `kIOReturnExclusiveAccess (0xE00002C5)` — cannot evict the dext via HID layer.
@@ -53,6 +66,8 @@ All communication over interrupt endpoints; packet size is always **512 bytes** 
 
 ### Command Packet Format
 
+🌐 **Online** — packet structure from SDK and the ajazz-sdk reference implementation.
+
 ```
 [ CMD_PREFIX : 5 bytes ][ COMMAND_BODY : variable ][ zero-padding to 512 bytes ]
                                                       ──────────────────────────
@@ -63,21 +78,26 @@ All communication over interrupt endpoints; packet size is always **512 bytes** 
 
 ### Command Opcodes
 
-| Command       | Body after prefix (hex)                      | ASCII     | Description                                           |
-| ------------- | -------------------------------------------- | --------- | ----------------------------------------------------- |
-| `CRT_DIS`     | `44 49 53 00 00`                             | `DIS`     | Wake / enable screen                                  |
-| `CRT_LIG`     | `4C 49 47 00 00 <value>`                     | `LIG`     | Set brightness; `value` = 0x00–0x64 (0–100%)          |
-| `CRT_CLE`     | `43 4C 45 00 00 00 <target>`                 | `CLE`     | Clear key; `target` = key ID or `0xFF` all            |
-| `CRT_STP`     | `53 54 50 00 00`                             | `STP`     | Commit / refresh display                              |
-| `CRT_BAT`     | `42 41 54 00 00 <size_hi> <size_lo> <keyId>` | `BAT`     | Begin key image transfer (JPEG); size = 2B big-endian |
-| `CRT_LOG`     | `4C 4F 47 00 11 94 00 01`                    | `LOG`     | Begin boot logo transfer (raw BGR)                    |
-| `CRT_CONNECT` | `43 4F 4E 4E 45 43 54`                       | `CONNECT` | Keep-alive heartbeat; send every ~10 s                |
-| `CRT_HAN`     | `48 41 4E`                                   | `HAN`     | Sleep screen                                          |
-| `CRT_DC`      | `43 4C 45 00 00 44 43`                       | `CLE..DC` | Graceful disconnect / shutdown                        |
+🔌 **Device** — `CRT_CONNECT` confirmed by live testing (heartbeat keeps connection alive).
+🌐 **Online** — all other opcodes from SDK docs and the ajazz-sdk / node reference implementations.
 
-**Device ACK response:** `41 43 4B 00 00 4F 4B` — ASCII `ACK\0\0OK`. Received after image write or other acknowledged commands; byte `[9]` = `0xFF` in the input event stream also signals write completion.
+| Command       | Body after prefix (hex)                      | ASCII     | Source   | Description                                           |
+| ------------- | -------------------------------------------- | --------- | -------- | ----------------------------------------------------- |
+| `CRT_DIS`     | `44 49 53 00 00`                             | `DIS`     | 🌐       | Wake / enable screen                                  |
+| `CRT_LIG`     | `4C 49 47 00 00 <value>`                     | `LIG`     | 🌐       | Set brightness; `value` = 0x00–0x64 (0–100%)          |
+| `CRT_CLE`     | `43 4C 45 00 00 00 <target>`                 | `CLE`     | 🌐       | Clear key; `target` = key ID or `0xFF` all            |
+| `CRT_STP`     | `53 54 50 00 00`                             | `STP`     | 🌐       | Commit / refresh display                              |
+| `CRT_BAT`     | `42 41 54 00 00 <size_hi> <size_lo> <keyId>` | `BAT`     | 🌐       | Begin key image transfer (JPEG); size = 2B big-endian |
+| `CRT_LOG`     | `4C 4F 47 00 11 94 00 01`                    | `LOG`     | 🌐       | Begin boot logo transfer (raw BGR)                    |
+| `CRT_CONNECT` | `43 4F 4E 4E 45 43 54`                       | `CONNECT` | 🔌       | Keep-alive heartbeat; send every ~10 s                |
+| `CRT_HAN`     | `48 41 4E`                                   | `HAN`     | 🌐       | Sleep screen                                          |
+| `CRT_DC`      | `43 4C 45 00 00 44 43`                       | `CLE..DC` | 🌐       | Graceful disconnect / shutdown                        |
+
+**Device ACK response:** `41 43 4B 00 00 4F 4B` — ASCII `ACK\0\0OK`. 🔌 **Device** — observed in live packet capture; byte `[9]` = `0xFF` in the input event stream also signals write completion.
 
 ### Key Image Transfer
+
+🌐 **Online** — transfer sequence and image spec from SDK.
 
 1. Send `CRT_BAT(size, keyId)` — announce JPEG byte-length (4-byte big-endian) and target key (1–15).
 2. Send raw JPEG bytes in 512-byte chunks (no prefix).
@@ -87,6 +107,8 @@ Image spec: 100×100 JPEG, quality 100, **rotated 180°** before sending.
 
 ### Boot Logo Transfer
 
+🌐 **Online** — transfer sequence and image spec from SDK.
+
 1. Send `CRT_LOG`.
 2. Send raw 800×480 BGR pixels in 512-byte chunks (no prefix, no JPEG).
 3. Send `CRT_STP` to commit.
@@ -94,6 +116,8 @@ Image spec: 100×100 JPEG, quality 100, **rotated 180°** before sending.
 Image spec: 800×480, **rotated 180°** before sending, BGR byte order (B, G, R per pixel).
 
 ### Firmware Version Query
+
+🔌 **Device** — control transfer confirmed working; response format observed live.
 
 USB control transfer (not interrupt):
 
@@ -109,6 +133,8 @@ Response: UTF-8 string.
 
 ## Input Event Format
 
+🔌 **Device** — byte offsets and state values determined by capturing packets while pressing keys.
+
 Received as a 512-byte interrupt IN packet from endpoint `0x82`.
 
 | Byte   | Field      | Values                                                        |
@@ -117,6 +143,8 @@ Received as a 512-byte interrupt IN packet from endpoint `0x82`.
 | `[10]` | State      | `1` = pressed, `2` = released                                 |
 
 ### Key ID Mapping (hardware → logical)
+
+🔌 **Device** — raw IDs captured by pressing each physical key; logical numbering chosen by us.
 
 The device addresses keys bottom-to-top; the map re-numbers them top-to-bottom, left-to-right (1-based):
 
@@ -148,6 +176,8 @@ Layout (logical numbers, as seen from the front):
 ```
 
 ## Reference Implementations
+
+🌐 **Online**
 
 - Node.js (VID 0x5500): https://github.com/rigor789/mirabox-streamdock-node
 - Rust ajazz-sdk fork (VID 0x0300): https://github.com/tupe12334/ajazz-sdk
