@@ -5,9 +5,7 @@ use std::time::Duration;
 const VID: u16 = 0x0300;
 const PID: u16 = 0x3010;
 const INTERFACE: u8 = 0;
-const INTERFACE2: u8 = 1;
 const ENDPOINT_IN: u8 = 0x82;   // interface 0, vendor HID
-const ENDPOINT_IN2: u8 = 0x81;  // interface 1, keyboard HID
 const ENDPOINT_OUT: u8 = 0x03;
 const PACKET_SIZE: usize = 512;
 const TIMEOUT: Duration = Duration::from_secs(5);
@@ -15,9 +13,12 @@ const READ_TIMEOUT: Duration = Duration::from_millis(500);
 
 const CMD_PREFIX: [u8; 5] = [0x43, 0x52, 0x54, 0x00, 0x00];
 const CMD_CONNECT_BODY: [u8; 7] = [0x43, 0x4F, 0x4E, 0x4E, 0x45, 0x43, 0x54];
+const CMD_DIS_BODY: [u8; 5] = [0x44, 0x49, 0x53, 0x00, 0x00];
+const CMD_CLE_ALL_BODY: [u8; 7] = [0x43, 0x4C, 0x45, 0x00, 0x00, 0x00, 0xFF];
+const CMD_LIG_BODY: [u8; 6] = [0x4C, 0x49, 0x47, 0x00, 0x00, 0x19];
 
 fn build_command(body: &[u8]) -> Vec<u8> {
-    let mut pkt = vec![0u8; 1024];
+    let mut pkt = vec![0u8; 517];
     pkt[..5].copy_from_slice(&CMD_PREFIX);
     pkt[5..5 + body.len()].copy_from_slice(body);
     pkt
@@ -40,11 +41,9 @@ fn open_device(ctx: &Context) -> Result<DeviceHandle<Context>, rusb::Error> {
 
 fn raw_to_logical(raw: u8) -> Option<u8> {
     match raw {
-        0x01 => Some(11), 0x02 => Some(12), 0x03 => Some(13),
-        0x04 => Some(14), 0x05 => Some(15), 0x06 => Some(6),
-        0x07 => Some(7),  0x08 => Some(8),  0x09 => Some(9),
-        0x0A => Some(10), 0x0B => Some(1),  0x0C => Some(2),
-        0x0D => Some(3),  0x0E => Some(4),  0x0F => Some(5),
+        0x0D => Some(1),  0x0A => Some(2),  0x07 => Some(3),  0x04 => Some(4),  0x01 => Some(5),
+        0x0E => Some(6),  0x0B => Some(7),  0x08 => Some(8),  0x05 => Some(9),  0x02 => Some(10),
+        0x0F => Some(11), 0x0C => Some(12), 0x09 => Some(13), 0x06 => Some(14), 0x03 => Some(15),
         _ => None,
     }
 }
@@ -57,20 +56,18 @@ fn main() {
     };
     println!("[init] device opened");
 
-    for iface in [INTERFACE, INTERFACE2] {
-        match handle.detach_kernel_driver(iface) {
-            Ok(()) => println!("[init] iface {iface}: dext detached"),
-            Err(rusb::Error::NotFound) => println!("[init] iface {iface}: no driver"),
-            Err(e) => eprintln!("[init] iface {iface} detach: {e}"),
-        }
-        match handle.claim_interface(iface) {
-            Ok(()) => println!("[init] iface {iface}: claimed"),
-            Err(e) => eprintln!("[init] iface {iface} claim: {e}"),
-        }
+    match handle.detach_kernel_driver(INTERFACE) {
+        Ok(()) => println!("[init] iface {INTERFACE}: dext detached"),
+        Err(rusb::Error::NotFound) => println!("[init] iface {INTERFACE}: no driver"),
+        Err(e) => eprintln!("[init] iface {INTERFACE} detach: {e}"),
+    }
+    match handle.claim_interface(INTERFACE) {
+        Ok(()) => println!("[init] iface {INTERFACE}: claimed"),
+        Err(e) => eprintln!("[init] iface {INTERFACE} claim: {e}"),
     }
 
     // Query firmware version to confirm control pipe works.
-    let mut fw_buf = [0u8; 64];
+    let mut fw_buf = [0u8; 512];
     match handle.read_control(0xA1, 0x01, 0x0100, 0x0000, &mut fw_buf, TIMEOUT) {
         Ok(n) => {
             let s = std::str::from_utf8(&fw_buf[..n]).unwrap_or("<non-utf8>");
@@ -80,15 +77,13 @@ fn main() {
     }
 
     // SET_INTERFACE resets endpoint data toggles and re-arms the pipes.
-    for iface in [INTERFACE, INTERFACE2] {
-        match handle.set_alternate_setting(iface, 0) {
-            Ok(()) => println!("[init] set_alternate_setting iface {iface} ok"),
-            Err(e) => eprintln!("[init] set_alternate_setting iface {iface}: {e}"),
-        }
+    match handle.set_alternate_setting(INTERFACE, 0) {
+        Ok(()) => println!("[init] set_alternate_setting iface {INTERFACE} ok"),
+        Err(e) => eprintln!("[init] set_alternate_setting iface {INTERFACE}: {e}"),
     }
 
     // Clear any stalled endpoints left over from dext eviction.
-    for ep in [ENDPOINT_IN, ENDPOINT_IN2, ENDPOINT_OUT] {
+    for ep in [ENDPOINT_IN, ENDPOINT_OUT] {
         match handle.clear_halt(ep) {
             Ok(()) => println!("[init] clear_halt {ep:#04x} ok"),
             Err(e) => eprintln!("[init] clear_halt {ep:#04x}: {e}"),
@@ -99,6 +94,24 @@ fn main() {
     match handle.write_interrupt(ENDPOINT_OUT, &connect_pkt, TIMEOUT) {
         Ok(n) => println!("[init] CONNECT ok ({n}b)"),
         Err(e) => eprintln!("[init] CONNECT: {e}"),
+    }
+
+    let dis_pkt = build_command(&CMD_DIS_BODY);
+    match handle.write_interrupt(ENDPOINT_OUT, &dis_pkt, TIMEOUT) {
+        Ok(n) => println!("[init] DIS ok ({n}b)"),
+        Err(e) => eprintln!("[init] DIS: {e}"),
+    }
+
+    let cle_pkt = build_command(&CMD_CLE_ALL_BODY);
+    match handle.write_interrupt(ENDPOINT_OUT, &cle_pkt, TIMEOUT) {
+        Ok(n) => println!("[init] CLE ok ({n}b)"),
+        Err(e) => eprintln!("[init] CLE: {e}"),
+    }
+
+    let lig_pkt = build_command(&CMD_LIG_BODY);
+    match handle.write_interrupt(ENDPOINT_OUT, &lig_pkt, TIMEOUT) {
+        Ok(n) => println!("[init] LIG ok ({n}b)"),
+        Err(e) => eprintln!("[init] LIG: {e}"),
     }
 
     // Try GET_REPORT via control transfer — some devices route input this way.
@@ -115,7 +128,6 @@ fn main() {
     println!("[init] listening — press keys (30s window per poll)\n");
 
     let mut buf0 = [0u8; PACKET_SIZE];
-    let mut buf1 = [0u8; 8];
     let mut heartbeat = 0u32;
 
     loop {
@@ -135,19 +147,9 @@ fn main() {
             Err(e) => eprintln!("[ep82] error: {e}"),
         }
 
-        // Also poll keyboard HID endpoint.
-        let r1 = handle.read_interrupt(ENDPOINT_IN2, &mut buf1, READ_TIMEOUT)
-            .or_else(|_| handle.read_bulk(ENDPOINT_IN2, &mut buf1, READ_TIMEOUT));
-        match r1 {
-            Ok(0) => {}
-            Ok(n) => println!("[ep81] {:02x?}", &buf1[..n]),
-            Err(rusb::Error::Timeout) => {}
-            Err(e) => eprintln!("[ep81] error: {e}"),
-        }
-
         heartbeat += 1;
-        if heartbeat % 150 == 0 {
-            // ~15 s heartbeat
+        if heartbeat % 20 == 0 {
+            // ~10 s heartbeat
             handle.write_interrupt(ENDPOINT_OUT, &connect_pkt, TIMEOUT).ok();
         }
     }
@@ -162,7 +164,7 @@ fn handle_key_event(buf: &[u8]) {
     match raw_to_logical(raw_id) {
         Some(key) => {
             println!("key {key:2}  {state_str}");
-            if key == 1 && state == 1 {
+            if key == 2 && state == 1 {
                 println!("→ opening Terminal");
                 open_terminal();
             }
