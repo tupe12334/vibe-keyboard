@@ -1,1 +1,5 @@
+# Rust build output
+/target/
+
+# Local config overrides
 *.local.*
