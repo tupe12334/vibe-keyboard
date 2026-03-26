@@ -1,16 +1,6 @@
 # vibe-keyboard
 
-A custom management system for Ajazz Stream Dock devices (AKP series). Control button images, brightness, boot logos, and handle button events — all from your own tooling.
-
-## Device
-
-The Ajazz Stream Dock shows up as `HOTSPOTEKUSB HID DEMO` on macOS/Linux (VendorID `0x0300`, ProductID `0x3010`). This is normal — the device uses generic OEM HID firmware.
-
-Confirmed working with:
-
-- AKP153 / AKP153E / AKP153R
-- AKP815
-- AKP03 / AKP03E / AKP03R / AKP03RV2
+A custom management system for the Stream Dock 293S. Control button images, brightness, boot logos, and handle button events — all from your own tooling.
 
 ## Goals
 
