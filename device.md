@@ -7,7 +7,7 @@ Product page: https://sdk.key123.vip/en/guide/overview.html#stream-dock-293s
 | Field        | Value                      |
 | ------------ | -------------------------- |
 | Vendor ID    | `0x0300` (Mirabox V2)      |
-| Product ID   | `0x3010` (unknown variant) |
+| Product ID   | `0x3010` (Ajazz AKP153E variant) |
 | Manufacturer | HOTSPOTEKUSB               |
 | Product name | HOTSPOTEKUSB HID DEMO      |
 | Serial       | 4250D278552D               |
@@ -22,7 +22,7 @@ The SDK and community list other known VID/PID pairs for the same device family:
 | 0x0300 | 0x1010 | Ajazz AKP-153E (OEM)      |
 | 0x0300 | 0x1020 | Ajazz AKP-153R (OEM)      |
 | 0x6603 | 0x1014 | StreamDock 293sV3         |
-| 0x0300 | 0x3010 | This device               |
+| 0x0300 | 0x3010 | Ajazz AKP153E (this device, PID variant of 0x1010) |
 
 ## Hardware
 
