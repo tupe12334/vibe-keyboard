@@ -1,0 +1,50 @@
+# vibe-keyboard — example config
+# Copy this to config.toml and edit to match your device and workflow.
+# The daemon hot-reloads this file whenever you save it.
+
+# Display brightness, 0–100
+brightness = 60
+
+# Boot logo written to device on startup (optional)
+# boot_logo = "logo.jpg"
+
+# ── Button 0 — launch a terminal ─────────────────────────────────────────────
+[[buttons]]
+index = 0
+image = "images/terminal.jpg"
+
+[buttons.action]
+type    = "launch"
+command = "kitty"
+# args  = ["--session", "dev.conf"]   # optional extra arguments
+
+# ── Button 1 — open a browser ────────────────────────────────────────────────
+[[buttons]]
+index = 1
+image = "images/browser.jpg"
+
+[buttons.action]
+type    = "launch"
+command = "firefox"
+
+# ── Button 2 — new terminal tab (keypress) ───────────────────────────────────
+[[buttons]]
+index = 2
+
+[buttons.action]
+type = "keypress"
+keys = "ctrl+shift+t"   # use "cmd+..." on macOS
+
+# ── Button 3 — run a shell script ────────────────────────────────────────────
+[[buttons]]
+index = 3
+image = "images/vpn.jpg"
+
+[buttons.action]
+type    = "script"
+command = "/home/user/scripts/toggle-vpn.sh"
+
+# ── Button 4 — image only, no action ────────────────────────────────────────
+[[buttons]]
+index = 4
+image = "images/logo.jpg"

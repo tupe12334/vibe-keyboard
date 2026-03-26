@@ -14,14 +14,14 @@ Confirmed working with:
 
 ## Goals
 
-- [ ] Connect to the device over USB HID
-- [ ] Read button press / release events in real time
-- [ ] Set custom images on individual buttons
-- [ ] Control display brightness
-- [ ] Set a custom boot logo
-- [ ] Define button actions (launch app, run script, send keypress, etc.)
-- [ ] Persist profiles/layouts to disk
-- [ ] Hot-reload config without restarting the daemon
+- [x] Connect to the device over USB HID
+- [x] Read button press / release events in real time
+- [x] Set custom images on individual buttons
+- [x] Control display brightness
+- [x] Set a custom boot logo
+- [x] Define button actions (launch app, run script, send keypress, etc.)
+- [x] Persist profiles/layouts to disk
+- [x] Hot-reload config without restarting the daemon
 
 ## Architecture (planned)
 
