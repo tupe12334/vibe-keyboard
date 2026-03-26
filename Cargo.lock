@@ -20,8 +20,7 @@ dependencies = [
 [[package]]
 name = "ajazz-sdk"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10320f86148f1774e444c8fdb5ae2bbccdffee23abc2c3848cb291293590c54c"
+source = "git+https://github.com/tupe12334/ajazz-sdk?branch=main#534eaa556a7fab66230e54f912153ade2494e071"
 dependencies = [
  "hidapi",
  "image",

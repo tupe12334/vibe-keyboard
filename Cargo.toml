@@ -10,7 +10,7 @@ name = "vibe-keyboard"
 path = "src/main.rs"
 
 [dependencies]
-ajazz-sdk = "0.2.1"
+ajazz-sdk = { git = "https://github.com/tupe12334/ajazz-sdk", branch = "main" }
 hidapi = "2.6"
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
@@ -24,6 +24,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
+
 
 [lints.clippy]
 all = "deny"

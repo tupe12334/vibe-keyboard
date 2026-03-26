@@ -50,6 +50,12 @@ enum Commands {
         #[arg(short, long)]
         serial: Option<String>,
     },
+    /// Listen for button and encoder events from the device
+    Listen {
+        /// Device serial number (uses first device if omitted)
+        #[arg(short, long)]
+        serial: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -69,6 +75,7 @@ async fn main() -> Result<()> {
         Commands::SetBrightness { value, serial } => device::quick_brightness(value, serial)?,
         Commands::SetImage { key, image, serial } => device::quick_image(key, image, serial)?,
         Commands::SetLogo { image, serial } => device::quick_logo(image, serial)?,
+        Commands::Listen { serial } => device::listen(serial)?,
     }
 
     Ok(())
