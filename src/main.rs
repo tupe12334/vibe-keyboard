@@ -19,6 +19,7 @@ fn main() {
     let handle = ctx
         .open_device_with_vid_pid(VID, PID)
         .expect("Device not found — is it plugged in? Try: sudo cargo run");
+    handle.detach_kernel_driver(0).ok(); // terminates AppleUserHIDDrivers dext
     handle
         .claim_interface(0)
         .expect("Failed to claim USB interface 0 — try: sudo cargo run");
