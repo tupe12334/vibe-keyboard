@@ -1,6 +1,6 @@
 use rusb::{Context, DeviceHandle};
 use std::time::Duration;
-use tracing::warn;
+use tracing::{error, warn};
 
 use super::{CMD_PACKET, EP_IN, EP_OUT, PACKET, TIMEOUT};
 
@@ -12,9 +12,9 @@ fn make_cmd(body: &[u8]) -> [u8; CMD_PACKET] {
 }
 
 pub fn write_cmd(handle: &DeviceHandle<Context>, body: &[u8]) {
-    handle
-        .write_interrupt(EP_OUT, &make_cmd(body), TIMEOUT)
-        .expect("write_cmd failed");
+    if let Err(e) = handle.write_interrupt(EP_OUT, &make_cmd(body), TIMEOUT) {
+        error!("write_cmd failed: {e}");
+    }
 }
 
 /// Reset endpoint data toggles and clear any stalls left over from dext eviction.

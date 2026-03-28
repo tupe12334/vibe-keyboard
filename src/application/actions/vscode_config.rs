@@ -8,7 +8,7 @@ pub fn open_config_in_vscode() {
             std::path::PathBuf::from(xdg)
         } else {
             let mut home =
-                std::path::PathBuf::from(std::env::var_os("HOME").expect("HOME not set"));
+                std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/tmp".into()));
             home.push(".config");
             home
         };

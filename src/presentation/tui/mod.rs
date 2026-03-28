@@ -34,7 +34,7 @@ fn run_inner(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) -> io::Resu
         }
 
         {
-            let s = state.lock().unwrap();
+            let s = state.lock().unwrap_or_else(|e| e.into_inner());
             terminal.draw(|f| render::render(&s, f))?;
         }
 

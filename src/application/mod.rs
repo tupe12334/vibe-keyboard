@@ -39,11 +39,11 @@ pub fn handle_key_event(
         Some(k) => k,
         None => return,
     };
-    if state.lock().unwrap().loading {
+    if state.lock().unwrap_or_else(|e| e.into_inner()).loading {
         return;
     }
     {
-        let mut s = state.lock().unwrap();
+        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
         s.pressed_key = if state_byte == 1 { Some(key) } else { None };
     }
     if state_byte == 1 {
@@ -54,7 +54,11 @@ pub fn handle_key_event(
     }
 
     // Intercept key events when in centy overlay mode
-    let centy_state = state.lock().unwrap().centy_state.take();
+    let centy_state = state
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .centy_state
+        .take();
     if let Some(cs) = centy_state {
         match cs {
             CentyState::ProjectList { projects, page } => {
@@ -80,7 +84,7 @@ pub fn handle_key_event(
                             show_project_list(next_page, projects, state, handle);
                         } else {
                             // No more pages, restore state
-                            state.lock().unwrap().centy_state =
+                            state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
                                 Some(CentyState::ProjectList { projects, page });
                         }
                     }
@@ -90,12 +94,12 @@ pub fn handle_key_event(
                             info!("centy: selected project {}", project.name);
                             show_project_actions(project, projects, page, state, handle);
                         } else {
-                            state.lock().unwrap().centy_state =
+                            state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
                                 Some(CentyState::ProjectList { projects, page });
                         }
                     }
                     _ => {
-                        state.lock().unwrap().centy_state =
+                        state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
                             Some(CentyState::ProjectList { projects, page });
                     }
                 }
@@ -112,36 +116,40 @@ pub fn handle_key_event(
                 1 => {
                     info!("centy: open {} in VS Code", project.name);
                     open_vscode_in_path(project.path.as_deref().unwrap_or("."));
-                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
-                        project,
-                        prev_projects,
-                        prev_page,
-                    });
+                    state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
+                        Some(CentyState::ProjectActions {
+                            project,
+                            prev_projects,
+                            prev_page,
+                        });
                 }
                 2 => {
                     info!("centy: open {} in Terminal", project.name);
                     open_terminal_in_path(project.path.as_deref());
-                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
-                        project,
-                        prev_projects,
-                        prev_page,
-                    });
+                    state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
+                        Some(CentyState::ProjectActions {
+                            project,
+                            prev_projects,
+                            prev_page,
+                        });
                 }
                 3 => {
                     info!("centy: open {} in browser", project.name);
                     open_in_chrome(&project.url);
-                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
-                        project,
-                        prev_projects,
-                        prev_page,
-                    });
+                    state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
+                        Some(CentyState::ProjectActions {
+                            project,
+                            prev_projects,
+                            prev_page,
+                        });
                 }
                 _ => {
-                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
-                        project,
-                        prev_projects,
-                        prev_page,
-                    });
+                    state.lock().unwrap_or_else(|e| e.into_inner()).centy_state =
+                        Some(CentyState::ProjectActions {
+                            project,
+                            prev_projects,
+                            prev_page,
+                        });
                 }
             },
         }
@@ -162,9 +170,9 @@ pub fn handle_key_event(
         }
         _ => {
             if nav.current() == 0 && key == 1 {
-                state.lock().unwrap().loading = true;
+                state.lock().unwrap_or_else(|e| e.into_inner()).loading = true;
                 run_centy_projects(state, handle);
-                state.lock().unwrap().loading = false;
+                state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
             } else if nav.current() == 0 && key == 2 {
                 info!("opening Terminal");
                 open_terminal();

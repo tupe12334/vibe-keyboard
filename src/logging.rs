@@ -47,7 +47,8 @@ fn log_dir() -> std::path::PathBuf {
     let mut p = if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
         std::path::PathBuf::from(config)
     } else {
-        let mut home = std::path::PathBuf::from(std::env::var_os("HOME").expect("HOME not set"));
+        let mut home =
+            std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/tmp".into()));
         home.push(".config");
         home
     };
