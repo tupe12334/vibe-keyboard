@@ -1,6 +1,9 @@
+mod navigation;
+
 use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
 use mirajazz::device::{list_devices, Device, DeviceQuery};
 use mirajazz::types::{DeviceInput, ImageFormat, ImageMirroring, ImageMode, ImageRotation};
+use navigation::Navigator;
 use std::f64::consts::PI;
 use std::process::Command;
 use std::time::{Duration, Instant};
@@ -35,21 +38,58 @@ fn open_terminal() {
         .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
 
-fn handle_key_event(buf: &[u8]) {
+async fn activate_page(page: usize, device: &Device) {
+    device.clear_all_button_images().await.ok();
+    match page {
+        0 => {
+            let clock_img = generate_clock_image();
+            device
+                .set_button_image(2, IMAGE_FORMAT, DynamicImage::ImageRgb8(clock_img))
+                .await
+                .ok();
+            device.flush().await.ok();
+            println!("[nav] page 0: clock");
+        }
+        1 => {
+            println!("[nav] page 1: (empty)");
+        }
+        _ => {}
+    }
+}
+
+async fn handle_key_event(buf: &[u8], device: &Device, nav: &mut Navigator) {
     let raw_id = buf[9];
     let state  = buf[10];
     if raw_id == 0x00 { return; }
     if raw_id == 0xFF { println!("[ack]"); return; }
     let state_str = match state { 1 => "pressed", 2 => "released", s => { println!("state={s:#04x}"); return; } };
-    match raw_to_logical(raw_id) {
-        Some(key) => {
-            println!("key {key:2}  {state_str}");
-            if key == 2 && state == 1 {
-                println!("→ opening Terminal");
-                open_terminal();
-            }
+    let key = match raw_to_logical(raw_id) {
+        Some(k) => k,
+        None => { println!("unknown raw_id={raw_id:#04x} state={state:#04x}"); return; }
+    };
+    println!("key {key:2}  {state_str}");
+    if state != 1 { return; } // act only on press
+
+    match key {
+        11 => {
+            let page = nav.back();
+            println!("← back → page {page}");
+            activate_page(page, device).await;
         }
-        None => println!("unknown raw_id={raw_id:#04x} state={state:#04x}"),
+        12 => {
+            let page = nav.forward();
+            println!("→ forward → page {page}");
+            activate_page(page, device).await;
+        }
+        _ => match nav.current() {
+            0 => {
+                if key == 2 {
+                    println!("→ opening Terminal");
+                    open_terminal();
+                }
+            }
+            _ => {}
+        },
     }
 }
 
@@ -150,23 +190,17 @@ async fn main() {
     device.clear_all_button_images().await.expect("clear failed");
     device.set_brightness(25).await.expect("brightness failed");
 
-    // Button 3 (logical, 1-based) = index 2 (0-based)
-    println!("[init] sending clock icon to button 3...");
-    let clock_img = generate_clock_image();
-    device
-        .set_button_image(2, IMAGE_FORMAT, DynamicImage::ImageRgb8(clock_img))
-        .await
-        .expect("image failed");
-    device.flush().await.expect("flush failed");
+    let mut nav = Navigator::new(2);
+    activate_page(nav.current(), &device).await;
 
     let reader = device.get_reader(|_, _| Ok(DeviceInput::NoData));
 
-    println!("[init] listening — press keys\n");
+    println!("[init] listening — press keys (11=back, 12=forward)\n");
     let mut last_heartbeat = Instant::now();
 
     loop {
         match reader.raw_read_data_with_timeout(512, Duration::from_millis(500)).await {
-            Ok(Some(data)) if data.len() >= 11 => handle_key_event(&data),
+            Ok(Some(data)) if data.len() >= 11 => handle_key_event(&data, &device, &mut nav).await,
             Ok(_) => {}
             Err(e) => eprintln!("[reader] {e}"),
         }
