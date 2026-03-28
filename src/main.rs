@@ -1,4 +1,5 @@
 mod navigation;
+mod state;
 mod tui;
 
 use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
@@ -6,6 +7,7 @@ use mirajazz::device::{list_devices, Device, DeviceQuery};
 use mirajazz::types::{DeviceInput, ImageFormat, ImageMirroring, ImageMode, ImageRotation};
 use navigation::Navigator;
 use rusb::UsbContext as _;
+use state::DeviceState;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -41,10 +43,20 @@ fn open_terminal() {
         .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
 
-async fn activate_page(page: usize, device: &Device, state: &Arc<Mutex<tui::AppState>>) {
+async fn activate_page(
+    page: usize,
+    device: &Device,
+    state: &Arc<Mutex<tui::AppState>>,
+    dev_state: &Arc<Mutex<DeviceState>>,
+) {
     {
         let mut s = state.lock().unwrap();
         s.current_page = page;
+    }
+    {
+        let mut ds = dev_state.lock().unwrap();
+        ds.current_page = page;
+        ds.save();
     }
     device.clear_all_button_images().await.ok();
     match page {
@@ -69,6 +81,7 @@ async fn handle_key_event(
     device: &Device,
     nav: &mut Navigator,
     state: &Arc<Mutex<tui::AppState>>,
+    dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     let raw_id    = buf[9];
     let state_byte = buf[10];
@@ -94,12 +107,12 @@ async fn handle_key_event(
         11 => {
             let page = nav.back();
             state.lock().unwrap().push_log(format!("← back → page {}", page + 1));
-            activate_page(page, device, state).await;
+            activate_page(page, device, state, dev_state).await;
         }
         12 => {
             let page = nav.forward();
             state.lock().unwrap().push_log(format!("→ forward → page {}", page + 1));
-            activate_page(page, device, state).await;
+            activate_page(page, device, state, dev_state).await;
         }
         _ => match nav.current() {
             0 => {
@@ -229,10 +242,13 @@ async fn main() {
     println!("[init] firmware: {:?}", device.firmware_version);
 
     device.clear_all_button_images().await.expect("clear failed");
-    device.set_brightness(25).await.expect("brightness failed");
+
+    let dev_state = DeviceState::load();
+    device.set_brightness(dev_state.brightness).await.expect("brightness failed");
 
     let app_state = Arc::new(Mutex::new(tui::AppState::new(2)));
     let shutdown  = Arc::new(AtomicBool::new(false));
+    let dev_state = Arc::new(Mutex::new(dev_state));
 
     // Spawn TUI on a blocking thread
     {
@@ -241,8 +257,10 @@ async fn main() {
         std::thread::spawn(move || tui::run(s, q));
     }
 
+    let initial_page = dev_state.lock().unwrap().current_page;
     let mut nav = Navigator::new(2);
-    activate_page(nav.current(), &device, &app_state).await;
+    nav.go(initial_page);
+    activate_page(nav.current(), &device, &app_state, &dev_state).await;
 
     let reader = device.get_reader(|_, _| Ok(DeviceInput::NoData));
     let mut last_heartbeat = Instant::now();
@@ -252,7 +270,7 @@ async fn main() {
 
         match reader.raw_read_data_with_timeout(512, Duration::from_millis(500)).await {
             Ok(Some(data)) if data.len() >= 11 => {
-                handle_key_event(&data, &device, &mut nav, &app_state).await;
+                handle_key_event(&data, &device, &mut nav, &app_state, &dev_state).await;
             }
             Ok(_) => {}
             Err(e) => { app_state.lock().unwrap().push_log(format!("[reader] {e}")); }
