@@ -5,7 +5,7 @@ use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
 use mirajazz::device::{list_devices, Device, DeviceQuery};
 use mirajazz::types::{DeviceInput, ImageFormat, ImageMirroring, ImageMode, ImageRotation};
 use navigation::Navigator;
-use std::f64::consts::PI;
+use rusb::UsbContext as _;
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -49,13 +49,13 @@ async fn activate_page(page: usize, device: &Device, state: &Arc<Mutex<tui::AppS
     device.clear_all_button_images().await.ok();
     match page {
         0 => {
-            let clock_img = generate_clock_image();
+            let term_img = generate_terminal_image();
             device
-                .set_button_image(2, IMAGE_FORMAT, DynamicImage::ImageRgb8(clock_img))
+                .set_button_image(2, IMAGE_FORMAT, DynamicImage::ImageRgb8(term_img))
                 .await
                 .ok();
             device.flush().await.ok();
-            state.lock().unwrap().push_log("page 0: clock".into());
+            state.lock().unwrap().push_log("page 0: terminal".into());
         }
         1 => {
             state.lock().unwrap().push_log("page 1: (empty)".into());
@@ -144,59 +144,80 @@ fn draw_thick_line(img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, color
     }
 }
 
-fn generate_clock_image() -> RgbImage {
-    let mut img: RgbImage = ImageBuffer::new(100, 100);
-    let (cx, cy) = (50.0f64, 50.0f64);
-
-    for p in img.pixels_mut() { *p = Rgb([18u8, 18u8, 40u8]); }
-
-    for y in 0..100u32 {
-        for x in 0..100u32 {
-            let d = (((x as f64 - cx).powi(2) + (y as f64 - cy).powi(2)) as f64).sqrt();
-            if d <= 44.0 { img.put_pixel(x, y, Rgb([230, 230, 255])); }
-            if d > 41.0 && d <= 44.0 { img.put_pixel(x, y, Rgb([80, 80, 130])); }
-        }
-    }
-
-    for h in 0u32..12 {
-        let a = h as f64 * PI / 6.0 - PI / 2.0;
-        let (r1, r2) = if h % 3 == 0 { (34.0, 41.0) } else { (38.0, 41.0) };
-        bresenham(&mut img,
-            (cx + r1 * a.cos()) as i32, (cy + r1 * a.sin()) as i32,
-            (cx + r2 * a.cos()) as i32, (cy + r2 * a.sin()) as i32,
-            Rgb([40, 40, 80]));
-    }
-
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    let mins  = (secs / 60 % 60) as f64;
-    let hours = (secs / 3600 % 12) as f64 + mins / 60.0;
-
-    let ha = hours * PI / 6.0 - PI / 2.0;
-    draw_thick_line(&mut img, cx as i32, cy as i32,
-        (cx + 22.0 * ha.cos()) as i32, (cy + 22.0 * ha.sin()) as i32,
-        Rgb([20, 20, 60]), 3);
-
-    let ma = mins * PI / 30.0 - PI / 2.0;
-    draw_thick_line(&mut img, cx as i32, cy as i32,
-        (cx + 33.0 * ma.cos()) as i32, (cy + 33.0 * ma.sin()) as i32,
-        Rgb([20, 20, 60]), 2);
-
-    for dy in -2i32..=2 {
-        for dx in -2i32..=2 {
-            if dx * dx + dy * dy <= 5 {
-                let px = (cx as i32 + dx).max(0) as u32;
-                let py = (cy as i32 + dy).max(0) as u32;
-                if px < 100 && py < 100 { img.put_pixel(px, py, Rgb([20, 20, 60])); }
+fn fill_circle(img: &mut RgbImage, cx: i32, cy: i32, r: i32, color: Rgb<u8>) {
+    for dy in -r..=r {
+        for dx in -r..=r {
+            if dx * dx + dy * dy <= r * r {
+                let px = cx + dx;
+                let py = cy + dy;
+                if px >= 0 && px < 100 && py >= 0 && py < 100 {
+                    img.put_pixel(px as u32, py as u32, color);
+                }
             }
         }
     }
+}
+
+fn generate_terminal_image() -> RgbImage {
+    let mut img: RgbImage = ImageBuffer::new(100, 100);
+
+    let canvas_bg    = Rgb([15u8,  15,  15]);
+    let window_body  = Rgb([28u8,  28,  28]);
+    let title_bar    = Rgb([50u8,  50,  50]);
+    let title_sep    = Rgb([65u8,  65,  65]);
+    let border_color = Rgb([80u8,  80,  80]);
+    let dot_red      = Rgb([255u8, 95,  86]);
+    let dot_yellow   = Rgb([255u8, 189, 46]);
+    let dot_green    = Rgb([39u8,  201, 63]);
+    let prompt_green = Rgb([57u8,  255, 20]);
+
+    for p in img.pixels_mut() { *p = canvas_bg; }
+
+    for y in 12u32..=88 { for x in 8u32..=92 { img.put_pixel(x, y, window_body); } }
+    for y in 12u32..=26 { for x in 8u32..=92 { img.put_pixel(x, y, title_bar); } }
+
+    bresenham(&mut img, 8, 27, 92, 27, title_sep);
+    bresenham(&mut img, 8,  12, 92, 12, border_color);
+    bresenham(&mut img, 8,  88, 92, 88, border_color);
+    bresenham(&mut img, 8,  12,  8, 88, border_color);
+    bresenham(&mut img, 92, 12, 92, 88, border_color);
+
+    fill_circle(&mut img, 20, 19, 3, dot_red);
+    fill_circle(&mut img, 28, 19, 3, dot_yellow);
+    fill_circle(&mut img, 36, 19, 3, dot_green);
+
+    draw_thick_line(&mut img, 22, 52, 38, 42, prompt_green, 2);
+    draw_thick_line(&mut img, 22, 52, 38, 62, prompt_green, 2);
+    draw_thick_line(&mut img, 44, 63, 58, 63, prompt_green, 2);
 
     img
 }
 
+/// Evicts the AppleUserHIDDrivers DriverKit dext by briefly seizing USB interface 0
+/// (USBInterfaceOpenSeize), then releasing it immediately. This leaves the interface free
+/// for the in-kernel IOUSBHIDDriver to match and register an IOHIDDevice service, which is
+/// what async-hid (mirajazz) needs. Holding the claim would block IOUSBHIDDriver.
+fn evict_dext() {
+    let ctx = rusb::Context::new().expect("rusb context");
+    let handle = ctx
+        .open_device_with_vid_pid(VID, PID)
+        .expect("USB device not found — is it plugged in?");
+    handle.claim_interface(0).expect(
+        "Failed to claim USB interface 0. Try running with sudo.",
+    );
+    handle.release_interface(0).ok();
+    // handle (and ctx) dropped here — interface is now free for IOUSBHIDDriver
+    println!("[init] AppleUserHIDDrivers dext evicted");
+}
+
 #[tokio::main]
 async fn main() {
+    evict_dext();
+
+    // Give macOS time to re-run IOKit driver matching and register the IOUSBHIDDriver
+    // IOHIDDevice service before we enumerate.
+    tokio::time::sleep(Duration::from_millis(1000)).await;
+
     let devices = list_devices(&[QUERY]).await.expect("HID enumerate failed");
     if devices.is_empty() {
         eprintln!("Device {:04x}:{:04x} not found.", VID, PID);
