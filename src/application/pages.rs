@@ -132,11 +132,18 @@ fn parse_centy_json(json: &str) -> Vec<CentyProject> {
                 .unwrap_or("unknown")
                 .to_string();
 
-            let org = ["org", "organization", "owner", "workspace"]
-                .iter()
-                .find_map(|k| item.get(k)?.as_str())
-                .unwrap_or("unknown")
-                .to_string();
+            let org = [
+                "organizationSlug",
+                "organizationName",
+                "org",
+                "organization",
+                "owner",
+                "workspace",
+            ]
+            .iter()
+            .find_map(|k| item.get(k)?.as_str())
+            .unwrap_or("unknown")
+            .to_string();
 
             let path = ["path", "directory", "dir", "root", "localPath"]
                 .iter()
