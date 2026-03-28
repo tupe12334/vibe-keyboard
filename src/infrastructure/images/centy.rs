@@ -5,11 +5,13 @@ use super::draw::{draw_thick_line, fill_circle};
 pub fn generate_centy_image() -> RgbImage {
     let mut img: RgbImage = ImageBuffer::new(100, 100);
 
-    let bg      = Rgb([15u8,  15,  15]);
-    let accent  = Rgb([99u8,  102, 241]);  // indigo
-    let white   = Rgb([240u8, 240, 240]);
+    let bg = Rgb([15u8, 15, 15]);
+    let accent = Rgb([99u8, 102, 241]); // indigo
+    let white = Rgb([240u8, 240, 240]);
 
-    for p in img.pixels_mut() { *p = bg; }
+    for p in img.pixels_mut() {
+        *p = bg;
+    }
 
     // Outer circle
     for angle_deg in 0..360u32 {

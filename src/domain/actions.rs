@@ -13,6 +13,11 @@ pub struct CentyProject {
 }
 
 pub enum CentyState {
-    ProjectList { projects: Vec<CentyProject>, page: usize },
-    ProjectActions { project: CentyProject },
+    ProjectList {
+        projects: Vec<CentyProject>,
+        page: usize,
+    },
+    ProjectActions {
+        project: CentyProject,
+    },
 }

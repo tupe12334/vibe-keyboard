@@ -5,11 +5,13 @@ use super::draw::{draw_thick_line, fill_circle};
 pub fn generate_claude_image() -> RgbImage {
     let mut img: RgbImage = ImageBuffer::new(100, 100);
 
-    let bg      = Rgb([20u8,  20,  20]);
-    let orange  = Rgb([218u8, 120, 60]);
-    let light   = Rgb([240u8, 160, 90]);
+    let bg = Rgb([20u8, 20, 20]);
+    let orange = Rgb([218u8, 120, 60]);
+    let light = Rgb([240u8, 160, 90]);
 
-    for p in img.pixels_mut() { *p = bg; }
+    for p in img.pixels_mut() {
+        *p = bg;
+    }
 
     // Draw a large arc "C" shape using thick line segments approximating a circle arc
     let cx = 50i32;

@@ -6,7 +6,10 @@ pub fn open_terminal() {
         .arg("-e")
         .arg("tell application \"Terminal\" to do script \"\"")
         .spawn()
-        .unwrap_or_else(|e| { error!("Failed to open Terminal: {e}"); std::process::exit(1) });
+        .unwrap_or_else(|e| {
+            error!("Failed to open Terminal: {e}");
+            std::process::exit(1)
+        });
 }
 
 pub fn open_terminal_in_path(path: Option<&str>) {
@@ -18,5 +21,8 @@ pub fn open_terminal_in_path(path: Option<&str>) {
         .arg("-e")
         .arg(&script)
         .spawn()
-        .unwrap_or_else(|e| { error!("Failed to open Terminal: {e}"); std::process::exit(1) });
+        .unwrap_or_else(|e| {
+            error!("Failed to open Terminal: {e}");
+            std::process::exit(1)
+        });
 }

@@ -5,12 +5,14 @@ use ratatui::{
     Frame,
 };
 
+use crate::domain::actions::CentyState;
+
 use super::app_state::AppState;
 
 pub fn render(state: &AppState, frame: &mut Frame) {
     let chunks = Layout::vertical([
-        Constraint::Length(3),  // title
-        Constraint::Fill(1),    // button grid
+        Constraint::Length(3), // title
+        Constraint::Fill(1),   // button grid
     ])
     .split(frame.area());
 
@@ -19,11 +21,22 @@ pub fn render(state: &AppState, frame: &mut Frame) {
 }
 
 fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
-    let text = format!(
-        " Vibe Keyboard    Page {} / {}    [q] quit ",
-        state.current_page + 1,
-        state.total_pages
-    );
+    let text = match &state.centy_state {
+        Some(CentyState::ProjectList { projects, page }) => format!(
+            " Centy    Projects ({}-{} of {})    [11] back    [q] quit ",
+            page * 10 + 1,
+            (page * 10 + 10).min(projects.len()),
+            projects.len(),
+        ),
+        Some(CentyState::ProjectActions { project }) => {
+            format!(" Centy    {}    [11] back    [q] quit ", project.name,)
+        }
+        None => format!(
+            " Vibe Keyboard    Page {} / {}    [q] quit ",
+            state.current_page + 1,
+            state.total_pages,
+        ),
+    };
     frame.render_widget(
         Paragraph::new(text)
             .alignment(Alignment::Center)
@@ -76,11 +89,23 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     frame.render_widget(block, area);
 
     if is_nav {
-        let label = if key == 11 { "◄ back" } else { "fwd ►" };
-        let vert = Layout::vertical([Constraint::Fill(1), Constraint::Length(1), Constraint::Fill(1)])
-            .split(inner);
+        let label = if key == 11 {
+            "◄ back"
+        } else if state.centy_state.is_some() {
+            "next ►"
+        } else {
+            "fwd ►"
+        };
+        let vert = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(inner);
         frame.render_widget(
-            Paragraph::new(label).alignment(Alignment::Center).style(base_style),
+            Paragraph::new(label)
+                .alignment(Alignment::Center)
+                .style(base_style),
             vert[1],
         );
         return;
@@ -116,4 +141,3 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
         );
     }
 }
-

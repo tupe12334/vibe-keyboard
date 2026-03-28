@@ -19,43 +19,56 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
     let mut map = HashMap::new();
     match page {
         0 => {
-            map.insert(1, ButtonAction {
-                name: "Centy".into(),
-                title: "List Projects".into(),
-                description: "Show centy projects".into(),
-            });
-            map.insert(2, ButtonAction {
-                name: "Terminal".into(),
-                title: "Open Terminal".into(),
-                description: "Launch a new terminal window".into(),
-            });
-            map.insert(3, ButtonAction {
-                name: "Claude".into(),
-                title: "Open Claude".into(),
-                description: "Launch terminal with claude --allow-dangerously-skip-permissions".into(),
-            });
+            map.insert(
+                1,
+                ButtonAction {
+                    name: "Centy".into(),
+                    title: "List Projects".into(),
+                    description: "Show centy projects".into(),
+                },
+            );
+            map.insert(
+                2,
+                ButtonAction {
+                    name: "Terminal".into(),
+                    title: "Open Terminal".into(),
+                    description: "Launch a new terminal window".into(),
+                },
+            );
+            map.insert(
+                3,
+                ButtonAction {
+                    name: "Claude".into(),
+                    title: "Open Claude".into(),
+                    description: "Launch terminal with claude --allow-dangerously-skip-permissions"
+                        .into(),
+                },
+            );
         }
         1 => {
-            map.insert(14, ButtonAction {
-                name: "Log File".into(),
-                title: "Open Log".into(),
-                description: "Open app.log in VS Code".into(),
-            });
-            map.insert(15, ButtonAction {
-                name: "VSCode Config".into(),
-                title: "Open Config".into(),
-                description: "Open config file in VS Code".into(),
-            });
+            map.insert(
+                14,
+                ButtonAction {
+                    name: "Log File".into(),
+                    title: "Open Log".into(),
+                    description: "Open app.log in VS Code".into(),
+                },
+            );
+            map.insert(
+                15,
+                ButtonAction {
+                    name: "VSCode Config".into(),
+                    title: "Open Config".into(),
+                    description: "Open config file in VS Code".into(),
+                },
+            );
         }
         _ => {}
     }
     map
 }
 
-pub fn run_centy_projects(
-    state: &Arc<Mutex<tui::AppState>>,
-    handle: &DeviceHandle<Context>,
-) {
+pub fn run_centy_projects(state: &Arc<Mutex<tui::AppState>>, handle: &DeviceHandle<Context>) {
     info!("running centy list projects");
 
     let output = Command::new("pnpm")
@@ -103,28 +116,35 @@ fn parse_centy_json(json: &str) -> Vec<CentyProject> {
         return vec![];
     };
 
-    arr.into_iter().filter_map(|item| {
-        let name = ["name", "slug", "title"]
-            .iter()
-            .find_map(|k| item.get(k)?.as_str())
-            .unwrap_or("unknown")
-            .to_string();
+    arr.into_iter()
+        .filter_map(|item| {
+            let name = ["name", "slug", "title"]
+                .iter()
+                .find_map(|k| item.get(k)?.as_str())
+                .unwrap_or("unknown")
+                .to_string();
 
-        let org = ["org", "organization", "owner", "workspace"]
-            .iter()
-            .find_map(|k| item.get(k)?.as_str())
-            .unwrap_or("unknown")
-            .to_string();
+            let org = ["org", "organization", "owner", "workspace"]
+                .iter()
+                .find_map(|k| item.get(k)?.as_str())
+                .unwrap_or("unknown")
+                .to_string();
 
-        let path = ["path", "directory", "dir", "root", "localPath"]
-            .iter()
-            .find_map(|k| item.get(k)?.as_str())
-            .map(|s| s.to_string());
+            let path = ["path", "directory", "dir", "root", "localPath"]
+                .iter()
+                .find_map(|k| item.get(k)?.as_str())
+                .map(|s| s.to_string());
 
-        let url = format!("https://app.centy.io/{}/{}", org, name);
+            let url = format!("https://app.centy.io/{}/{}", org, name);
 
-        Some(CentyProject { name, org, path, url })
-    }).collect()
+            Some(CentyProject {
+                name,
+                org,
+                path,
+                url,
+            })
+        })
+        .collect()
 }
 
 pub fn show_project_list(
@@ -140,11 +160,14 @@ pub fn show_project_list(
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
     for (i, project) in page_slice.iter().enumerate() {
         let key = (i + 1) as u8;
-        actions.insert(key, ButtonAction {
-            name: project.name.clone(),
-            title: project.org.clone(),
-            description: project.url.clone(),
-        });
+        actions.insert(
+            key,
+            ButtonAction {
+                name: project.name.clone(),
+                title: project.org.clone(),
+                description: project.url.clone(),
+            },
+        );
     }
 
     let count = page_slice.len();
@@ -167,21 +190,30 @@ pub fn show_project_actions(
     handle: &DeviceHandle<Context>,
 ) {
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-    actions.insert(1, ButtonAction {
-        name: "VSCode".into(),
-        title: "Open in VS Code".into(),
-        description: project.path.as_deref().unwrap_or("no local path").into(),
-    });
-    actions.insert(2, ButtonAction {
-        name: "Terminal".into(),
-        title: "Open Terminal".into(),
-        description: project.path.as_deref().unwrap_or("no local path").into(),
-    });
-    actions.insert(3, ButtonAction {
-        name: "Web".into(),
-        title: "Open in Browser".into(),
-        description: project.url.clone(),
-    });
+    actions.insert(
+        1,
+        ButtonAction {
+            name: "VSCode".into(),
+            title: "Open in VS Code".into(),
+            description: project.path.as_deref().unwrap_or("no local path").into(),
+        },
+    );
+    actions.insert(
+        2,
+        ButtonAction {
+            name: "Terminal".into(),
+            title: "Open Terminal".into(),
+            description: project.path.as_deref().unwrap_or("no local path").into(),
+        },
+    );
+    actions.insert(
+        3,
+        ButtonAction {
+            name: "Web".into(),
+            title: "Open in Browser".into(),
+            description: project.url.clone(),
+        },
+    );
 
     {
         let mut s = state.lock().unwrap();
@@ -190,8 +222,16 @@ pub fn show_project_actions(
     }
 
     clear_all(handle);
-    send_button_image(handle, 1, DynamicImage::ImageRgb8(generate_vscode_config_image()));
-    send_button_image(handle, 2, DynamicImage::ImageRgb8(generate_terminal_image()));
+    send_button_image(
+        handle,
+        1,
+        DynamicImage::ImageRgb8(generate_vscode_config_image()),
+    );
+    send_button_image(
+        handle,
+        2,
+        DynamicImage::ImageRgb8(generate_terminal_image()),
+    );
     send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_web_image()));
 }
 
@@ -216,13 +256,25 @@ pub fn activate_page(
     match page {
         0 => {
             send_button_image(handle, 1, DynamicImage::ImageRgb8(generate_centy_image()));
-            send_button_image(handle, 2, DynamicImage::ImageRgb8(generate_terminal_image()));
+            send_button_image(
+                handle,
+                2,
+                DynamicImage::ImageRgb8(generate_terminal_image()),
+            );
             send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_claude_image()));
             info!("page 0: centy + terminal + claude");
         }
         1 => {
-            send_button_image(handle, 14, DynamicImage::ImageRgb8(generate_log_file_image()));
-            send_button_image(handle, 15, DynamicImage::ImageRgb8(generate_vscode_config_image()));
+            send_button_image(
+                handle,
+                14,
+                DynamicImage::ImageRgb8(generate_log_file_image()),
+            );
+            send_button_image(
+                handle,
+                15,
+                DynamicImage::ImageRgb8(generate_vscode_config_image()),
+            );
             info!("page 1: log file + vscode config");
         }
         _ => {}
