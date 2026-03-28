@@ -24,4 +24,9 @@ impl Navigator {
         self.current = (self.current + 1) % self.count;
         self.current
     }
+
+    /// Jump directly to a page index (clamped to valid range).
+    pub fn go(&mut self, page: usize) {
+        self.current = page.min(self.count - 1);
+    }
 }
