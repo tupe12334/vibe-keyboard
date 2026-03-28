@@ -7,6 +7,7 @@ use std::io;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use tracing::error;
 
 use crossterm::{
     event::{self, Event, KeyCode},
@@ -17,7 +18,7 @@ use ratatui::{backend::CrosstermBackend, Terminal};
 
 pub fn run(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) {
     if let Err(e) = run_inner(state, shutdown) {
-        eprintln!("[tui] {e}");
+        error!("TUI error: {e}");
     }
 }
 

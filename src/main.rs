@@ -1,6 +1,7 @@
 mod application;
 mod domain;
 mod infrastructure;
+mod logging;
 mod presentation;
 
 use application::{activate_page, handle_key_event};
@@ -11,8 +12,12 @@ use rusb::{Context, UsbContext as _};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tracing::info;
 
 fn main() {
+    let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
+    let _log_guard = logging::init(Arc::clone(&app_state));
+
     let ctx = Context::new().expect("rusb context");
     let handle = ctx
         .open_device_with_vid_pid(VID, PID)
@@ -21,7 +26,7 @@ fn main() {
     handle
         .claim_interface(0)
         .expect("Failed to claim USB interface 0 — try: sudo cargo run");
-    println!("[init] interface 0 claimed");
+    info!("interface 0 claimed");
     reset_endpoints(&handle);
 
     let dev_state_val = DeviceState::load();
@@ -29,9 +34,8 @@ fn main() {
     device_init(&handle);
     clear_all(&handle);
     set_brightness(&handle, dev_state_val.brightness);
-    println!("[init] device ready");
+    info!("device ready");
 
-    let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let shutdown  = Arc::new(AtomicBool::new(false));
     let dev_state = Arc::new(Mutex::new(dev_state_val));
 
@@ -45,7 +49,7 @@ fn main() {
     let mut nav = Navigator::new(2);
     nav.go(initial_page);
     activate_page(nav.current(), &handle, &app_state, &dev_state);
-    println!("[init] listening — press keys (11=back, 12=forward)");
+    info!("listening — press keys (11=back, 12=forward)");
 
     let mut last_heartbeat = Instant::now();
 

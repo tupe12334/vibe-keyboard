@@ -3,6 +3,7 @@ use rusb::{Context, DeviceHandle};
 use std::collections::HashMap;
 use std::process::Command;
 use std::sync::{Arc, Mutex};
+use tracing::{error, info};
 
 use crate::domain::actions::ButtonAction;
 use crate::infrastructure::images::{generate_terminal_image, generate_vscode_config_image};
@@ -50,7 +51,7 @@ pub fn open_config_in_vscode() {
     Command::new("code")
         .arg(config_path)
         .spawn()
-        .unwrap_or_else(|e| { eprintln!("Failed to open config in VS Code: {e}"); std::process::exit(1) });
+        .unwrap_or_else(|e| { error!("Failed to open config in VS Code: {e}"); std::process::exit(1) });
 }
 
 pub fn open_terminal() {
@@ -58,7 +59,7 @@ pub fn open_terminal() {
         .arg("-e")
         .arg("tell application \"Terminal\" to do script \"\"")
         .spawn()
-        .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
+        .unwrap_or_else(|e| { error!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
 
 pub fn activate_page(
@@ -81,11 +82,11 @@ pub fn activate_page(
     match page {
         0 => {
             send_button_image(handle, 2, DynamicImage::ImageRgb8(generate_terminal_image()));
-            state.lock().unwrap().push_log("page 0: terminal".into());
+            info!("page 0: terminal");
         }
         1 => {
             send_button_image(handle, 15, DynamicImage::ImageRgb8(generate_vscode_config_image()));
-            state.lock().unwrap().push_log("page 1: vscode config".into());
+            info!("page 1: vscode config");
         }
         _ => {}
     }

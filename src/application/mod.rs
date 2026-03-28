@@ -4,6 +4,7 @@ pub use pages::{activate_page, page_actions};
 
 use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
+use tracing::info;
 
 use crate::domain::keys::raw_to_logical;
 use crate::domain::navigation::Navigator;
@@ -29,26 +30,28 @@ pub fn handle_key_event(
     {
         let mut s = state.lock().unwrap();
         s.pressed_key = if state_byte == 1 { Some(key) } else { None };
-        if state_byte == 1 { s.push_log(format!("key {:2}  {state_str}", key)); }
+    }
+    if state_byte == 1 {
+        info!("key {:2} {state_str}", key);
     }
     if state_byte != 1 { return; }
     match key {
         11 => {
             let page = nav.back();
-            state.lock().unwrap().push_log(format!("← back → page {}", page + 1));
+            info!("← back → page {}", page + 1);
             activate_page(page, handle, state, dev_state);
         }
         12 => {
             let page = nav.forward();
-            state.lock().unwrap().push_log(format!("→ forward → page {}", page + 1));
+            info!("→ forward → page {}", page + 1);
             activate_page(page, handle, state, dev_state);
         }
         _ => {
             if nav.current() == 0 && key == 2 {
-                state.lock().unwrap().push_log("opening Terminal".into());
+                info!("opening Terminal");
                 open_terminal();
             } else if nav.current() == 1 && key == 15 {
-                state.lock().unwrap().push_log("opening config in VS Code".into());
+                info!("opening config in VS Code");
                 open_config_in_vscode();
             }
         }
