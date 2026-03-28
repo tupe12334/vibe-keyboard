@@ -1,4 +1,5 @@
 mod navigation;
+mod tui;
 
 use image::{DynamicImage, ImageBuffer, Rgb, RgbImage};
 use mirajazz::device::{list_devices, Device, DeviceQuery};
@@ -6,6 +7,8 @@ use mirajazz::types::{DeviceInput, ImageFormat, ImageMirroring, ImageMode, Image
 use navigation::Navigator;
 use std::f64::consts::PI;
 use std::process::Command;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 const VID: u16 = 0x0300;
@@ -38,7 +41,11 @@ fn open_terminal() {
         .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
 
-async fn activate_page(page: usize, device: &Device) {
+async fn activate_page(page: usize, device: &Device, state: &Arc<Mutex<tui::AppState>>) {
+    {
+        let mut s = state.lock().unwrap();
+        s.current_page = page;
+    }
     device.clear_all_button_images().await.ok();
     match page {
         0 => {
@@ -48,43 +55,56 @@ async fn activate_page(page: usize, device: &Device) {
                 .await
                 .ok();
             device.flush().await.ok();
-            println!("[nav] page 0: clock");
+            state.lock().unwrap().push_log("page 0: clock".into());
         }
         1 => {
-            println!("[nav] page 1: (empty)");
+            state.lock().unwrap().push_log("page 1: (empty)".into());
         }
         _ => {}
     }
 }
 
-async fn handle_key_event(buf: &[u8], device: &Device, nav: &mut Navigator) {
-    let raw_id = buf[9];
-    let state  = buf[10];
+async fn handle_key_event(
+    buf: &[u8],
+    device: &Device,
+    nav: &mut Navigator,
+    state: &Arc<Mutex<tui::AppState>>,
+) {
+    let raw_id    = buf[9];
+    let state_byte = buf[10];
     if raw_id == 0x00 { return; }
-    if raw_id == 0xFF { println!("[ack]"); return; }
-    let state_str = match state { 1 => "pressed", 2 => "released", s => { println!("state={s:#04x}"); return; } };
+    if raw_id == 0xFF { return; }
+    let state_str = match state_byte { 1 => "pressed", 2 => "released", _ => return };
     let key = match raw_to_logical(raw_id) {
         Some(k) => k,
-        None => { println!("unknown raw_id={raw_id:#04x} state={state:#04x}"); return; }
+        None => return,
     };
-    println!("key {key:2}  {state_str}");
-    if state != 1 { return; } // act only on press
+
+    {
+        let mut s = state.lock().unwrap();
+        s.pressed_key = if state_byte == 1 { Some(key) } else { None };
+        if state_byte == 1 {
+            s.push_log(format!("key {:2}  {state_str}", key));
+        }
+    }
+
+    if state_byte != 1 { return; }
 
     match key {
         11 => {
             let page = nav.back();
-            println!("← back → page {page}");
-            activate_page(page, device).await;
+            state.lock().unwrap().push_log(format!("← back → page {}", page + 1));
+            activate_page(page, device, state).await;
         }
         12 => {
             let page = nav.forward();
-            println!("→ forward → page {page}");
-            activate_page(page, device).await;
+            state.lock().unwrap().push_log(format!("→ forward → page {}", page + 1));
+            activate_page(page, device, state).await;
         }
         _ => match nav.current() {
             0 => {
                 if key == 2 {
-                    println!("→ opening Terminal");
+                    state.lock().unwrap().push_log("opening Terminal".into());
                     open_terminal();
                 }
             }
@@ -190,19 +210,31 @@ async fn main() {
     device.clear_all_button_images().await.expect("clear failed");
     device.set_brightness(25).await.expect("brightness failed");
 
+    let app_state = Arc::new(Mutex::new(tui::AppState::new(2)));
+    let shutdown  = Arc::new(AtomicBool::new(false));
+
+    // Spawn TUI on a blocking thread
+    {
+        let s = Arc::clone(&app_state);
+        let q = Arc::clone(&shutdown);
+        std::thread::spawn(move || tui::run(s, q));
+    }
+
     let mut nav = Navigator::new(2);
-    activate_page(nav.current(), &device).await;
+    activate_page(nav.current(), &device, &app_state).await;
 
     let reader = device.get_reader(|_, _| Ok(DeviceInput::NoData));
-
-    println!("[init] listening — press keys (11=back, 12=forward)\n");
     let mut last_heartbeat = Instant::now();
 
     loop {
+        if shutdown.load(Ordering::Relaxed) { break; }
+
         match reader.raw_read_data_with_timeout(512, Duration::from_millis(500)).await {
-            Ok(Some(data)) if data.len() >= 11 => handle_key_event(&data, &device, &mut nav).await,
+            Ok(Some(data)) if data.len() >= 11 => {
+                handle_key_event(&data, &device, &mut nav, &app_state).await;
+            }
             Ok(_) => {}
-            Err(e) => eprintln!("[reader] {e}"),
+            Err(e) => { app_state.lock().unwrap().push_log(format!("[reader] {e}")); }
         }
 
         if last_heartbeat.elapsed() >= Duration::from_secs(8) {
