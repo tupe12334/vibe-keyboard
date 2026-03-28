@@ -5,6 +5,8 @@ use ratatui::{
     Frame,
 };
 
+const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+
 use crate::domain::actions::CentyState;
 
 use super::app_state::AppState;
@@ -72,6 +74,7 @@ fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
 
 fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     let is_pressed = state.pressed_key == Some(key);
+    let is_loading = state.loading && is_pressed;
     let in_project_actions = matches!(&state.centy_state, Some(CentyState::ProjectActions { .. }));
     let is_nav = key == 11 || (key == 12 && !in_project_actions);
 
@@ -88,6 +91,26 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
         .style(base_style);
     let inner = block.inner(area);
     frame.render_widget(block, area);
+
+    if is_loading {
+        let frame_idx = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| (d.subsec_millis() / 125) as usize % SPINNER.len())
+            .unwrap_or(0);
+        let vert = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1),
+            Constraint::Fill(1),
+        ])
+        .split(inner);
+        frame.render_widget(
+            Paragraph::new(SPINNER[frame_idx])
+                .alignment(Alignment::Center)
+                .style(base_style),
+            vert[1],
+        );
+        return;
+    }
 
     if is_nav {
         let label = if key == 11 {

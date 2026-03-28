@@ -150,7 +150,9 @@ pub fn handle_key_event(
         }
         _ => {
             if nav.current() == 0 && key == 1 {
+                state.lock().unwrap().loading = true;
                 run_centy_projects(state, handle);
+                state.lock().unwrap().loading = false;
             } else if nav.current() == 0 && key == 2 {
                 info!("opening Terminal");
                 open_terminal();
