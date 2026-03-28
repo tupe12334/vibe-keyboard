@@ -3,11 +3,14 @@ mod pages;
 
 pub use pages::{activate_page, page_actions};
 
-use actions::{open_config_in_vscode, open_log_file, open_terminal};
+use actions::{open_claude_terminal, open_config_in_vscode, open_in_browser, open_log_file,
+              open_terminal, open_terminal_in_path, open_vscode_in_path};
+use pages::{run_centy_projects, show_project_list, show_project_actions};
 use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
+use crate::domain::actions::CentyState;
 use crate::domain::keys::raw_to_logical;
 use crate::domain::navigation::Navigator;
 use crate::infrastructure::persistence::DeviceState;
@@ -36,6 +39,74 @@ pub fn handle_key_event(
         info!("key {:2} {state_str}", key);
     }
     if state_byte != 1 { return; }
+
+    // Intercept key events when in centy overlay mode
+    let centy_state = state.lock().unwrap().centy_state.take();
+    if let Some(cs) = centy_state {
+        match cs {
+            CentyState::ProjectList { projects, page } => {
+                match key {
+                    11 => {
+                        info!("centy: exit → page {}", nav.current() + 1);
+                        activate_page(nav.current(), handle, state, dev_state);
+                    }
+                    12 => {
+                        let next_page = page + 1;
+                        let max_page = projects.len().saturating_sub(1) / 10;
+                        if next_page <= max_page {
+                            info!("centy: next page {}", next_page + 1);
+                            show_project_list(next_page, projects, state, handle);
+                        } else {
+                            // No more pages, restore state
+                            state.lock().unwrap().centy_state =
+                                Some(CentyState::ProjectList { projects, page });
+                        }
+                    }
+                    1..=10 => {
+                        let idx = page * 10 + (key as usize - 1);
+                        if let Some(project) = projects.get(idx).cloned() {
+                            info!("centy: selected project {}", project.name);
+                            show_project_actions(project, state, handle);
+                        } else {
+                            state.lock().unwrap().centy_state =
+                                Some(CentyState::ProjectList { projects, page });
+                        }
+                    }
+                    _ => {
+                        state.lock().unwrap().centy_state =
+                            Some(CentyState::ProjectList { projects, page });
+                    }
+                }
+            }
+            CentyState::ProjectActions { project } => {
+                match key {
+                    11 => {
+                        info!("centy: back to project list");
+                        run_centy_projects(state, handle);
+                    }
+                    1 => {
+                        info!("centy: open {} in VS Code", project.name);
+                        open_vscode_in_path(project.path.as_deref().unwrap_or("."));
+                    }
+                    2 => {
+                        info!("centy: open {} in Terminal", project.name);
+                        open_terminal_in_path(project.path.as_deref());
+                    }
+                    3 => {
+                        info!("centy: open {} in browser", project.name);
+                        open_in_browser(&project.url);
+                    }
+                    _ => {
+                        state.lock().unwrap().centy_state =
+                            Some(CentyState::ProjectActions { project });
+                    }
+                }
+            }
+        }
+        return;
+    }
+
+    // Normal page navigation and actions
     match key {
         11 => {
             let page = nav.back();
@@ -48,9 +119,14 @@ pub fn handle_key_event(
             activate_page(page, handle, state, dev_state);
         }
         _ => {
-            if nav.current() == 0 && key == 2 {
+            if nav.current() == 0 && key == 1 {
+                run_centy_projects(state, handle);
+            } else if nav.current() == 0 && key == 2 {
                 info!("opening Terminal");
                 open_terminal();
+            } else if nav.current() == 0 && key == 3 {
+                info!("opening Claude in Terminal");
+                open_claude_terminal();
             } else if nav.current() == 1 && key == 14 {
                 info!("opening log file in VS Code");
                 open_log_file();

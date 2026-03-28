@@ -97,19 +97,19 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
         .split(inner);
 
         frame.render_widget(
-            Paragraph::new(action.name)
+            Paragraph::new(action.name.as_str())
                 .alignment(Alignment::Center)
                 .style(base_style.add_modifier(Modifier::BOLD)),
             vert[1],
         );
         frame.render_widget(
-            Paragraph::new(action.title)
+            Paragraph::new(action.title.as_str())
                 .alignment(Alignment::Center)
                 .style(base_style),
             vert[2],
         );
         frame.render_widget(
-            Paragraph::new(action.description)
+            Paragraph::new(action.description.as_str())
                 .alignment(Alignment::Center)
                 .style(base_style.fg(Color::DarkGray)),
             vert[3],

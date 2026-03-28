@@ -21,3 +21,10 @@ pub fn open_config_in_vscode() {
         .spawn()
         .unwrap_or_else(|e| { error!("Failed to open config in VS Code: {e}"); std::process::exit(1) });
 }
+
+pub fn open_vscode_in_path(path: &str) {
+    Command::new("code")
+        .arg(path)
+        .spawn()
+        .unwrap_or_else(|e| { error!("Failed to open VS Code at {path}: {e}"); std::process::exit(1) });
+}

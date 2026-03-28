@@ -1,7 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::application::page_actions;
-use crate::domain::actions::ButtonAction;
+use crate::domain::actions::{ButtonAction, CentyState};
 
 const LOG_CAPACITY: usize = 10;
 
@@ -11,6 +11,7 @@ pub struct AppState {
     pub pressed_key: Option<u8>,
     pub log: VecDeque<String>,
     pub actions: HashMap<u8, ButtonAction>,
+    pub centy_state: Option<CentyState>,
 }
 
 impl AppState {
@@ -21,6 +22,7 @@ impl AppState {
             pressed_key: None,
             log: VecDeque::with_capacity(LOG_CAPACITY),
             actions: page_actions(0),
+            centy_state: None,
         }
     }
 
