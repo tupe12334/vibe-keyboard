@@ -6,7 +6,7 @@ mod presentation;
 use application::{activate_page, handle_key_event};
 use domain::navigation::Navigator;
 use infrastructure::persistence::DeviceState;
-use infrastructure::usb::{clear_all, device_init, keep_alive, read_event, set_brightness, PID, VID};
+use infrastructure::usb::{clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID};
 use rusb::{Context, UsbContext as _};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,6 +22,7 @@ fn main() {
         .claim_interface(0)
         .expect("Failed to claim USB interface 0 — try: sudo cargo run");
     println!("[init] interface 0 claimed");
+    reset_endpoints(&handle);
 
     let dev_state_val = DeviceState::load();
 
