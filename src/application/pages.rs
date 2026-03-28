@@ -84,7 +84,8 @@ pub fn activate_page(
             state.lock().unwrap().push_log("page 0: terminal".into());
         }
         1 => {
-            state.lock().unwrap().push_log("page 1: (empty)".into());
+            send_button_image(handle, 15, DynamicImage::ImageRgb8(generate_vscode_config_image()));
+            state.lock().unwrap().push_log("page 1: vscode config".into());
         }
         _ => {}
     }

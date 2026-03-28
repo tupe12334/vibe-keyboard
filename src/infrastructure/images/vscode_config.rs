@@ -1,6 +1,6 @@
 use image::{ImageBuffer, Rgb, RgbImage};
 
-use super::draw::{bresenham, draw_thick_line, fill_circle};
+use super::draw::{draw_thick_line, fill_circle};
 
 pub fn generate_vscode_config_image() -> RgbImage {
     let mut img: RgbImage = ImageBuffer::new(100, 100);
