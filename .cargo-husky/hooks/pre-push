@@ -3,3 +3,4 @@ set -e
 
 cargo test
 cargo machete
+cargo clippy
