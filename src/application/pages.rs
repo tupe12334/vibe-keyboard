@@ -3,10 +3,10 @@ use rusb::{Context, DeviceHandle};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 
-use crate::images::generate_terminal_image;
-use crate::state::DeviceState;
-use crate::tui;
-use crate::usb::{clear_all, send_button_image};
+use crate::infrastructure::images::generate_terminal_image;
+use crate::infrastructure::persistence::DeviceState;
+use crate::infrastructure::usb::{clear_all, send_button_image};
+use crate::presentation::tui;
 
 pub fn open_terminal() {
     Command::new("open")

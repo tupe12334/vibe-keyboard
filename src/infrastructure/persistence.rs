@@ -18,13 +18,13 @@ impl Default for DeviceState {
 }
 
 fn state_path() -> PathBuf {
-    let mut p = dirs_next();
+    let mut p = config_dir();
     p.push("vibe-keyboard");
     p.push("state.toml");
     p
 }
 
-fn dirs_next() -> PathBuf {
+fn config_dir() -> PathBuf {
     // ~/.config on Linux/macOS
     if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
         return PathBuf::from(config);

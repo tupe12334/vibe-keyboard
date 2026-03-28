@@ -1,18 +1,16 @@
-mod images;
-mod input;
-mod navigation;
-mod state;
-mod tui;
-mod usb;
+mod application;
+mod domain;
+mod infrastructure;
+mod presentation;
 
-use input::{activate_page, handle_key_event};
-use navigation::Navigator;
+use application::{activate_page, handle_key_event};
+use domain::navigation::Navigator;
+use infrastructure::persistence::DeviceState;
+use infrastructure::usb::{clear_all, device_init, keep_alive, read_event, set_brightness, PID, VID};
 use rusb::{Context, UsbContext as _};
-use state::DeviceState;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use usb::{clear_all, device_init, keep_alive, read_event, set_brightness, PID, VID};
 
 fn main() {
     let ctx = Context::new().expect("rusb context");
@@ -32,14 +30,14 @@ fn main() {
     set_brightness(&handle, dev_state_val.brightness);
     println!("[init] device ready");
 
-    let app_state = Arc::new(Mutex::new(tui::AppState::new(2)));
+    let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let shutdown  = Arc::new(AtomicBool::new(false));
     let dev_state = Arc::new(Mutex::new(dev_state_val));
 
     {
         let s = Arc::clone(&app_state);
         let q = Arc::clone(&shutdown);
-        std::thread::spawn(move || tui::run(s, q));
+        std::thread::spawn(move || presentation::tui::run(s, q));
     }
 
     let initial_page = dev_state.lock().unwrap().current_page;

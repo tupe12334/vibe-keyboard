@@ -1,4 +1,3 @@
-mod keys;
 mod pages;
 
 pub use pages::activate_page;
@@ -6,10 +5,10 @@ pub use pages::activate_page;
 use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
 
-use crate::navigation::Navigator;
-use crate::state::DeviceState;
-use crate::tui;
-use keys::raw_to_logical;
+use crate::domain::keys::raw_to_logical;
+use crate::domain::navigation::Navigator;
+use crate::infrastructure::persistence::DeviceState;
+use crate::presentation::tui;
 use pages::open_terminal;
 
 pub fn handle_key_event(
