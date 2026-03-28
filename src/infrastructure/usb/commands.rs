@@ -1,5 +1,6 @@
 use rusb::{Context, DeviceHandle};
 use std::time::Duration;
+use tracing::warn;
 
 use super::{CMD_PACKET, EP_IN, EP_OUT, PACKET, TIMEOUT};
 
@@ -47,6 +48,6 @@ pub fn read_event(handle: &DeviceHandle<Context>, timeout: Duration) -> Option<V
     match handle.read_interrupt(EP_IN, &mut buf, timeout) {
         Ok(_) => Some(buf),
         Err(rusb::Error::Timeout) => None,
-        Err(e) => { eprintln!("[reader] {e}"); None }
+        Err(e) => { warn!("USB read error: {e}"); None }
     }
 }

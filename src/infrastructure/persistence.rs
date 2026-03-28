@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
+use tracing::{error, warn};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceState {
@@ -43,7 +44,7 @@ impl DeviceState {
         let path = state_path();
         match fs::read_to_string(&path) {
             Ok(contents) => toml::from_str(&contents).unwrap_or_else(|e| {
-                eprintln!("[state] failed to parse {}: {e}, using defaults", path.display());
+                warn!("failed to parse {}: {e}, using defaults", path.display());
                 Self::default()
             }),
             Err(_) => {
@@ -59,17 +60,17 @@ impl DeviceState {
         let path = state_path();
         if let Some(parent) = path.parent() {
             if let Err(e) = fs::create_dir_all(parent) {
-                eprintln!("[state] failed to create config dir: {e}");
+                error!("failed to create config dir: {e}");
                 return;
             }
         }
         match toml::to_string_pretty(self) {
             Ok(contents) => {
                 if let Err(e) = fs::write(&path, contents) {
-                    eprintln!("[state] failed to write {}: {e}", path.display());
+                    error!("failed to write {}: {e}", path.display());
                 }
             }
-            Err(e) => eprintln!("[state] failed to serialize state: {e}"),
+            Err(e) => error!("failed to serialize state: {e}"),
         }
     }
 }
