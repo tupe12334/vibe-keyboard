@@ -44,6 +44,14 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
                         .into(),
                 },
             );
+            map.insert(
+                4,
+                ButtonAction {
+                    name: "Centy Web".into(),
+                    title: "Open Centy".into(),
+                    description: "Open app.centy.io in Chrome".into(),
+                },
+            );
         }
         1 => {
             map.insert(
@@ -262,7 +270,8 @@ pub fn activate_page(
                 DynamicImage::ImageRgb8(generate_terminal_image()),
             );
             send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_claude_image()));
-            info!("page 0: centy + terminal + claude");
+            send_button_image(handle, 4, DynamicImage::ImageRgb8(generate_web_image()));
+            info!("page 0: centy + terminal + claude + centy web");
         }
         1 => {
             send_button_image(

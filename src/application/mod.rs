@@ -4,8 +4,8 @@ mod pages;
 pub use pages::{activate_page, page_actions};
 
 use actions::{
-    open_claude_terminal, open_config_in_vscode, open_in_browser, open_log_file, open_terminal,
-    open_terminal_in_path, open_vscode_in_path,
+    open_claude_terminal, open_config_in_vscode, open_in_browser, open_in_chrome, open_log_file,
+    open_terminal, open_terminal_in_path, open_vscode_in_path,
 };
 use pages::{run_centy_projects, show_project_actions, show_project_list};
 use rusb::{Context, DeviceHandle};
@@ -135,6 +135,9 @@ pub fn handle_key_event(
             } else if nav.current() == 0 && key == 3 {
                 info!("opening Claude in Terminal");
                 open_claude_terminal();
+            } else if nav.current() == 0 && key == 4 {
+                info!("opening Centy in Chrome");
+                open_in_chrome("https://app.centy.io");
             } else if nav.current() == 1 && key == 14 {
                 info!("opening log file in VS Code");
                 open_log_file();
