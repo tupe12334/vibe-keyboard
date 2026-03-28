@@ -54,10 +54,9 @@ pub fn open_config_in_vscode() {
 }
 
 pub fn open_terminal() {
-    Command::new("open")
-        .arg("-n")
-        .arg("-a")
-        .arg("Terminal")
+    Command::new("osascript")
+        .arg("-e")
+        .arg("tell application \"Terminal\" to do script \"\"")
         .spawn()
         .unwrap_or_else(|e| { eprintln!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
