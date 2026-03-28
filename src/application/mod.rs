@@ -4,8 +4,8 @@ mod pages;
 pub use pages::{activate_page, page_actions};
 
 use actions::{
-    open_claude_terminal, open_config_in_vscode, open_in_browser, open_in_chrome, open_log_file,
-    open_terminal, open_terminal_in_path, open_vscode_in_path,
+    open_claude_terminal, open_config_in_vscode, open_in_chrome, open_log_file, open_terminal,
+    open_terminal_in_path, open_vscode_in_path,
 };
 use pages::{run_centy_projects, show_project_actions, show_project_list};
 use rusb::{Context, DeviceHandle};
@@ -76,7 +76,7 @@ pub fn handle_key_event(
                         let idx = page * 10 + (key as usize - 1);
                         if let Some(project) = projects.get(idx).cloned() {
                             info!("centy: selected project {}", project.name);
-                            show_project_actions(project, state, handle);
+                            show_project_actions(project, projects, page, state, handle);
                         } else {
                             state.lock().unwrap().centy_state =
                                 Some(CentyState::ProjectList { projects, page });
@@ -88,26 +88,48 @@ pub fn handle_key_event(
                     }
                 }
             }
-            CentyState::ProjectActions { project } => match key {
+            CentyState::ProjectActions {
+                project,
+                prev_projects,
+                prev_page,
+            } => match key {
                 11 => {
-                    info!("centy: back to project list");
-                    run_centy_projects(state, handle);
+                    info!("centy: back to project list (page {})", prev_page + 1);
+                    show_project_list(prev_page, prev_projects, state, handle);
                 }
                 1 => {
                     info!("centy: open {} in VS Code", project.name);
                     open_vscode_in_path(project.path.as_deref().unwrap_or("."));
+                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
+                        project,
+                        prev_projects,
+                        prev_page,
+                    });
                 }
                 2 => {
                     info!("centy: open {} in Terminal", project.name);
                     open_terminal_in_path(project.path.as_deref());
+                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
+                        project,
+                        prev_projects,
+                        prev_page,
+                    });
                 }
                 3 => {
                     info!("centy: open {} in browser", project.name);
                     open_in_chrome(&project.url);
+                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
+                        project,
+                        prev_projects,
+                        prev_page,
+                    });
                 }
                 _ => {
-                    state.lock().unwrap().centy_state =
-                        Some(CentyState::ProjectActions { project });
+                    state.lock().unwrap().centy_state = Some(CentyState::ProjectActions {
+                        project,
+                        prev_projects,
+                        prev_page,
+                    });
                 }
             },
         }

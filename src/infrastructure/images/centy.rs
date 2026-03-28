@@ -19,7 +19,7 @@ pub fn generate_centy_image() -> RgbImage {
         for r in 36u32..=42 {
             let x = (50.0 + (r as f64) * angle.cos()).round() as i32;
             let y = (50.0 + (r as f64) * angle.sin()).round() as i32;
-            if x >= 0 && x < 100 && y >= 0 && y < 100 {
+            if (0..100).contains(&x) && (0..100).contains(&y) {
                 img.put_pixel(x as u32, y as u32, accent);
             }
         }
@@ -31,7 +31,7 @@ pub fn generate_centy_image() -> RgbImage {
         for r in 20u32..=28 {
             let x = (50.0 + (r as f64) * angle.cos()).round() as i32;
             let y = (50.0 + (r as f64) * angle.sin()).round() as i32;
-            if x >= 0 && x < 100 && y >= 0 && y < 100 {
+            if (0..100).contains(&x) && (0..100).contains(&y) {
                 img.put_pixel(x as u32, y as u32, white);
             }
         }

@@ -19,5 +19,7 @@ pub enum CentyState {
     },
     ProjectActions {
         project: CentyProject,
+        prev_projects: Vec<CentyProject>,
+        prev_page: usize,
     },
 }

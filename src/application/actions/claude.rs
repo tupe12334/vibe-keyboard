@@ -1,6 +1,7 @@
 use std::process::Command;
 use tracing::error;
 
+#[allow(clippy::zombie_processes)]
 pub fn open_claude_terminal() {
     Command::new("osascript")
         .arg("-e")

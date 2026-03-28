@@ -125,7 +125,7 @@ fn parse_centy_json(json: &str) -> Vec<CentyProject> {
     };
 
     arr.into_iter()
-        .filter_map(|item| {
+        .map(|item| {
             let name = ["name", "slug", "title"]
                 .iter()
                 .find_map(|k| item.get(k)?.as_str())
@@ -152,12 +152,12 @@ fn parse_centy_json(json: &str) -> Vec<CentyProject> {
 
             let url = format!("https://app.centy.io/{}/{}", org, name);
 
-            Some(CentyProject {
+            CentyProject {
                 name,
                 org,
                 path,
                 url,
-            })
+            }
         })
         .collect()
 }
@@ -201,6 +201,8 @@ pub fn show_project_list(
 
 pub fn show_project_actions(
     project: CentyProject,
+    prev_projects: Vec<CentyProject>,
+    prev_page: usize,
     state: &Arc<Mutex<tui::AppState>>,
     handle: &DeviceHandle<Context>,
 ) {
@@ -233,7 +235,11 @@ pub fn show_project_actions(
     {
         let mut s = state.lock().unwrap();
         s.actions = actions;
-        s.centy_state = Some(CentyState::ProjectActions { project });
+        s.centy_state = Some(CentyState::ProjectActions {
+            project,
+            prev_projects,
+            prev_page,
+        });
     }
 
     clear_all(handle);

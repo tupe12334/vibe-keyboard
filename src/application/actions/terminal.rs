@@ -1,6 +1,7 @@
 use std::process::Command;
 use tracing::error;
 
+#[allow(clippy::zombie_processes)]
 pub fn open_terminal() {
     Command::new("osascript")
         .arg("-e")
@@ -12,6 +13,7 @@ pub fn open_terminal() {
         });
 }
 
+#[allow(clippy::zombie_processes)]
 pub fn open_terminal_in_path(path: Option<&str>) {
     let script = match path {
         Some(p) => format!("tell application \"Terminal\" to do script \"cd '{p}'\""),

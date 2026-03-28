@@ -28,7 +28,7 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
             (page * 10 + 10).min(projects.len()),
             projects.len(),
         ),
-        Some(CentyState::ProjectActions { project }) => {
+        Some(CentyState::ProjectActions { project, .. }) => {
             format!(" Centy    {}    [11] back    [q] quit ", project.name,)
         }
         None => format!(
@@ -72,7 +72,8 @@ fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
 
 fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     let is_pressed = state.pressed_key == Some(key);
-    let is_nav = key == 11 || key == 12;
+    let in_project_actions = matches!(&state.centy_state, Some(CentyState::ProjectActions { .. }));
+    let is_nav = key == 11 || (key == 12 && !in_project_actions);
 
     let base_style = if is_pressed {
         Style::default().fg(Color::Black).bg(Color::Yellow)
