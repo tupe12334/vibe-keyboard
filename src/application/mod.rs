@@ -1,7 +1,9 @@
+mod actions;
 mod pages;
 
 pub use pages::{activate_page, page_actions};
 
+use actions::{open_config_in_vscode, open_log_file, open_terminal};
 use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
 use tracing::info;
@@ -10,7 +12,6 @@ use crate::domain::keys::raw_to_logical;
 use crate::domain::navigation::Navigator;
 use crate::infrastructure::persistence::DeviceState;
 use crate::presentation::tui;
-use pages::{open_config_in_vscode, open_log_file, open_terminal};
 
 pub fn handle_key_event(
     buf: &[u8],

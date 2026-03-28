@@ -1,9 +1,8 @@
 use image::DynamicImage;
 use rusb::{Context, DeviceHandle};
 use std::collections::HashMap;
-use std::process::Command;
 use std::sync::{Arc, Mutex};
-use tracing::{error, info};
+use tracing::info;
 
 use crate::domain::actions::ButtonAction;
 use crate::infrastructure::images::{generate_log_file_image, generate_terminal_image, generate_vscode_config_image};
@@ -36,56 +35,6 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
         _ => {}
     }
     map
-}
-
-pub fn open_log_file() {
-    let log_path = {
-        let mut p = if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME") {
-            std::path::PathBuf::from(xdg)
-        } else {
-            let mut home = std::path::PathBuf::from(
-                std::env::var_os("HOME").expect("HOME not set"),
-            );
-            home.push(".config");
-            home
-        };
-        p.push("vibe-keyboard");
-        p.push("app.log");
-        p
-    };
-    Command::new("code")
-        .arg(log_path)
-        .spawn()
-        .unwrap_or_else(|e| { error!("Failed to open log file in VS Code: {e}"); std::process::exit(1) });
-}
-
-pub fn open_config_in_vscode() {
-    let config_path = {
-        let mut p = if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME") {
-            std::path::PathBuf::from(xdg)
-        } else {
-            let mut home = std::path::PathBuf::from(
-                std::env::var_os("HOME").expect("HOME not set"),
-            );
-            home.push(".config");
-            home
-        };
-        p.push("vibe-keyboard");
-        p.push("state.toml");
-        p
-    };
-    Command::new("code")
-        .arg(config_path)
-        .spawn()
-        .unwrap_or_else(|e| { error!("Failed to open config in VS Code: {e}"); std::process::exit(1) });
-}
-
-pub fn open_terminal() {
-    Command::new("osascript")
-        .arg("-e")
-        .arg("tell application \"Terminal\" to do script \"\"")
-        .spawn()
-        .unwrap_or_else(|e| { error!("Failed to open Terminal: {e}"); std::process::exit(1) });
 }
 
 pub fn activate_page(
