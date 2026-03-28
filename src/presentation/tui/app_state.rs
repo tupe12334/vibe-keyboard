@@ -11,6 +11,9 @@ pub struct AppState {
     pub log: VecDeque<String>,
     pub actions: HashMap<u8, ButtonAction>,
     pub screen: ScreenView,
+    pub nav_can_back: bool,
+    pub nav_can_out: bool,
+    pub nav_can_forward: bool,
 }
 
 impl AppState {
@@ -22,6 +25,9 @@ impl AppState {
             log: VecDeque::with_capacity(LOG_CAPACITY),
             actions: HashMap::new(),
             screen: ScreenView::MainPage { page: 0 },
+            nav_can_back: true,
+            nav_can_out: false,
+            nav_can_forward: true,
         }
     }
 

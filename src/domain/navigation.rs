@@ -94,6 +94,32 @@ impl NavigationStack {
         }
     }
 
+    pub fn can_back(&self) -> bool {
+        true // back always navigates (prev page or pops to parent)
+    }
+
+    pub fn can_out(&self) -> bool {
+        self.stack.len() > 1
+    }
+
+    pub fn can_forward(&self) -> bool {
+        match self
+            .stack
+            .last()
+            .expect("NavigationStack is always non-empty")
+        {
+            Screen::MainPage { .. } => true,
+            Screen::CentyProjectList { projects, page } => {
+                *page < projects.len().saturating_sub(1) / 10
+            }
+            Screen::CentyIssueList { issues, page, .. } => {
+                *page < issues.len().saturating_sub(1) / 10
+            }
+            Screen::CentyProjectActions { .. } => false,
+            Screen::CentyIssueActions { .. } => false,
+        }
+    }
+
     /// Navigate forward within the current screen's pages. No-op if no more pages.
     pub fn forward(&mut self) {
         match self

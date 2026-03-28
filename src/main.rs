@@ -8,9 +8,8 @@ use application::{handle_key_event, render_screen};
 use domain::navigation::NavigationStack;
 use infrastructure::persistence::DeviceState;
 use infrastructure::usb::{
-    clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID,
+    clear_all, device_init, keep_alive, read_event, set_brightness, PID, VID,
 };
-use rusb::{Context, UsbContext as _};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -20,16 +19,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let _log_guard = logging::init(Arc::clone(&app_state));
 
-    let ctx = Context::new().map_err(|e| format!("rusb context: {e}"))?;
-    let handle = ctx
-        .open_device_with_vid_pid(VID, PID)
-        .ok_or("Device not found — is it plugged in? Try: sudo cargo run")?;
-    handle.detach_kernel_driver(0).ok(); // terminates AppleUserHIDDrivers dext
-    handle
-        .claim_interface(0)
-        .map_err(|e| format!("Failed to claim USB interface 0 — try: sudo cargo run: {e}"))?;
-    info!("interface 0 claimed");
-    reset_endpoints(&handle);
+    let hid = hidapi::HidApi::new().map_err(|e| format!("HID init: {e}"))?;
+    let handle = hid
+        .open(VID, PID)
+        .map_err(|e| format!("Device not found — is it plugged in? ({e})"))?;
+    info!("HID device opened");
 
     let dev_state_val = DeviceState::load();
 
@@ -52,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .unwrap_or_else(|e| e.into_inner())
         .current_page;
     let mut nav = NavigationStack::new(initial_page, 2);
-    render_screen(nav.current(), &handle, &app_state, &dev_state);
+    render_screen(&nav, &handle, &app_state, &dev_state);
     info!("listening — press keys (11=back, 12=out, 13=fwd)");
 
     let mut last_heartbeat = Instant::now();

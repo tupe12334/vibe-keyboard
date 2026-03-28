@@ -7,8 +7,8 @@ use actions::{
     open_claude_terminal, open_config_in_vscode, open_in_chrome, open_log_file, open_terminal,
     open_terminal_in_path, open_vscode_in_path,
 };
+use hidapi::HidDevice;
 use pages::{fetch_centy_issues, fetch_centy_projects};
-use rusb::{Context, DeviceHandle};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tracing::info;
@@ -20,7 +20,7 @@ use crate::presentation::tui;
 
 pub fn handle_key_event(
     buf: &[u8],
-    handle: &DeviceHandle<Context>,
+    handle: &HidDevice,
     nav: &mut NavigationStack,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
@@ -56,15 +56,15 @@ pub fn handle_key_event(
     match key {
         11 => {
             nav.back();
-            render_screen(nav.current(), handle, state, dev_state);
+            render_screen(nav, handle, state, dev_state);
         }
         12 => {
             nav.out();
-            render_screen(nav.current(), handle, state, dev_state);
+            render_screen(nav, handle, state, dev_state);
         }
         13 => {
             nav.forward();
-            render_screen(nav.current(), handle, state, dev_state);
+            render_screen(nav, handle, state, dev_state);
         }
         _ => handle_action_key(key, nav, handle, state, dev_state),
     }
@@ -73,7 +73,7 @@ pub fn handle_key_event(
 fn handle_action_key(
     key: u8,
     nav: &mut NavigationStack,
-    handle: &DeviceHandle<Context>,
+    handle: &HidDevice,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
@@ -205,7 +205,7 @@ fn handle_action_key(
             state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
             if !projects.is_empty() {
                 nav.push(Screen::CentyProjectList { projects, page: 0 });
-                render_screen(nav.current(), handle, state, dev_state);
+                render_screen(nav, handle, state, dev_state);
             }
         }
         Action::OpenTerminal => {
@@ -232,7 +232,7 @@ fn handle_action_key(
             if let Some(project) = projects.into_iter().nth(idx) {
                 info!("centy: selected project {}", project.name);
                 nav.push(Screen::CentyProjectActions { project });
-                render_screen(nav.current(), handle, state, dev_state);
+                render_screen(nav, handle, state, dev_state);
             }
         }
         Action::OpenVsCode { name, path } => {
@@ -257,7 +257,7 @@ fn handle_action_key(
                     page: 0,
                     project_name,
                 });
-                render_screen(nav.current(), handle, state, dev_state);
+                render_screen(nav, handle, state, dev_state);
             }
         }
         Action::SelectIssue {
@@ -271,7 +271,7 @@ fn handle_action_key(
                     issue,
                     project_name,
                 });
-                render_screen(nav.current(), handle, state, dev_state);
+                render_screen(nav, handle, state, dev_state);
             }
         }
         Action::OpenIssueInVsCode { file_path } => {

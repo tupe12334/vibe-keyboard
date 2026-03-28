@@ -7,9 +7,8 @@ use ratatui::{
 
 const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
 
-use crate::domain::actions::ScreenView;
-
 use super::app_state::AppState;
+use crate::domain::actions::ScreenView;
 
 pub fn render(state: &AppState, frame: &mut Frame) {
     let chunks = Layout::vertical([
@@ -95,13 +94,23 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     let is_pressed = state.pressed_key == Some(key);
     let is_loading = state.loading;
     let is_nav = key == 11 || key == 12 || key == 13;
+    let nav_active = match key {
+        11 => state.nav_can_back,
+        12 => state.nav_can_out,
+        13 => state.nav_can_forward,
+        _ => false,
+    };
 
     let base_style = if is_loading {
         Style::default()
     } else if is_pressed {
         Style::default().fg(Color::Black).bg(Color::Yellow)
-    } else if is_nav {
+    } else if is_nav && nav_active {
         Style::default().fg(Color::Cyan)
+    } else if is_nav {
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::DIM)
     } else {
         Style::default()
     };
