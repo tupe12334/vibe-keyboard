@@ -55,6 +55,7 @@ pub fn open_config_in_vscode() {
 
 pub fn open_terminal() {
     Command::new("open")
+        .arg("-n")
         .arg("-a")
         .arg("Terminal")
         .spawn()
