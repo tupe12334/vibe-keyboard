@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::Line,
     widgets::{Block, Paragraph},
     Frame,
@@ -11,7 +11,7 @@ use super::app_state::AppState;
 pub fn render(state: &AppState, frame: &mut Frame) {
     let chunks = Layout::vertical([
         Constraint::Length(3),  // title
-        Constraint::Length(12), // button grid (3 rows × 4 lines)
+        Constraint::Length(21), // button grid (3 rows × 7 lines)
         Constraint::Min(4),     // event log
     ])
     .split(frame.area());
@@ -37,9 +37,9 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
 
 fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
     let rows = Layout::vertical([
-        Constraint::Length(4),
-        Constraint::Length(4),
-        Constraint::Length(4),
+        Constraint::Length(7),
+        Constraint::Length(7),
+        Constraint::Length(7),
     ])
     .split(area);
 
@@ -64,13 +64,7 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     let is_pressed = state.pressed_key == Some(key);
     let is_nav = key == 11 || key == 12;
 
-    let label = match key {
-        11 => "◄ back".to_string(),
-        12 => "fwd ►".to_string(),
-        n => format!("{n}"),
-    };
-
-    let style = if is_pressed {
+    let base_style = if is_pressed {
         Style::default().fg(Color::Black).bg(Color::Yellow)
     } else if is_nav {
         Style::default().fg(Color::Cyan)
@@ -78,23 +72,52 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
         Style::default()
     };
 
-    let block = Block::bordered().style(style);
+    let block = Block::bordered()
+        .title(format!(" {key} "))
+        .style(base_style);
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let vert = Layout::vertical([
-        Constraint::Fill(1),
-        Constraint::Length(1),
-        Constraint::Fill(1),
-    ])
-    .split(inner);
+    if is_nav {
+        let label = if key == 11 { "◄ back" } else { "fwd ►" };
+        let vert = Layout::vertical([Constraint::Fill(1), Constraint::Length(1), Constraint::Fill(1)])
+            .split(inner);
+        frame.render_widget(
+            Paragraph::new(label).alignment(Alignment::Center).style(base_style),
+            vert[1],
+        );
+        return;
+    }
 
-    frame.render_widget(
-        Paragraph::new(label)
-            .alignment(Alignment::Center)
-            .style(style),
-        vert[1],
-    );
+    if let Some(action) = state.actions.get(&key) {
+        let vert = Layout::vertical([
+            Constraint::Fill(1),
+            Constraint::Length(1), // name
+            Constraint::Length(1), // title
+            Constraint::Length(1), // description
+            Constraint::Fill(1),
+        ])
+        .split(inner);
+
+        frame.render_widget(
+            Paragraph::new(action.name)
+                .alignment(Alignment::Center)
+                .style(base_style.add_modifier(Modifier::BOLD)),
+            vert[1],
+        );
+        frame.render_widget(
+            Paragraph::new(action.title)
+                .alignment(Alignment::Center)
+                .style(base_style),
+            vert[2],
+        );
+        frame.render_widget(
+            Paragraph::new(action.description)
+                .alignment(Alignment::Center)
+                .style(base_style.fg(Color::DarkGray)),
+            vert[3],
+        );
+    }
 }
 
 fn render_log(frame: &mut Frame, area: Rect, state: &AppState) {

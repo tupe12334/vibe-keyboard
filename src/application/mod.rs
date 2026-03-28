@@ -1,6 +1,6 @@
 mod pages;
 
-pub use pages::activate_page;
+pub use pages::{activate_page, page_actions};
 
 use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
