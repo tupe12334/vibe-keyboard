@@ -23,6 +23,7 @@ tracing-appender = "0.2"
 
 [lints.clippy]
 all = "deny"
+unwrap_used = "deny"
 
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }

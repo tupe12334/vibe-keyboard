@@ -16,18 +16,18 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tracing::info;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let _log_guard = logging::init(Arc::clone(&app_state));
 
-    let ctx = Context::new().expect("rusb context");
+    let ctx = Context::new().map_err(|e| format!("rusb context: {e}"))?;
     let handle = ctx
         .open_device_with_vid_pid(VID, PID)
-        .expect("Device not found — is it plugged in? Try: sudo cargo run");
+        .ok_or("Device not found — is it plugged in? Try: sudo cargo run")?;
     handle.detach_kernel_driver(0).ok(); // terminates AppleUserHIDDrivers dext
     handle
         .claim_interface(0)
-        .expect("Failed to claim USB interface 0 — try: sudo cargo run");
+        .map_err(|e| format!("Failed to claim USB interface 0 — try: sudo cargo run: {e}"))?;
     info!("interface 0 claimed");
     reset_endpoints(&handle);
 
@@ -47,7 +47,10 @@ fn main() {
         std::thread::spawn(move || presentation::tui::run(s, q));
     }
 
-    let initial_page = dev_state.lock().unwrap().current_page;
+    let initial_page = dev_state
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .current_page;
     let mut nav = Navigator::new(2);
     nav.go(initial_page);
     activate_page(nav.current(), &handle, &app_state, &dev_state);
@@ -71,4 +74,6 @@ fn main() {
             last_heartbeat = Instant::now();
         }
     }
+
+    Ok(())
 }

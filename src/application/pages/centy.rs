@@ -124,7 +124,7 @@ pub fn show_project_list(
 
     let count = page_slice.len();
     {
-        let mut s = state.lock().unwrap();
+        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
         s.actions = actions;
         s.centy_state = Some(CentyState::ProjectList { projects, page });
     }
@@ -170,7 +170,7 @@ pub fn show_project_actions(
     );
 
     {
-        let mut s = state.lock().unwrap();
+        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
         s.actions = actions;
         s.centy_state = Some(CentyState::ProjectActions {
             project,

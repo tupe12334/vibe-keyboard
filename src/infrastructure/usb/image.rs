@@ -1,6 +1,7 @@
 use image::codecs::jpeg::JpegEncoder;
 use image::{ColorType, DynamicImage};
 use rusb::{Context, DeviceHandle};
+use tracing::error;
 
 use super::commands::write_cmd;
 use super::{PACKET, TIMEOUT};
@@ -11,9 +12,15 @@ pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: DynamicIm
     let rgb = img.rotate180().to_rgb8();
     let (w, h) = rgb.dimensions();
     let mut jpeg = Vec::new();
-    JpegEncoder::new_with_quality(&mut jpeg, 90)
-        .encode(&rgb.into_raw(), w, h, ColorType::Rgb8.into())
-        .expect("JPEG encode failed");
+    if let Err(e) = JpegEncoder::new_with_quality(&mut jpeg, 90).encode(
+        &rgb.into_raw(),
+        w,
+        h,
+        ColorType::Rgb8.into(),
+    ) {
+        error!("JPEG encode failed: {e}");
+        return;
+    }
 
     let size = jpeg.len();
     write_cmd(
@@ -33,9 +40,10 @@ pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: DynamicIm
     for chunk in jpeg.chunks(PACKET) {
         let mut pkt = [0u8; PACKET];
         pkt[..chunk.len()].copy_from_slice(chunk);
-        handle
-            .write_interrupt(super::EP_OUT, &pkt, TIMEOUT)
-            .expect("image chunk write failed");
+        if let Err(e) = handle.write_interrupt(super::EP_OUT, &pkt, TIMEOUT) {
+            error!("image chunk write failed: {e}");
+            return;
+        }
     }
 
     write_cmd(handle, b"STP");
