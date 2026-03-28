@@ -154,9 +154,9 @@ fn handle_action_key(
 
     match action {
         Action::FetchProjects => {
-            state.lock().unwrap().loading = true;
+            state.lock().unwrap_or_else(|e| e.into_inner()).loading = true;
             let projects = fetch_centy_projects();
-            state.lock().unwrap().loading = false;
+            state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
             if !projects.is_empty() {
                 nav.push(Screen::CentyProjectList { projects, page: 0 });
                 render_screen(nav.current(), handle, state, dev_state);
@@ -202,9 +202,9 @@ fn handle_action_key(
             open_in_chrome(&url);
         }
         Action::FetchIssues { project_name } => {
-            state.lock().unwrap().loading = true;
+            state.lock().unwrap_or_else(|e| e.into_inner()).loading = true;
             let issues = fetch_centy_issues(&project_name);
-            state.lock().unwrap().loading = false;
+            state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
             if !issues.is_empty() {
                 nav.push(Screen::CentyIssueList {
                     issues,

@@ -40,21 +40,31 @@ impl NavigationStack {
     }
 
     pub fn current(&self) -> &Screen {
-        self.stack.last().unwrap()
+        self.stack
+            .last()
+            .expect("NavigationStack is always non-empty")
     }
 
     /// Navigate back within the current screen's pages, or pop to the parent.
     /// `MainPage` wraps around (circular). Pushed screens go to the previous page
     /// if available, otherwise pop.
     pub fn back(&mut self) {
-        let should_prev = match self.stack.last().unwrap() {
+        let should_prev = match self
+            .stack
+            .last()
+            .expect("NavigationStack is always non-empty")
+        {
             Screen::MainPage { .. } => true,
             Screen::CentyProjectList { page, .. } => *page > 0,
             Screen::CentyIssueList { page, .. } => *page > 0,
             Screen::CentyProjectActions { .. } => false,
         };
         if should_prev {
-            match self.stack.last_mut().unwrap() {
+            match self
+                .stack
+                .last_mut()
+                .expect("NavigationStack is always non-empty")
+            {
                 Screen::MainPage { page } => {
                     *page = if *page == 0 {
                         self.total_main_pages - 1
@@ -80,7 +90,11 @@ impl NavigationStack {
 
     /// Navigate forward within the current screen's pages. No-op if no more pages.
     pub fn forward(&mut self) {
-        match self.stack.last_mut().unwrap() {
+        match self
+            .stack
+            .last_mut()
+            .expect("NavigationStack is always non-empty")
+        {
             Screen::MainPage { page } => {
                 *page = (*page + 1) % self.total_main_pages;
             }

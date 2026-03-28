@@ -1,0 +1,51 @@
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use image::DynamicImage;
+use rusb::{Context, DeviceHandle};
+
+use crate::domain::actions::{ButtonAction, CentyIssue, ScreenView};
+use crate::infrastructure::images::generate_project_item_image;
+use crate::infrastructure::usb::send_button_image;
+use crate::presentation::tui;
+
+pub fn render_issue_list(
+    issues: &[CentyIssue],
+    page: usize,
+    project_name: &str,
+    handle: &DeviceHandle<Context>,
+    state: &Arc<Mutex<tui::AppState>>,
+) {
+    const PER_PAGE: usize = 10;
+    let start = page * PER_PAGE;
+    let page_slice: Vec<&CentyIssue> = issues.iter().skip(start).take(PER_PAGE).collect();
+
+    let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
+    for (i, issue) in page_slice.iter().enumerate() {
+        let key = (i + 1) as u8;
+        actions.insert(
+            key,
+            ButtonAction {
+                name: format!("#{}", issue.number),
+                title: issue.title.clone(),
+                description: issue.status.clone(),
+            },
+        );
+    }
+
+    let count = page_slice.len();
+    {
+        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        s.actions = actions;
+        s.screen = ScreenView::CentyIssueList {
+            total: issues.len(),
+            page,
+            project_name: project_name.to_string(),
+        };
+    }
+
+    let issue_img = DynamicImage::ImageRgb8(generate_project_item_image());
+    for i in 0..count {
+        send_button_image(handle, (i + 1) as u8, issue_img.clone());
+    }
+}
