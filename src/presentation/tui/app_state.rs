@@ -1,30 +1,27 @@
 use std::collections::{HashMap, VecDeque};
 
-use crate::application::page_actions;
-use crate::domain::actions::{ButtonAction, CentyState};
+use crate::domain::actions::{ButtonAction, ScreenView};
 
 const LOG_CAPACITY: usize = 10;
 
 pub struct AppState {
-    pub current_page: usize,
     pub total_pages: usize,
     pub pressed_key: Option<u8>,
     pub loading: bool,
     pub log: VecDeque<String>,
     pub actions: HashMap<u8, ButtonAction>,
-    pub centy_state: Option<CentyState>,
+    pub screen: ScreenView,
 }
 
 impl AppState {
     pub fn new(total_pages: usize) -> Self {
         Self {
-            current_page: 0,
             total_pages,
             pressed_key: None,
             loading: false,
             log: VecDeque::with_capacity(LOG_CAPACITY),
-            actions: page_actions(0),
-            centy_state: None,
+            actions: HashMap::new(),
+            screen: ScreenView::MainPage { page: 0 },
         }
     }
 

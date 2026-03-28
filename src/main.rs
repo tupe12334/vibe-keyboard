@@ -4,8 +4,8 @@ mod infrastructure;
 mod logging;
 mod presentation;
 
-use application::{activate_page, handle_key_event};
-use domain::navigation::Navigator;
+use application::{handle_key_event, render_screen};
+use domain::navigation::NavigationStack;
 use infrastructure::persistence::DeviceState;
 use infrastructure::usb::{
     clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID,
@@ -51,10 +51,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .lock()
         .unwrap_or_else(|e| e.into_inner())
         .current_page;
-    let mut nav = Navigator::new(2);
-    nav.go(initial_page);
-    activate_page(nav.current(), &handle, &app_state, &dev_state);
-    info!("listening — press keys (11=back, 12=forward)");
+    let mut nav = NavigationStack::new(initial_page, 2);
+    render_screen(nav.current(), &handle, &app_state, &dev_state);
+    info!("listening — press keys (11=back, 12=out, 13=fwd)");
 
     let mut last_heartbeat = Instant::now();
 

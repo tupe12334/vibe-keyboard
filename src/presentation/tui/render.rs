@@ -7,7 +7,7 @@ use ratatui::{
 
 const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
 
-use crate::domain::actions::CentyState;
+use crate::domain::actions::ScreenView;
 
 use super::app_state::AppState;
 
@@ -23,19 +23,31 @@ pub fn render(state: &AppState, frame: &mut Frame) {
 }
 
 fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
-    let text = match &state.centy_state {
-        Some(CentyState::ProjectList { projects, page }) => format!(
-            " Centy    Projects ({}-{} of {})    [11] back    [q] quit ",
+    let text = match &state.screen {
+        ScreenView::CentyProjectList { total, page } => format!(
+            " Centy    Projects ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
             page * 10 + 1,
-            (page * 10 + 10).min(projects.len()),
-            projects.len(),
+            (page * 10 + 10).min(*total),
+            total,
         ),
-        Some(CentyState::ProjectActions { project, .. }) => {
-            format!(" Centy    {}    [11] back    [q] quit ", project.name,)
-        }
-        None => format!(
+        ScreenView::CentyProjectActions { project_name } => format!(
+            " Centy    {}    [11] back  [12] out    [q] quit ",
+            project_name,
+        ),
+        ScreenView::CentyIssueList {
+            total,
+            page,
+            project_name,
+        } => format!(
+            " Centy    {} — Issues ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
+            project_name,
+            page * 10 + 1,
+            (page * 10 + 10).min(*total),
+            total,
+        ),
+        ScreenView::MainPage { page } => format!(
             " Vibe Keyboard    Page {} / {}    [q] quit ",
-            state.current_page + 1,
+            page + 1,
             state.total_pages,
         ),
     };
@@ -75,8 +87,7 @@ fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
 fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     let is_pressed = state.pressed_key == Some(key);
     let is_loading = state.loading;
-    let in_project_actions = matches!(&state.centy_state, Some(CentyState::ProjectActions { .. }));
-    let is_nav = key == 11 || (key == 12 && !in_project_actions);
+    let is_nav = key == 11 || key == 12 || key == 13;
 
     let base_style = if is_loading {
         Style::default()
@@ -115,12 +126,11 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     }
 
     if is_nav {
-        let label = if key == 11 {
-            "◄ back"
-        } else if state.centy_state.is_some() {
-            "next ►"
-        } else {
-            "fwd ►"
+        let label = match key {
+            11 => "◄ back",
+            12 => "✕ out",
+            13 => "fwd ►",
+            _ => unreachable!(),
         };
         let vert = Layout::vertical([
             Constraint::Fill(1),

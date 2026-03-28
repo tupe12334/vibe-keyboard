@@ -1,19 +1,9 @@
-use image::DynamicImage;
-use rusb::{Context, DeviceHandle};
-use std::collections::HashMap;
 use std::process::Command;
-use std::sync::{Arc, Mutex};
 use tracing::info;
 
-use crate::domain::actions::{ButtonAction, CentyProject, CentyState};
-use crate::infrastructure::images::{
-    generate_project_item_image, generate_terminal_image, generate_vscode_config_image,
-    generate_web_image,
-};
-use crate::infrastructure::usb::{clear_all, send_button_image};
-use crate::presentation::tui;
+use crate::domain::actions::{CentyIssue, CentyProject};
 
-pub fn run_centy_projects(state: &Arc<Mutex<tui::AppState>>, handle: &DeviceHandle<Context>) {
+pub fn fetch_centy_projects() -> Vec<CentyProject> {
     info!("running centy list projects");
 
     let output = Command::new("pnpm")
@@ -24,14 +14,14 @@ pub fn run_centy_projects(state: &Arc<Mutex<tui::AppState>>, handle: &DeviceHand
         Ok(o) => o,
         Err(e) => {
             info!("centy error: {e}");
-            return;
+            return vec![];
         }
     };
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         info!("centy failed: {}", stderr.trim());
-        return;
+        return vec![];
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -39,11 +29,11 @@ pub fn run_centy_projects(state: &Arc<Mutex<tui::AppState>>, handle: &DeviceHand
 
     if projects.is_empty() {
         info!("centy: no projects found");
-        return;
+    } else {
+        info!("centy: {} project(s)", projects.len());
     }
 
-    info!("centy: {} project(s)", projects.len());
-    show_project_list(0, projects, state, handle);
+    projects
 }
 
 fn parse_centy_json(json: &str) -> Vec<CentyProject> {
@@ -99,96 +89,86 @@ fn parse_centy_json(json: &str) -> Vec<CentyProject> {
         .collect()
 }
 
-pub fn show_project_list(
-    page: usize,
-    projects: Vec<CentyProject>,
-    state: &Arc<Mutex<tui::AppState>>,
-    handle: &DeviceHandle<Context>,
-) {
-    const PER_PAGE: usize = 10;
-    let start = page * PER_PAGE;
-    let page_slice: Vec<&CentyProject> = projects.iter().skip(start).take(PER_PAGE).collect();
+pub fn fetch_centy_issues(project_name: &str) -> Vec<CentyIssue> {
+    info!("running centy list issues for {}", project_name);
 
-    let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-    for (i, project) in page_slice.iter().enumerate() {
-        let key = (i + 1) as u8;
-        actions.insert(
-            key,
-            ButtonAction {
-                name: project.name.clone(),
-                title: project.org.clone(),
-                description: project.url.clone(),
-            },
-        );
+    let output = Command::new("pnpm")
+        .args([
+            "dlx",
+            "centy",
+            "list",
+            "issues",
+            "--project",
+            project_name,
+            "--json",
+        ])
+        .output();
+
+    let output = match output {
+        Ok(o) => o,
+        Err(e) => {
+            info!("centy issues error: {e}");
+            return vec![];
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        info!("centy issues failed: {}", stderr.trim());
+        return vec![];
     }
 
-    let count = page_slice.len();
-    {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
-        s.actions = actions;
-        s.centy_state = Some(CentyState::ProjectList { projects, page });
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let issues = parse_centy_issues_json(&stdout);
+
+    if issues.is_empty() {
+        info!("centy: no issues found for {}", project_name);
+    } else {
+        info!("centy: {} issue(s) for {}", issues.len(), project_name);
     }
 
-    clear_all(handle);
-    let project_img = DynamicImage::ImageRgb8(generate_project_item_image());
-    for i in 0..count {
-        send_button_image(handle, (i + 1) as u8, project_img.clone());
-    }
+    issues
 }
 
-pub fn show_project_actions(
-    project: CentyProject,
-    prev_projects: Vec<CentyProject>,
-    prev_page: usize,
-    state: &Arc<Mutex<tui::AppState>>,
-    handle: &DeviceHandle<Context>,
-) {
-    let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-    actions.insert(
-        1,
-        ButtonAction {
-            name: "VSCode".into(),
-            title: "Open in VS Code".into(),
-            description: project.path.as_deref().unwrap_or("no local path").into(),
-        },
-    );
-    actions.insert(
-        2,
-        ButtonAction {
-            name: "Terminal".into(),
-            title: "Open Terminal".into(),
-            description: project.path.as_deref().unwrap_or("no local path").into(),
-        },
-    );
-    actions.insert(
-        3,
-        ButtonAction {
-            name: "Web".into(),
-            title: "Open in Browser".into(),
-            description: project.url.clone(),
-        },
-    );
+fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
+    let value: serde_json::Value = match serde_json::from_str(json) {
+        Ok(v) => v,
+        Err(_) => return vec![],
+    };
 
-    {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
-        s.actions = actions;
-        s.centy_state = Some(CentyState::ProjectActions {
-            project,
-            prev_projects,
-            prev_page,
-        });
-    }
+    let arr: Vec<&serde_json::Value> = if let Some(a) = value.as_array() {
+        a.iter().collect()
+    } else if let Some(a) = value.get("issues").and_then(|v| v.as_array()) {
+        a.iter().collect()
+    } else {
+        return vec![];
+    };
 
-    clear_all(handle);
-    send_button_image(
-        handle,
-        1,
-        DynamicImage::ImageRgb8(generate_vscode_config_image()),
-    );
-    send_button_image(
-        handle,
-        2,
-        DynamicImage::ImageRgb8(generate_terminal_image()),
-    );
-    send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_web_image()));
+    arr.into_iter()
+        .map(|item| {
+            let number = item
+                .get("displayNumber")
+                .or_else(|| item.get("number"))
+                .and_then(|v| v.as_u64())
+                .unwrap_or(0);
+
+            let title = ["title", "name", "summary"]
+                .iter()
+                .find_map(|k| item.get(k)?.as_str())
+                .unwrap_or("untitled")
+                .to_string();
+
+            let status = item
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown")
+                .to_string();
+
+            CentyIssue {
+                number,
+                title,
+                status,
+            }
+        })
+        .collect()
 }

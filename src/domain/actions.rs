@@ -12,14 +12,27 @@ pub struct CentyProject {
     pub url: String,
 }
 
-pub enum CentyState {
-    ProjectList {
-        projects: Vec<CentyProject>,
+#[derive(Clone)]
+pub struct CentyIssue {
+    pub number: u64,
+    pub title: String,
+    pub status: String,
+}
+
+pub enum ScreenView {
+    MainPage {
         page: usize,
     },
-    ProjectActions {
-        project: CentyProject,
-        prev_projects: Vec<CentyProject>,
-        prev_page: usize,
+    CentyProjectList {
+        total: usize,
+        page: usize,
+    },
+    CentyProjectActions {
+        project_name: String,
+    },
+    CentyIssueList {
+        total: usize,
+        page: usize,
+        project_name: String,
     },
 }
