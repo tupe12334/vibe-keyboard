@@ -74,11 +74,13 @@ fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
 
 fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     let is_pressed = state.pressed_key == Some(key);
-    let is_loading = state.loading && is_pressed;
+    let is_loading = state.loading;
     let in_project_actions = matches!(&state.centy_state, Some(CentyState::ProjectActions { .. }));
     let is_nav = key == 11 || (key == 12 && !in_project_actions);
 
-    let base_style = if is_pressed {
+    let base_style = if is_loading {
+        Style::default()
+    } else if is_pressed {
         Style::default().fg(Color::Black).bg(Color::Yellow)
     } else if is_nav {
         Style::default().fg(Color::Cyan)

@@ -39,6 +39,9 @@ pub fn handle_key_event(
         Some(k) => k,
         None => return,
     };
+    if state.lock().unwrap().loading {
+        return;
+    }
     {
         let mut s = state.lock().unwrap();
         s.pressed_key = if state_byte == 1 { Some(key) } else { None };
