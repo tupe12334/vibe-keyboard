@@ -1,3 +1,4 @@
+#![deny(clippy::all)]
 mod application;
 mod domain;
 mod infrastructure;

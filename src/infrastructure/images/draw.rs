@@ -8,7 +8,7 @@ pub fn bresenham(img: &mut RgbImage, x0: i32, y0: i32, x1: i32, y1: i32, color: 
     let mut err = dx - dy;
     let (mut x, mut y) = (x0, y0);
     loop {
-        if x >= 0 && x < 100 && y >= 0 && y < 100 {
+        if (0..100).contains(&x) && (0..100).contains(&y) {
             img.put_pixel(x as u32, y as u32, color);
         }
         if x == x1 && y == y1 {
@@ -55,7 +55,7 @@ pub fn fill_circle(img: &mut RgbImage, cx: i32, cy: i32, r: i32, color: Rgb<u8>)
             if dx * dx + dy * dy <= r * r {
                 let px = cx + dx;
                 let py = cy + dy;
-                if px >= 0 && px < 100 && py >= 0 && py < 100 {
+                if (0..100).contains(&px) && (0..100).contains(&py) {
                     img.put_pixel(px as u32, py as u32, color);
                 }
             }
