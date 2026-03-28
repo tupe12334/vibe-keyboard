@@ -1,4 +1,5 @@
 mod centy;
+mod issue_actions;
 mod issue_list;
 mod main_page;
 mod project_actions;
@@ -38,6 +39,12 @@ pub fn render_screen(
             project_name,
         } => {
             issue_list::render_issue_list(issues, *page, project_name, handle, state);
+        }
+        Screen::CentyIssueActions {
+            issue,
+            project_name,
+        } => {
+            issue_actions::render_issue_actions(issue, project_name, handle, state);
         }
     }
 }

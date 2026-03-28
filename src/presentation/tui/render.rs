@@ -50,6 +50,13 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
             page + 1,
             state.total_pages,
         ),
+        ScreenView::CentyIssueActions {
+            issue_number,
+            project_name,
+        } => format!(
+            " Centy    {} — Issue #{}    [11] back  [12] out    [q] quit ",
+            project_name, issue_number,
+        ),
     };
     frame.render_widget(
         Paragraph::new(text)

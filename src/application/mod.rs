@@ -9,6 +9,7 @@ use actions::{
 };
 use pages::{fetch_centy_issues, fetch_centy_projects};
 use rusb::{Context, DeviceHandle};
+use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -103,6 +104,18 @@ fn handle_action_key(
         FetchIssues {
             project_name: String,
         },
+        SelectIssue {
+            issues: Vec<crate::domain::actions::CentyIssue>,
+            project_name: String,
+            idx: usize,
+        },
+        OpenIssueInVsCode {
+            file_path: Option<String>,
+        },
+        OpenIssueInWeb {
+            id: String,
+        },
+        OpenCentyCockpit,
         None,
     }
 
@@ -149,7 +162,36 @@ fn handle_action_key(
             },
             _ => Action::None,
         },
-        Screen::CentyIssueList { .. } => Action::None,
+        Screen::CentyIssueList {
+            issues,
+            page,
+            project_name,
+        } => {
+            if matches!(key, 1..=10) {
+                let idx = page * 10 + (key as usize - 1);
+                if issues.get(idx).is_some() {
+                    Action::SelectIssue {
+                        issues: issues.clone(),
+                        project_name: project_name.clone(),
+                        idx,
+                    }
+                } else {
+                    Action::None
+                }
+            } else {
+                Action::None
+            }
+        }
+        Screen::CentyIssueActions { issue, .. } => match key {
+            1 => Action::OpenIssueInVsCode {
+                file_path: issue.file_path.clone(),
+            },
+            2 => Action::OpenIssueInWeb {
+                id: issue.id.clone(),
+            },
+            3 => Action::OpenCentyCockpit,
+            _ => Action::None,
+        },
     };
 
     match action {
@@ -213,6 +255,37 @@ fn handle_action_key(
                 });
                 render_screen(nav.current(), handle, state, dev_state);
             }
+        }
+        Action::SelectIssue {
+            issues,
+            project_name,
+            idx,
+        } => {
+            if let Some(issue) = issues.into_iter().nth(idx) {
+                info!("centy: selected issue #{}", issue.number);
+                nav.push(Screen::CentyIssueActions {
+                    issue,
+                    project_name,
+                });
+                render_screen(nav.current(), handle, state, dev_state);
+            }
+        }
+        Action::OpenIssueInVsCode { file_path } => {
+            let path = file_path.as_deref().unwrap_or(".");
+            info!("centy: open issue in VS Code at {}", path);
+            open_vscode_in_path(path);
+        }
+        Action::OpenIssueInWeb { id } => {
+            let url = format!("https://app.centy.io/{}", id);
+            info!("centy: open issue in web: {}", url);
+            open_in_chrome(&url);
+        }
+        Action::OpenCentyCockpit => {
+            info!("centy: opening cockpit workspace");
+            #[allow(clippy::zombie_processes)]
+            let _ = Command::new("pnpm")
+                .args(["dlx", "centy", "cockpit"])
+                .spawn();
         }
         Action::None => {}
     }

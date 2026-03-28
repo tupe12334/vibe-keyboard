@@ -17,6 +17,10 @@ pub enum Screen {
         page: usize,
         project_name: String,
     },
+    CentyIssueActions {
+        issue: CentyIssue,
+        project_name: String,
+    },
 }
 
 pub struct NavigationStack {
@@ -58,6 +62,7 @@ impl NavigationStack {
             Screen::CentyProjectList { page, .. } => *page > 0,
             Screen::CentyIssueList { page, .. } => *page > 0,
             Screen::CentyProjectActions { .. } => false,
+            Screen::CentyIssueActions { .. } => false,
         };
         if should_prev {
             match self
@@ -75,6 +80,7 @@ impl NavigationStack {
                 Screen::CentyProjectList { page, .. } => *page -= 1,
                 Screen::CentyIssueList { page, .. } => *page -= 1,
                 Screen::CentyProjectActions { .. } => unreachable!(),
+                Screen::CentyIssueActions { .. } => unreachable!(),
             }
         } else if self.stack.len() > 1 {
             self.stack.pop();
@@ -111,6 +117,7 @@ impl NavigationStack {
                 }
             }
             Screen::CentyProjectActions { .. } => {}
+            Screen::CentyIssueActions { .. } => {}
         }
     }
 }
