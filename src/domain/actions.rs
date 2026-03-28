@@ -17,6 +17,8 @@ pub struct CentyIssue {
     pub number: u64,
     pub title: String,
     pub status: String,
+    pub id: String,
+    pub file_path: Option<String>,
 }
 
 pub enum ScreenView {
@@ -33,6 +35,10 @@ pub enum ScreenView {
     CentyIssueList {
         total: usize,
         page: usize,
+        project_name: String,
+    },
+    CentyIssueActions {
+        issue_number: u64,
         project_name: String,
     },
 }

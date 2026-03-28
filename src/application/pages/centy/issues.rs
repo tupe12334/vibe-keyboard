@@ -82,10 +82,24 @@ fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
                 .unwrap_or("unknown")
                 .to_string();
 
+            let id = item
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            let file_path = item
+                .get("filePath")
+                .or_else(|| item.get("path"))
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
             CentyIssue {
                 number,
                 title,
                 status,
+                id,
+                file_path,
             }
         })
         .collect()
