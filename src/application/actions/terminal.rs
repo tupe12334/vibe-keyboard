@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::process::{Command, Stdio};
 use tracing::error;
 
 #[allow(clippy::zombie_processes)]
@@ -6,6 +6,8 @@ pub fn open_terminal() {
     Command::new("osascript")
         .arg("-e")
         .arg("tell application \"Terminal\" to do script \"\"")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap_or_else(|e| {
             error!("Failed to open Terminal: {e}");
@@ -22,6 +24,8 @@ pub fn open_terminal_in_path(path: Option<&str>) {
     Command::new("osascript")
         .arg("-e")
         .arg(&script)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .spawn()
         .unwrap_or_else(|e| {
             error!("Failed to open Terminal: {e}");
