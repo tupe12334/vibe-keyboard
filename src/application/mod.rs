@@ -115,7 +115,9 @@ fn handle_action_key(
         OpenIssueInWeb {
             id: String,
         },
-        OpenCentyCockpit,
+        OpenCentyWorkspace {
+            issue_number: u64,
+        },
         None,
     }
 
@@ -189,7 +191,9 @@ fn handle_action_key(
             2 => Action::OpenIssueInWeb {
                 id: issue.id.clone(),
             },
-            3 => Action::OpenCentyCockpit,
+            3 => Action::OpenCentyWorkspace {
+                issue_number: issue.number,
+            },
             _ => Action::None,
         },
     };
@@ -280,11 +284,19 @@ fn handle_action_key(
             info!("centy: open issue in web: {}", url);
             open_in_chrome(&url);
         }
-        Action::OpenCentyCockpit => {
-            info!("centy: opening cockpit workspace");
+        Action::OpenCentyWorkspace { issue_number } => {
+            info!("centy: opening workspace for issue {}", issue_number);
             #[allow(clippy::zombie_processes)]
             let _ = Command::new("pnpm")
-                .args(["dlx", "centy", "cockpit"])
+                .args([
+                    "dlx",
+                    "centy",
+                    "workspace",
+                    "open",
+                    &issue_number.to_string(),
+                    "--editor",
+                    "terminal",
+                ])
                 .spawn();
         }
         Action::None => {}
