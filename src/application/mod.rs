@@ -103,7 +103,7 @@ pub fn handle_key_event(
                 }
                 3 => {
                     info!("centy: open {} in browser", project.name);
-                    open_in_browser(&project.url);
+                    open_in_chrome(&project.url);
                 }
                 _ => {
                     state.lock().unwrap().centy_state =
