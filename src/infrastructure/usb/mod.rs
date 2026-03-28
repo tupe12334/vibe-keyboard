@@ -1,7 +1,9 @@
 mod commands;
 mod image;
 
-pub use commands::{clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness};
+pub use commands::{
+    clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness,
+};
 pub use image::send_button_image;
 
 use std::time::Duration;

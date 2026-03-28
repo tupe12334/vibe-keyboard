@@ -48,6 +48,9 @@ pub fn read_event(handle: &DeviceHandle<Context>, timeout: Duration) -> Option<V
     match handle.read_interrupt(EP_IN, &mut buf, timeout) {
         Ok(_) => Some(buf),
         Err(rusb::Error::Timeout) => None,
-        Err(e) => { warn!("USB read error: {e}"); None }
+        Err(e) => {
+            warn!("USB read error: {e}");
+            None
+        }
     }
 }

@@ -47,9 +47,7 @@ fn log_dir() -> std::path::PathBuf {
     let mut p = if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
         std::path::PathBuf::from(config)
     } else {
-        let mut home = std::path::PathBuf::from(
-            std::env::var_os("HOME").expect("HOME not set"),
-        );
+        let mut home = std::path::PathBuf::from(std::env::var_os("HOME").expect("HOME not set"));
         home.push(".config");
         home
     };
@@ -65,8 +63,7 @@ pub fn init(state: Arc<Mutex<AppState>>) -> tracing_appender::non_blocking::Work
     let file_appender = tracing_appender::rolling::never(dir, "app.log");
     let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
     let file_layer = tracing_subscriber::fmt::layer()
         .with_writer(non_blocking)

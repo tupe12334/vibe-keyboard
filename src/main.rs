@@ -7,7 +7,9 @@ mod presentation;
 use application::{activate_page, handle_key_event};
 use domain::navigation::Navigator;
 use infrastructure::persistence::DeviceState;
-use infrastructure::usb::{clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID};
+use infrastructure::usb::{
+    clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID,
+};
 use rusb::{Context, UsbContext as _};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -36,7 +38,7 @@ fn main() {
     set_brightness(&handle, dev_state_val.brightness);
     info!("device ready");
 
-    let shutdown  = Arc::new(AtomicBool::new(false));
+    let shutdown = Arc::new(AtomicBool::new(false));
     let dev_state = Arc::new(Mutex::new(dev_state_val));
 
     {
@@ -54,7 +56,9 @@ fn main() {
     let mut last_heartbeat = Instant::now();
 
     loop {
-        if shutdown.load(Ordering::Relaxed) { break; }
+        if shutdown.load(Ordering::Relaxed) {
+            break;
+        }
 
         if let Some(data) = read_event(&handle, Duration::from_millis(500)) {
             if data.len() >= 11 {

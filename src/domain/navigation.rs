@@ -15,7 +15,11 @@ impl Navigator {
 
     /// Go back one page (wraps around). Returns the new page index.
     pub fn back(&mut self) -> usize {
-        self.current = if self.current == 0 { self.count - 1 } else { self.current - 1 };
+        self.current = if self.current == 0 {
+            self.count - 1
+        } else {
+            self.current - 1
+        };
         self.current
     }
 

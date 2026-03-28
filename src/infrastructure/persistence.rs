@@ -30,9 +30,7 @@ fn config_dir() -> PathBuf {
     if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
         return PathBuf::from(config);
     }
-    let mut home = PathBuf::from(
-        std::env::var_os("HOME").expect("HOME not set"),
-    );
+    let mut home = PathBuf::from(std::env::var_os("HOME").expect("HOME not set"));
     home.push(".config");
     home
 }
