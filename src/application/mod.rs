@@ -57,10 +57,19 @@ pub fn handle_key_event(
             CentyState::ProjectList { projects, page } => {
                 match key {
                     11 => {
+                        if page > 0 {
+                            info!("centy: prev page {}", page);
+                            show_project_list(page - 1, projects, state, handle);
+                        } else {
+                            info!("centy: exit → page {}", nav.current() + 1);
+                            activate_page(nav.current(), handle, state, dev_state);
+                        }
+                    }
+                    12 => {
                         info!("centy: exit → page {}", nav.current() + 1);
                         activate_page(nav.current(), handle, state, dev_state);
                     }
-                    12 => {
+                    13 => {
                         let next_page = page + 1;
                         let max_page = projects.len().saturating_sub(1) / 10;
                         if next_page <= max_page {
