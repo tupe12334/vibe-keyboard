@@ -10,7 +10,7 @@ use crate::domain::keys::raw_to_logical;
 use crate::domain::navigation::Navigator;
 use crate::infrastructure::persistence::DeviceState;
 use crate::presentation::tui;
-use pages::{open_config_in_vscode, open_terminal};
+use pages::{open_config_in_vscode, open_log_file, open_terminal};
 
 pub fn handle_key_event(
     buf: &[u8],
@@ -50,6 +50,9 @@ pub fn handle_key_event(
             if nav.current() == 0 && key == 2 {
                 info!("opening Terminal");
                 open_terminal();
+            } else if nav.current() == 1 && key == 14 {
+                info!("opening log file in VS Code");
+                open_log_file();
             } else if nav.current() == 1 && key == 15 {
                 info!("opening config in VS Code");
                 open_config_in_vscode();

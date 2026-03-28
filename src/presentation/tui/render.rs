@@ -1,7 +1,6 @@
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
-    text::Line,
     widgets::{Block, Paragraph},
     Frame,
 };
@@ -11,14 +10,12 @@ use super::app_state::AppState;
 pub fn render(state: &AppState, frame: &mut Frame) {
     let chunks = Layout::vertical([
         Constraint::Length(3),  // title
-        Constraint::Length(21), // button grid (3 rows × 7 lines)
-        Constraint::Min(4),     // event log
+        Constraint::Fill(1),    // button grid
     ])
     .split(frame.area());
 
     render_title(frame, chunks[0], state);
     render_buttons(frame, chunks[1], state);
-    render_log(frame, chunks[2], state);
 }
 
 fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
@@ -120,10 +117,3 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     }
 }
 
-fn render_log(frame: &mut Frame, area: Rect, state: &AppState) {
-    let lines: Vec<Line> = state.log.iter().map(|s| Line::from(s.as_str())).collect();
-    frame.render_widget(
-        Paragraph::new(lines).block(Block::bordered().title(" Events ")),
-        area,
-    );
-}

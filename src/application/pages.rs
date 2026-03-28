@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use tracing::{error, info};
 
 use crate::domain::actions::ButtonAction;
-use crate::infrastructure::images::{generate_terminal_image, generate_vscode_config_image};
+use crate::infrastructure::images::{generate_log_file_image, generate_terminal_image, generate_vscode_config_image};
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::{clear_all, send_button_image};
 use crate::presentation::tui;
@@ -22,6 +22,11 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
             });
         }
         1 => {
+            map.insert(14, ButtonAction {
+                name: "Log File",
+                title: "Open Log",
+                description: "Open app.log in VS Code",
+            });
             map.insert(15, ButtonAction {
                 name: "VSCode Config",
                 title: "Open Config",
@@ -31,6 +36,27 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
         _ => {}
     }
     map
+}
+
+pub fn open_log_file() {
+    let log_path = {
+        let mut p = if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME") {
+            std::path::PathBuf::from(xdg)
+        } else {
+            let mut home = std::path::PathBuf::from(
+                std::env::var_os("HOME").expect("HOME not set"),
+            );
+            home.push(".config");
+            home
+        };
+        p.push("vibe-keyboard");
+        p.push("app.log");
+        p
+    };
+    Command::new("code")
+        .arg(log_path)
+        .spawn()
+        .unwrap_or_else(|e| { error!("Failed to open log file in VS Code: {e}"); std::process::exit(1) });
 }
 
 pub fn open_config_in_vscode() {
@@ -85,8 +111,9 @@ pub fn activate_page(
             info!("page 0: terminal");
         }
         1 => {
+            send_button_image(handle, 14, DynamicImage::ImageRgb8(generate_log_file_image()));
             send_button_image(handle, 15, DynamicImage::ImageRgb8(generate_vscode_config_image()));
-            info!("page 1: vscode config");
+            info!("page 1: log file + vscode config");
         }
         _ => {}
     }
