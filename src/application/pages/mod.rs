@@ -7,7 +7,7 @@ mod project_list;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 
-use hidapi::HidDevice;
+use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
 
 use crate::domain::navigation::{NavigationStack, Screen};
@@ -18,7 +18,7 @@ use crate::presentation::tui;
 /// Render the given screen to both the TUI state and the hardware device.
 pub fn render_screen(
     nav: &NavigationStack,
-    handle: &HidDevice,
+    handle: &DeviceHandle<Context>,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
