@@ -4,13 +4,12 @@ use ratatui::{
     widgets::{Block, Paragraph},
     Frame,
 };
-
-const SPINNER: [&str; 8] = ["⣾", "⣽", "⣻", "⢿", "⡿", "⣟", "⣯", "⣷"];
+use throbber_widgets_tui::Throbber;
 
 use super::app_state::AppState;
 use crate::domain::actions::ScreenView;
 
-pub fn render(state: &AppState, frame: &mut Frame) {
+pub fn render(state: &mut AppState, frame: &mut Frame) {
     let chunks = Layout::vertical([
         Constraint::Length(3), // title
         Constraint::Fill(1),   // button grid
@@ -65,7 +64,7 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
     );
 }
 
-fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
+fn render_buttons(frame: &mut Frame, area: Rect, state: &mut AppState) {
     let rows = Layout::vertical([
         Constraint::Length(7),
         Constraint::Length(7),
@@ -90,7 +89,7 @@ fn render_buttons(frame: &mut Frame, area: Rect, state: &AppState) {
     }
 }
 
-fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
+fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &mut AppState) {
     let is_pressed = state.pressed_key == Some(key);
     let is_loading = state.loading;
     let is_nav = key == 11 || key == 12 || key == 13;
@@ -122,21 +121,16 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &AppState) {
     frame.render_widget(block, area);
 
     if is_loading {
-        let frame_idx = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| (d.subsec_millis() / 125) as usize % SPINNER.len())
-            .unwrap_or(0);
         let vert = Layout::vertical([
             Constraint::Fill(1),
             Constraint::Length(1),
             Constraint::Fill(1),
         ])
         .split(inner);
-        frame.render_widget(
-            Paragraph::new(SPINNER[frame_idx])
-                .alignment(Alignment::Center)
-                .style(base_style),
+        frame.render_stateful_widget(
+            Throbber::default().style(base_style),
             vert[1],
+            &mut state.throbber_state,
         );
         return;
     }

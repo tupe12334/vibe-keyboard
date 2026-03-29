@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::domain::actions::{ButtonAction, ScreenView};
+use throbber_widgets_tui::ThrobberState;
 
 const LOG_CAPACITY: usize = 10;
 
@@ -14,6 +15,7 @@ pub struct AppState {
     pub nav_can_back: bool,
     pub nav_can_out: bool,
     pub nav_can_forward: bool,
+    pub throbber_state: ThrobberState,
 }
 
 impl AppState {
@@ -28,6 +30,7 @@ impl AppState {
             nav_can_back: true,
             nav_can_out: false,
             nav_can_forward: true,
+            throbber_state: ThrobberState::default(),
         }
     }
 
