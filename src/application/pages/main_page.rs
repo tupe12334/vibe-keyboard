@@ -7,8 +7,9 @@ use tracing::info;
 
 use crate::domain::actions::{ButtonAction, ScreenView};
 use crate::infrastructure::images::{
-    generate_centy_image, generate_claude_image, generate_log_file_image, generate_terminal_image,
-    generate_vscode_config_image, generate_web_image,
+    generate_centy_image, generate_claude_image, generate_log_file_image,
+    generate_numpad_entry_image, generate_terminal_image, generate_vscode_config_image,
+    generate_web_image,
 };
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::send_button_image;
@@ -53,6 +54,14 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
             );
         }
         1 => {
+            map.insert(
+                1,
+                ButtonAction {
+                    name: "NumPad".into(),
+                    title: "Input Number".into(),
+                    description: "Open numpad entry screen".into(),
+                },
+            );
             map.insert(
                 14,
                 ButtonAction {
@@ -106,6 +115,11 @@ pub fn render_main_page(
         1 => {
             send_button_image(
                 handle,
+                1,
+                DynamicImage::ImageRgb8(generate_numpad_entry_image()),
+            );
+            send_button_image(
+                handle,
                 14,
                 DynamicImage::ImageRgb8(generate_log_file_image()),
             );
@@ -114,7 +128,7 @@ pub fn render_main_page(
                 15,
                 DynamicImage::ImageRgb8(generate_vscode_config_image()),
             );
-            info!("page 1: log file + vscode config");
+            info!("page 1: numpad + log file + vscode config");
         }
         _ => {}
     }

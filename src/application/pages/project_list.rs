@@ -5,7 +5,9 @@ use image::DynamicImage;
 use rusb::{Context, DeviceHandle};
 
 use crate::domain::actions::{ButtonAction, CentyProject, ScreenView};
-use crate::infrastructure::images::{generate_project_item_image, generate_sort_image};
+use crate::infrastructure::images::{
+    generate_project_item_image, generate_search_image, generate_sort_image,
+};
 use crate::infrastructure::usb::send_button_image;
 use crate::presentation::tui;
 
@@ -39,6 +41,14 @@ pub fn render_project_list(
             description: "Sort projects by name".into(),
         },
     );
+    actions.insert(
+        15,
+        ButtonAction {
+            name: "Search".into(),
+            title: "Search".into(),
+            description: "Open Spotlight search".into(),
+        },
+    );
 
     let count = page_slice.len();
     {
@@ -55,4 +65,5 @@ pub fn render_project_list(
         send_button_image(handle, (i + 1) as u8, project_img.clone());
     }
     send_button_image(handle, 14, DynamicImage::ImageRgb8(generate_sort_image()));
+    send_button_image(handle, 15, DynamicImage::ImageRgb8(generate_search_image()));
 }
