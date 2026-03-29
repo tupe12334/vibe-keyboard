@@ -41,4 +41,7 @@ pub enum ScreenView {
         issue_number: u64,
         project_name: String,
     },
+    InputNumber {
+        value: String,
+    },
 }

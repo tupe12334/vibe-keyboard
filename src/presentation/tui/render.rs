@@ -55,6 +55,10 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
             " Centy    {} — Issue #{}    [11] back  [12] out    [q] quit ",
             project_name, issue_number,
         ),
+        ScreenView::InputNumber { value } => format!(
+            " Input Number    {}    [11] back  [12] out    [q] quit ",
+            if value.is_empty() { "_" } else { value },
+        ),
     };
     frame.render_widget(
         Paragraph::new(text)

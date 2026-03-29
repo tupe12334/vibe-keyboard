@@ -52,6 +52,8 @@ pub fn handle_key_event(
         return;
     }
 
+    let is_input_number = matches!(nav.current(), Screen::InputNumber { .. });
+
     match key {
         11 => {
             nav.back();
@@ -61,7 +63,8 @@ pub fn handle_key_event(
             nav.out();
             render_screen(nav, handle, state, dev_state);
         }
-        13 => {
+        // On the InputNumber screen key 13 maps to digit 7, not "forward".
+        13 if !is_input_number => {
             nav.forward();
             render_screen(nav, handle, state, dev_state);
         }
@@ -121,6 +124,12 @@ fn handle_action_key(
         OpenCentyWorkspace {
             issue_number: u64,
         },
+        OpenInputNumber,
+        InputNumberDigit {
+            digit: char,
+        },
+        InputNumberClear,
+        InputNumberBackspace,
         None,
     }
 
@@ -130,6 +139,7 @@ fn handle_action_key(
             (0, 2) => Action::OpenTerminal,
             (0, 3) => Action::OpenClaude,
             (0, 4) => Action::OpenCentyWeb,
+            (1, 1) => Action::OpenInputNumber,
             (1, 14) => Action::OpenLogFile,
             (1, 15) => Action::OpenConfig,
             _ => Action::None,
@@ -206,6 +216,20 @@ fn handle_action_key(
             3 => Action::OpenCentyWorkspace {
                 issue_number: issue.number,
             },
+            _ => Action::None,
+        },
+        Screen::InputNumber { .. } => match key {
+            1 => Action::InputNumberClear,
+            2 => Action::InputNumberBackspace,
+            3 => Action::InputNumberDigit { digit: '1' },
+            4 => Action::InputNumberDigit { digit: '2' },
+            5 => Action::InputNumberDigit { digit: '3' },
+            8 => Action::InputNumberDigit { digit: '4' },
+            9 => Action::InputNumberDigit { digit: '5' },
+            10 => Action::InputNumberDigit { digit: '6' },
+            13 => Action::InputNumberDigit { digit: '7' },
+            14 => Action::InputNumberDigit { digit: '8' },
+            15 => Action::InputNumberDigit { digit: '9' },
             _ => Action::None,
         },
     };
@@ -309,6 +333,30 @@ fn handle_action_key(
         Action::OpenCentyWorkspace { issue_number } => {
             info!("centy: opening workspace for issue {}", issue_number);
             open_centy_workspace(issue_number);
+        }
+        Action::OpenInputNumber => {
+            info!("opening input number page");
+            nav.push(Screen::InputNumber {
+                value: String::new(),
+            });
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::InputNumberDigit { digit } => {
+            nav.input_number_append(digit);
+            let value = nav.input_number_value().unwrap_or("").to_string();
+            info!("input number: appended '{}', value = {}", digit, value);
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::InputNumberClear => {
+            nav.input_number_clear();
+            info!("input number: cleared");
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::InputNumberBackspace => {
+            nav.input_number_backspace();
+            let value = nav.input_number_value().unwrap_or("").to_string();
+            info!("input number: backspace, value = {}", value);
+            render_screen(nav, handle, state, dev_state);
         }
         Action::None => {}
     }
