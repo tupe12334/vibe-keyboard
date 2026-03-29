@@ -58,7 +58,8 @@ fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
         return vec![];
     };
 
-    arr.into_iter()
+    let mut issues: Vec<CentyIssue> = arr
+        .into_iter()
         .map(|item| {
             let number = item
                 .get("metadata")
@@ -102,5 +103,7 @@ fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
                 file_path,
             }
         })
-        .collect()
+        .collect();
+    issues.sort_by(|a, b| b.number.cmp(&a.number));
+    issues
 }
