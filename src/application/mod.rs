@@ -5,7 +5,7 @@ pub use pages::render_screen;
 
 use actions::{
     open_centy_workspace, open_claude_terminal, open_config_in_vscode, open_in_chrome,
-    open_log_file, open_terminal, open_terminal_in_path, open_vscode_in_path,
+    open_log_file, open_spotlight, open_terminal, open_terminal_in_path, open_vscode_in_path,
 };
 use pages::{fetch_centy_issues, fetch_centy_projects};
 use rusb::{Context, DeviceHandle};
@@ -121,6 +121,7 @@ fn handle_action_key(
         OpenCentyWorkspace {
             issue_number: u64,
         },
+        Search,
         None,
     }
 
@@ -135,7 +136,9 @@ fn handle_action_key(
             _ => Action::None,
         },
         Screen::CentyProjectList { projects, page } => {
-            if matches!(key, 1..=10) {
+            if key == 15 {
+                Action::Search
+            } else if matches!(key, 1..=10) {
                 let idx = page * 10 + (key as usize - 1);
                 if projects.get(idx).is_some() {
                     Action::SelectProject {
@@ -174,7 +177,9 @@ fn handle_action_key(
             project_name,
             org,
         } => {
-            if matches!(key, 1..=10) {
+            if key == 15 {
+                Action::Search
+            } else if matches!(key, 1..=10) {
                 let idx = page * 10 + (key as usize - 1);
                 if issues.get(idx).is_some() {
                     Action::SelectIssue {
@@ -309,6 +314,10 @@ fn handle_action_key(
         Action::OpenCentyWorkspace { issue_number } => {
             info!("centy: opening workspace for issue {}", issue_number);
             open_centy_workspace(issue_number);
+        }
+        Action::Search => {
+            info!("opening Spotlight search");
+            open_spotlight();
         }
         Action::None => {}
     }
