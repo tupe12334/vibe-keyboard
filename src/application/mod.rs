@@ -5,7 +5,7 @@ pub use pages::render_screen;
 
 use actions::{
     open_centy_workspace, open_claude_terminal, open_config_in_vscode, open_in_chrome,
-    open_log_file, open_spotlight, open_terminal, open_terminal_in_path, open_vscode_in_path,
+    open_log_file, open_terminal, open_terminal_in_path, open_vscode_in_path,
 };
 use pages::{fetch_centy_issues, fetch_centy_projects};
 use rusb::{Context, DeviceHandle};
@@ -146,7 +146,7 @@ fn handle_action_key(
             (1, 15) => Action::OpenConfig,
             _ => Action::None,
         },
-        Screen::CentyProjectList { projects, page } => {
+        Screen::CentyProjectList { projects, page, .. } => {
             if key == 15 {
                 Action::Search
             } else if matches!(key, 1..=10) {
@@ -189,6 +189,7 @@ fn handle_action_key(
             page,
             project_name,
             org,
+            ..
         } => {
             if key == 15 {
                 Action::Search
@@ -250,7 +251,11 @@ fn handle_action_key(
             let projects = fetch_centy_projects();
             state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
             if !projects.is_empty() {
-                nav.push(Screen::CentyProjectList { projects, page: 0 });
+                nav.push(Screen::CentyProjectList {
+                    projects,
+                    page: 0,
+                    filter: None,
+                });
                 render_screen(nav, handle, state, dev_state);
             }
         }
@@ -303,6 +308,7 @@ fn handle_action_key(
                     page: 0,
                     project_name,
                     org,
+                    filter: None,
                 });
                 render_screen(nav, handle, state, dev_state);
             }
@@ -374,9 +380,127 @@ fn handle_action_key(
             render_screen(nav, handle, state, dev_state);
         }
         Action::Search => {
-            info!("opening Spotlight search");
-            open_spotlight();
+            info!("activating filter input mode");
+            let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+            s.text_input_mode = true;
+            s.text_input_value = String::new();
+            s.text_input_confirmed = false;
         }
         Action::None => {}
+    }
+}
+
+pub fn handle_filter_query(
+    query: &str,
+    handle: &DeviceHandle<Context>,
+    nav: &mut NavigationStack,
+    state: &Arc<Mutex<tui::AppState>>,
+    dev_state: &Arc<Mutex<DeviceState>>,
+) {
+    use crate::domain::actions::{CentyIssue, CentyProject};
+
+    let q = query.to_lowercase();
+    let filter = if q.trim().is_empty() {
+        None
+    } else {
+        Some(query.to_string())
+    };
+
+    enum FilterAction {
+        Projects {
+            projects: Vec<CentyProject>,
+            filter: Option<String>,
+        },
+        Issues {
+            issues: Vec<CentyIssue>,
+            project_name: String,
+            org: String,
+            filter: Option<String>,
+        },
+        None,
+    }
+
+    let fa = match nav.current() {
+        Screen::CentyProjectList { projects, .. } => {
+            let filtered: Vec<CentyProject> = if q.trim().is_empty() {
+                projects.clone()
+            } else {
+                projects
+                    .iter()
+                    .filter(|p| {
+                        p.name.to_lowercase().contains(&q) || p.org.to_lowercase().contains(&q)
+                    })
+                    .cloned()
+                    .collect()
+            };
+            FilterAction::Projects {
+                projects: filtered,
+                filter,
+            }
+        }
+        Screen::CentyIssueList {
+            issues,
+            project_name,
+            org,
+            ..
+        } => {
+            let filtered: Vec<CentyIssue> = if q.trim().is_empty() {
+                issues.clone()
+            } else {
+                issues
+                    .iter()
+                    .filter(|i| {
+                        i.title.to_lowercase().contains(&q)
+                            || i.number.to_string().contains(&q)
+                            || i.status.to_lowercase().contains(&q)
+                    })
+                    .cloned()
+                    .collect()
+            };
+            FilterAction::Issues {
+                issues: filtered,
+                project_name: project_name.clone(),
+                org: org.clone(),
+                filter,
+            }
+        }
+        _ => FilterAction::None,
+    };
+
+    match fa {
+        FilterAction::Projects { projects, filter } => {
+            info!(
+                "filter applied: {} project(s) match {:?}",
+                projects.len(),
+                query
+            );
+            nav.push(Screen::CentyProjectList {
+                projects,
+                page: 0,
+                filter,
+            });
+            render_screen(nav, handle, state, dev_state);
+        }
+        FilterAction::Issues {
+            issues,
+            project_name,
+            org,
+            filter,
+        } => {
+            info!(
+                "filter applied: {} issue(s) match {:?}",
+                issues.len(),
+                query
+            );
+            nav.push(Screen::CentyIssueList {
+                issues,
+                page: 0,
+                project_name,
+                org,
+                filter,
+            });
+            render_screen(nav, handle, state, dev_state);
+        }
+        FilterAction::None => {}
     }
 }

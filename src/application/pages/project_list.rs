@@ -14,6 +14,7 @@ use crate::presentation::tui;
 pub fn render_project_list(
     projects: &[CentyProject],
     page: usize,
+    filter: Option<&str>,
     handle: &DeviceHandle<Context>,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
@@ -57,6 +58,7 @@ pub fn render_project_list(
         s.screen = ScreenView::CentyProjectList {
             total: projects.len(),
             page,
+            filter: filter.map(|f| f.to_string()),
         };
     }
 

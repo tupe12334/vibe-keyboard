@@ -8,6 +8,7 @@ pub enum Screen {
     CentyProjectList {
         projects: Vec<CentyProject>,
         page: usize,
+        filter: Option<String>,
     },
     CentyProjectActions {
         project: CentyProject,
@@ -17,6 +18,7 @@ pub enum Screen {
         page: usize,
         project_name: String,
         org: String,
+        filter: Option<String>,
     },
     CentyIssueActions {
         issue: CentyIssue,
@@ -108,7 +110,7 @@ impl NavigationStack {
             .expect("NavigationStack is always non-empty")
         {
             Screen::MainPage { .. } => true,
-            Screen::CentyProjectList { projects, page } => {
+            Screen::CentyProjectList { projects, page, .. } => {
                 *page < projects.len().saturating_sub(1) / 10
             }
             Screen::CentyIssueList { issues, page, .. } => {
@@ -159,7 +161,7 @@ impl NavigationStack {
             Screen::MainPage { page } => {
                 *page = (*page + 1) % self.total_main_pages;
             }
-            Screen::CentyProjectList { projects, page } => {
+            Screen::CentyProjectList { projects, page, .. } => {
                 let max = projects.len().saturating_sub(1) / 10;
                 if *page < max {
                     *page += 1;
@@ -302,6 +304,7 @@ mod tests {
         nav.push(Screen::CentyProjectList {
             projects: make_projects(5),
             page: 0,
+            filter: None,
         });
         assert!(!nav.can_forward());
     }
@@ -312,6 +315,7 @@ mod tests {
         nav.push(Screen::CentyProjectList {
             projects: make_projects(15),
             page: 0,
+            filter: None,
         });
         assert!(nav.can_forward());
     }
@@ -324,6 +328,7 @@ mod tests {
             page: 0,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         assert!(!nav.can_forward());
     }
@@ -336,6 +341,7 @@ mod tests {
             page: 0,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         assert!(nav.can_forward());
     }
@@ -382,6 +388,7 @@ mod tests {
         nav.push(Screen::CentyProjectList {
             projects: make_projects(15),
             page: 1,
+            filter: None,
         });
         nav.back();
         assert!(matches!(
@@ -396,6 +403,7 @@ mod tests {
         nav.push(Screen::CentyProjectList {
             projects: make_projects(5),
             page: 0,
+            filter: None,
         });
         nav.back();
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
@@ -409,6 +417,7 @@ mod tests {
             page: 1,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         nav.back();
         assert!(matches!(
@@ -425,6 +434,7 @@ mod tests {
             page: 0,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         nav.back();
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
@@ -503,6 +513,7 @@ mod tests {
         nav.push(Screen::CentyProjectList {
             projects: make_projects(15),
             page: 0,
+            filter: None,
         });
         nav.forward();
         assert!(matches!(
@@ -517,6 +528,7 @@ mod tests {
         nav.push(Screen::CentyProjectList {
             projects: make_projects(5),
             page: 0,
+            filter: None,
         });
         nav.forward();
         assert!(matches!(
@@ -533,6 +545,7 @@ mod tests {
             page: 0,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         nav.forward();
         assert!(matches!(
@@ -549,6 +562,7 @@ mod tests {
             page: 0,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         nav.forward();
         assert!(matches!(

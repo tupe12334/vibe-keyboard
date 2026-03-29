@@ -35,8 +35,12 @@ pub fn render_screen(
         Screen::MainPage { page } => {
             main_page::render_main_page(*page, handle, state, dev_state);
         }
-        Screen::CentyProjectList { projects, page } => {
-            project_list::render_project_list(projects, *page, handle, state);
+        Screen::CentyProjectList {
+            projects,
+            page,
+            filter,
+        } => {
+            project_list::render_project_list(projects, *page, filter.as_deref(), handle, state);
         }
         Screen::CentyProjectActions { project } => {
             project_actions::render_project_actions(project, handle, state);
@@ -45,9 +49,17 @@ pub fn render_screen(
             issues,
             page,
             project_name,
+            filter,
             ..
         } => {
-            issue_list::render_issue_list(issues, *page, project_name, handle, state);
+            issue_list::render_issue_list(
+                issues,
+                *page,
+                project_name,
+                filter.as_deref(),
+                handle,
+                state,
+            );
         }
         Screen::CentyIssueActions {
             issue,

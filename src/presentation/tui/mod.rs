@@ -41,7 +41,24 @@ fn run_inner(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) -> io::Resu
 
         if event::poll(Duration::from_millis(33))? {
             if let Event::Key(key) = event::read()? {
-                if matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q')) {
+                let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+                if s.text_input_mode {
+                    match key.code {
+                        KeyCode::Char(c) => s.text_input_value.push(c),
+                        KeyCode::Backspace => {
+                            s.text_input_value.pop();
+                        }
+                        KeyCode::Esc => {
+                            s.text_input_mode = false;
+                            s.text_input_value.clear();
+                        }
+                        KeyCode::Enter => {
+                            s.text_input_confirmed = true;
+                            s.text_input_mode = false;
+                        }
+                        _ => {}
+                    }
+                } else if matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q')) {
                     shutdown.store(true, Ordering::Relaxed);
                     break;
                 }

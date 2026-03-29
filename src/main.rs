@@ -4,7 +4,7 @@ mod infrastructure;
 mod logging;
 mod presentation;
 
-use application::{handle_key_event, render_screen};
+use application::{handle_filter_query, handle_key_event, render_screen};
 use domain::navigation::NavigationStack;
 use infrastructure::persistence::DeviceState;
 use infrastructure::usb::{
@@ -60,6 +60,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     loop {
         if shutdown.load(Ordering::Relaxed) {
             break;
+        }
+
+        let confirmed_query = {
+            let mut s = app_state.lock().unwrap_or_else(|e| e.into_inner());
+            if s.text_input_confirmed {
+                s.text_input_confirmed = false;
+                Some(s.text_input_value.clone())
+            } else {
+                None
+            }
+        };
+        if let Some(query) = confirmed_query {
+            handle_filter_query(&query, &handle, &mut nav, &app_state, &dev_state);
         }
 
         if let Some(data) = read_event(&handle, Duration::from_millis(500)) {

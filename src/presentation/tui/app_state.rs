@@ -16,6 +16,9 @@ pub struct AppState {
     pub nav_can_out: bool,
     pub nav_can_forward: bool,
     pub throbber_state: ThrobberState,
+    pub text_input_mode: bool,
+    pub text_input_value: String,
+    pub text_input_confirmed: bool,
 }
 
 impl AppState {
@@ -31,6 +34,9 @@ impl AppState {
             nav_can_out: false,
             nav_can_forward: true,
             throbber_state: ThrobberState::default(),
+            text_input_mode: false,
+            text_input_value: String::new(),
+            text_input_confirmed: false,
         }
     }
 

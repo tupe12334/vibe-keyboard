@@ -15,6 +15,7 @@ pub fn render_issue_list(
     issues: &[CentyIssue],
     page: usize,
     project_name: &str,
+    filter: Option<&str>,
     handle: &DeviceHandle<Context>,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
@@ -59,6 +60,7 @@ pub fn render_issue_list(
             total: issues.len(),
             page,
             project_name: project_name.to_string(),
+            filter: filter.map(|f| f.to_string()),
         };
     }
 

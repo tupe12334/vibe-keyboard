@@ -28,6 +28,7 @@ pub enum ScreenView {
     CentyProjectList {
         total: usize,
         page: usize,
+        filter: Option<String>,
     },
     CentyProjectActions {
         project_name: String,
@@ -36,6 +37,7 @@ pub enum ScreenView {
         total: usize,
         page: usize,
         project_name: String,
+        filter: Option<String>,
     },
     CentyIssueActions {
         issue_number: u64,

@@ -21,44 +21,65 @@ pub fn render(state: &mut AppState, frame: &mut Frame) {
 }
 
 fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
-    let text = match &state.screen {
-        ScreenView::CentyProjectList { total, page } => format!(
-            " Centy    Projects ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
-            page * 10 + 1,
-            (page * 10 + 10).min(*total),
-            total,
-        ),
-        ScreenView::CentyProjectActions { project_name } => format!(
-            " Centy    {}    [11] back  [12] out    [q] quit ",
-            project_name,
-        ),
-        ScreenView::CentyIssueList {
-            total,
-            page,
-            project_name,
-        } => format!(
-            " Centy    {} — Issues ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
-            project_name,
-            page * 10 + 1,
-            (page * 10 + 10).min(*total),
-            total,
-        ),
-        ScreenView::MainPage { page } => format!(
-            " Vibe Keyboard    Page {} / {}    [q] quit ",
-            page + 1,
-            state.total_pages,
-        ),
-        ScreenView::CentyIssueActions {
-            issue_number,
-            project_name,
-        } => format!(
-            " Centy    {} — Issue #{}    [11] back  [12] out    [q] quit ",
-            project_name, issue_number,
-        ),
-        ScreenView::InputNumber { value } => format!(
-            " Input Number    {}    [11] back  [12] out    [q] quit ",
-            if value.is_empty() { "_" } else { value },
-        ),
+    let text = if state.text_input_mode {
+        format!(" Filter: {}_", state.text_input_value)
+    } else {
+        match &state.screen {
+            ScreenView::CentyProjectList {
+                total,
+                page,
+                filter,
+            } => {
+                let filter_str = filter
+                    .as_ref()
+                    .map(|f| format!("  [filter: \"{f}\"]"))
+                    .unwrap_or_default();
+                format!(
+                " Centy    Projects{filter_str} ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
+                page * 10 + 1,
+                (page * 10 + 10).min(*total),
+                total,
+            )
+            }
+            ScreenView::CentyProjectActions { project_name } => format!(
+                " Centy    {}    [11] back  [12] out    [q] quit ",
+                project_name,
+            ),
+            ScreenView::CentyIssueList {
+                total,
+                page,
+                project_name,
+                filter,
+            } => {
+                let filter_str = filter
+                    .as_ref()
+                    .map(|f| format!("  [filter: \"{f}\"]"))
+                    .unwrap_or_default();
+                format!(
+                " Centy    {} — Issues{filter_str} ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
+                project_name,
+                page * 10 + 1,
+                (page * 10 + 10).min(*total),
+                total,
+            )
+            }
+            ScreenView::MainPage { page } => format!(
+                " Vibe Keyboard    Page {} / {}    [q] quit ",
+                page + 1,
+                state.total_pages,
+            ),
+            ScreenView::CentyIssueActions {
+                issue_number,
+                project_name,
+            } => format!(
+                " Centy    {} — Issue #{}    [11] back  [12] out    [q] quit ",
+                project_name, issue_number,
+            ),
+            ScreenView::InputNumber { value } => format!(
+                " Input Number    {}    [11] back  [12] out    [q] quit ",
+                if value.is_empty() { "_" } else { value },
+            ),
+        }
     };
     frame.render_widget(
         Paragraph::new(text)
