@@ -8,8 +8,9 @@ use application::{handle_key_event, render_screen};
 use domain::navigation::NavigationStack;
 use infrastructure::persistence::DeviceState;
 use infrastructure::usb::{
-    clear_all, device_init, keep_alive, read_event, set_brightness, PID, VID,
+    clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID,
 };
+use rusb::{Context, UsbContext};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -19,11 +20,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let _log_guard = logging::init(Arc::clone(&app_state));
 
-    let hid = hidapi::HidApi::new().map_err(|e| format!("HID init: {e}"))?;
-    let handle = hid
-        .open(VID, PID)
-        .map_err(|e| format!("Device not found — is it plugged in? ({e})"))?;
-    info!("HID device opened");
+    let context = Context::new().map_err(|e| format!("USB context: {e}"))?;
+    let handle = context
+        .devices()
+        .map_err(|e| format!("USB devices: {e}"))?
+        .iter()
+        .find_map(|device| {
+            let dd = device.device_descriptor().ok()?;
+            (dd.vendor_id() == VID && dd.product_id() == PID)
+                .then(|| device.open().ok())
+                .flatten()
+        })
+        .ok_or("Device not found — is it plugged in?")?;
+    handle
+        .claim_interface(0)
+        .map_err(|e| format!("claim_interface: {e}"))?;
+    reset_endpoints(&handle);
+    info!("USB device opened");
 
     let dev_state_val = DeviceState::load();
 

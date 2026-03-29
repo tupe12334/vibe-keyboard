@@ -4,3 +4,10 @@ set -e
 cargo test
 cargo machete
 cargo clippy
+
+# Enforce 100% line coverage on pure-logic modules (hardware/UI code excluded).
+# Uses cargo-llvm-cov; install with: cargo install cargo-llvm-cov
+IGNORE="main\.rs|logging\.rs|usb/|images/|application/|tui/mod|tui/render|presentation/mod|persistence"
+cargo llvm-cov \
+  --ignore-filename-regex "$IGNORE" \
+  --fail-under-lines 100

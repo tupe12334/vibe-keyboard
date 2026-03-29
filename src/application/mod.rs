@@ -7,8 +7,8 @@ use actions::{
     open_claude_terminal, open_config_in_vscode, open_in_chrome, open_log_file, open_terminal,
     open_terminal_in_path, open_vscode_in_path,
 };
-use hidapi::HidDevice;
 use pages::{fetch_centy_issues, fetch_centy_projects};
+use rusb::{Context, DeviceHandle};
 use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tracing::info;
@@ -20,7 +20,7 @@ use crate::presentation::tui;
 
 pub fn handle_key_event(
     buf: &[u8],
-    handle: &HidDevice,
+    handle: &DeviceHandle<Context>,
     nav: &mut NavigationStack,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
@@ -73,7 +73,7 @@ pub fn handle_key_event(
 fn handle_action_key(
     key: u8,
     nav: &mut NavigationStack,
-    handle: &HidDevice,
+    handle: &DeviceHandle<Context>,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {

@@ -1,0 +1,26 @@
+# Coverage configuration for vibe-keyboard
+# Hardware-dependent and UI code is excluded; only pure logic is enforced.
+# Use: cargo llvm-cov --ignore-filename-regex "..." --fail-under-lines 100
+
+[default]
+fail-under = 100
+exclude-files = [
+    "src/main.rs",
+    "src/logging.rs",
+    "src/infrastructure/mod.rs",
+    "src/infrastructure/usb/**",
+    "src/infrastructure/images/**",
+    "src/infrastructure/persistence.rs",
+    "src/application/mod.rs",
+    "src/application/actions/**",
+    "src/application/pages/mod.rs",
+    "src/application/pages/main_page.rs",
+    "src/application/pages/issue_actions.rs",
+    "src/application/pages/issue_list.rs",
+    "src/application/pages/project_actions.rs",
+    "src/application/pages/project_list.rs",
+    "src/application/pages/centy/**",
+    "src/presentation/mod.rs",
+    "src/presentation/tui/mod.rs",
+    "src/presentation/tui/render.rs",
+]
