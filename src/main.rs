@@ -10,7 +10,7 @@ use infrastructure::persistence::DeviceState;
 use infrastructure::usb::{
     clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID,
 };
-use rusb::{Context, UsbContext};
+use rusb::{Context, UsbContext as _};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -20,23 +20,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let _log_guard = logging::init(Arc::clone(&app_state));
 
-    let context = Context::new().map_err(|e| format!("USB context: {e}"))?;
-    let handle = context
-        .devices()
-        .map_err(|e| format!("USB devices: {e}"))?
-        .iter()
-        .find_map(|device| {
-            let dd = device.device_descriptor().ok()?;
-            (dd.vendor_id() == VID && dd.product_id() == PID)
-                .then(|| device.open().ok())
-                .flatten()
-        })
+    let ctx = Context::new().map_err(|e| format!("rusb context: {e}"))?;
+    let handle = ctx
+        .open_device_with_vid_pid(VID, PID)
         .ok_or("Device not found — is it plugged in?")?;
+    handle.detach_kernel_driver(0).ok(); // terminates AppleUserHIDDrivers dext
     handle
         .claim_interface(0)
-        .map_err(|e| format!("claim_interface: {e}"))?;
+        .map_err(|e| format!("Failed to claim USB interface — run 'make install' once to set up permissions, or use sudo: {e}"))?;
+    info!("interface 0 claimed");
     reset_endpoints(&handle);
-    info!("USB device opened");
 
     let dev_state_val = DeviceState::load();
 
