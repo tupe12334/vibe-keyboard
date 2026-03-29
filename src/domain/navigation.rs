@@ -640,6 +640,7 @@ mod tests {
                 make_named_project("gamma"),
             ],
             page: 0,
+            filter: None,
         });
         // Initially ascending: toggle should sort descending
         nav.toggle_sort();
@@ -661,6 +662,7 @@ mod tests {
             page: 0,
             project_name: "p".into(),
             org: "org".into(),
+            filter: None,
         });
         // Initially descending: toggle should sort ascending
         nav.toggle_sort();
