@@ -1,4 +1,5 @@
 mod centy;
+mod input_number;
 mod issue_actions;
 mod issue_list;
 mod main_page;
@@ -52,6 +53,9 @@ pub fn render_screen(
             project_name,
         } => {
             issue_actions::render_issue_actions(issue, project_name, handle, state);
+        }
+        Screen::InputNumber { value } => {
+            input_number::render_input_number(value, handle, state);
         }
     }
 }
