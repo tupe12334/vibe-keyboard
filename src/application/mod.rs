@@ -124,6 +124,7 @@ fn handle_action_key(
         OpenCentyWorkspace {
             issue_number: u64,
         },
+        SortList,
         OpenInputNumber,
         InputNumberDigit {
             digit: char,
@@ -158,6 +159,8 @@ fn handle_action_key(
                 } else {
                     Action::None
                 }
+            } else if key == 14 {
+                Action::SortList
             } else {
                 Action::None
             }
@@ -201,6 +204,8 @@ fn handle_action_key(
                 } else {
                     Action::None
                 }
+            } else if key == 14 {
+                Action::SortList
             } else {
                 Action::None
             }
@@ -338,6 +343,11 @@ fn handle_action_key(
         Action::OpenCentyWorkspace { issue_number } => {
             info!("centy: opening workspace for issue {}", issue_number);
             open_centy_workspace(issue_number);
+        }
+        Action::SortList => {
+            info!("sort: toggling sort order");
+            nav.toggle_sort();
+            render_screen(nav, handle, state, dev_state);
         }
         Action::OpenInputNumber => {
             info!("opening input number page");

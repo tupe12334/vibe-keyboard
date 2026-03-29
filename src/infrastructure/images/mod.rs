@@ -5,6 +5,7 @@ mod log_file;
 mod numpad;
 mod project_item;
 mod search;
+mod sort;
 mod terminal;
 mod vscode_config;
 mod web;
@@ -18,6 +19,7 @@ pub use numpad::{
 };
 pub use project_item::generate_project_item_image;
 pub use search::generate_search_image;
+pub use sort::generate_sort_image;
 pub use terminal::generate_terminal_image;
 pub use vscode_config::generate_vscode_config_image;
 pub use web::generate_web_image;
