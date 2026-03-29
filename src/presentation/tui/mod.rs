@@ -36,7 +36,7 @@ fn run_inner(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) -> io::Resu
         {
             let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
             s.throbber_state.calc_next();
-            terminal.draw(|f| render::render(&mut *s, f))?;
+            terminal.draw(|f| render::render(&mut s, f))?;
         }
 
         if event::poll(Duration::from_millis(33))? {
