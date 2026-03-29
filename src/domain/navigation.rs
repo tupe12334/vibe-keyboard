@@ -116,6 +116,35 @@ impl NavigationStack {
         }
     }
 
+    /// Toggle sort order of the current list screen.
+    /// Projects are sorted by name; issues are sorted by number.
+    /// Each call reverses the current order.
+    pub fn toggle_sort(&mut self) {
+        match self
+            .stack
+            .last_mut()
+            .expect("NavigationStack is always non-empty")
+        {
+            Screen::CentyProjectList { projects, .. } => {
+                let asc = projects.windows(2).all(|w| w[0].name <= w[1].name);
+                if asc {
+                    projects.sort_by(|a, b| b.name.cmp(&a.name));
+                } else {
+                    projects.sort_by(|a, b| a.name.cmp(&b.name));
+                }
+            }
+            Screen::CentyIssueList { issues, .. } => {
+                let desc = issues.windows(2).all(|w| w[0].number >= w[1].number);
+                if desc {
+                    issues.sort_by_key(|i| i.number);
+                } else {
+                    issues.sort_by(|a, b| b.number.cmp(&a.number));
+                }
+            }
+            _ => {}
+        }
+    }
+
     /// Navigate forward within the current screen's pages. No-op if no more pages.
     pub fn forward(&mut self) {
         match self
@@ -510,5 +539,103 @@ mod tests {
         });
         nav.forward();
         assert!(matches!(nav.current(), Screen::CentyIssueActions { .. }));
+    }
+
+    // --- toggle_sort ---
+
+    fn make_named_project(name: &str) -> CentyProject {
+        CentyProject {
+            name: name.into(),
+            org: "org".into(),
+            path: None,
+            url: "https://example.com".into(),
+        }
+    }
+
+    fn make_numbered_issue(number: u64) -> CentyIssue {
+        CentyIssue {
+            number,
+            title: "issue".into(),
+            status: "open".into(),
+            id: "abc".into(),
+            file_path: None,
+        }
+    }
+
+    fn current_project_names(nav: &NavigationStack) -> Vec<String> {
+        match nav.current() {
+            Screen::CentyProjectList { projects, .. } => {
+                projects.iter().map(|p| p.name.clone()).collect()
+            }
+            _ => panic!("expected CentyProjectList"),
+        }
+    }
+
+    fn current_issue_numbers(nav: &NavigationStack) -> Vec<u64> {
+        match nav.current() {
+            Screen::CentyIssueList { issues, .. } => issues.iter().map(|i| i.number).collect(),
+            _ => panic!("expected CentyIssueList"),
+        }
+    }
+
+    #[test]
+    fn toggle_sort_projects_ascending_then_descending() {
+        let mut nav = NavigationStack::new(0, 1);
+        nav.push(Screen::CentyProjectList {
+            projects: vec![
+                make_named_project("alpha"),
+                make_named_project("beta"),
+                make_named_project("gamma"),
+            ],
+            page: 0,
+        });
+        // Initially ascending: toggle should sort descending
+        nav.toggle_sort();
+        assert_eq!(current_project_names(&nav), vec!["gamma", "beta", "alpha"]);
+        // Toggle again: should restore ascending
+        nav.toggle_sort();
+        assert_eq!(current_project_names(&nav), vec!["alpha", "beta", "gamma"]);
+    }
+
+    #[test]
+    fn toggle_sort_issues_desc_then_asc() {
+        let mut nav = NavigationStack::new(0, 1);
+        nav.push(Screen::CentyIssueList {
+            issues: vec![
+                make_numbered_issue(3),
+                make_numbered_issue(2),
+                make_numbered_issue(1),
+            ],
+            page: 0,
+            project_name: "p".into(),
+            org: "org".into(),
+        });
+        // Initially descending: toggle should sort ascending
+        nav.toggle_sort();
+        assert_eq!(current_issue_numbers(&nav), vec![1, 2, 3]);
+        // Toggle again: should restore descending
+        nav.toggle_sort();
+        assert_eq!(current_issue_numbers(&nav), vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn toggle_sort_noop_on_main_page() {
+        let mut nav = NavigationStack::new(0, 2);
+        nav.toggle_sort();
+        assert!(matches!(nav.current(), Screen::MainPage { page: 0 }));
+    }
+
+    #[test]
+    #[should_panic(expected = "expected CentyProjectList")]
+    fn current_project_names_panics_on_wrong_screen() {
+        let nav = NavigationStack::new(0, 1);
+        current_project_names(&nav);
+    }
+
+    #[test]
+    #[should_panic(expected = "expected CentyIssueList")]
+    fn current_issue_numbers_panics_on_wrong_screen() {
+        let nav = NavigationStack::new(0, 1);
+        current_issue_numbers(&nav);
     }
 }

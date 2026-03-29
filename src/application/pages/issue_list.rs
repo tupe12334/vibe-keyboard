@@ -5,7 +5,7 @@ use image::DynamicImage;
 use rusb::{Context, DeviceHandle};
 
 use crate::domain::actions::{ButtonAction, CentyIssue, ScreenView};
-use crate::infrastructure::images::generate_project_item_image;
+use crate::infrastructure::images::{generate_project_item_image, generate_sort_image};
 use crate::infrastructure::usb::send_button_image;
 use crate::presentation::tui;
 
@@ -32,6 +32,14 @@ pub fn render_issue_list(
             },
         );
     }
+    actions.insert(
+        14,
+        ButtonAction {
+            name: "Sort".into(),
+            title: "Sort Issues".into(),
+            description: "Toggle sort order".into(),
+        },
+    );
 
     let count = page_slice.len();
     {
@@ -48,4 +56,5 @@ pub fn render_issue_list(
     for i in 0..count {
         send_button_image(handle, (i + 1) as u8, issue_img.clone());
     }
+    send_button_image(handle, 14, DynamicImage::ImageRgb8(generate_sort_image()));
 }
