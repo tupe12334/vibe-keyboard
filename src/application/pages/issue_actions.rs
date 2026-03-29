@@ -14,6 +14,7 @@ use crate::presentation::tui;
 pub fn render_issue_actions(
     issue: &CentyIssue,
     project_name: &str,
+    org: &str,
     handle: &DeviceHandle<Context>,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
@@ -31,7 +32,10 @@ pub fn render_issue_actions(
         ButtonAction {
             name: "Web".into(),
             title: "Open in Web".into(),
-            description: format!("https://app.centy.io/{}", issue.id),
+            description: format!(
+                "https://app.centy.io/{}/{}/issues/{}",
+                org, project_name, issue.id
+            ),
         },
     );
     actions.insert(

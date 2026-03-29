@@ -4,12 +4,11 @@ mod pages;
 pub use pages::render_screen;
 
 use actions::{
-    open_claude_terminal, open_config_in_vscode, open_in_chrome, open_log_file, open_terminal,
-    open_terminal_in_path, open_vscode_in_path,
+    open_centy_workspace, open_claude_terminal, open_config_in_vscode, open_in_chrome,
+    open_log_file, open_terminal, open_terminal_in_path, open_vscode_in_path,
 };
 use pages::{fetch_centy_issues, fetch_centy_projects};
 use rusb::{Context, DeviceHandle};
-use std::process::Command;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -103,10 +102,12 @@ fn handle_action_key(
         },
         FetchIssues {
             project_name: String,
+            org: String,
         },
         SelectIssue {
             issues: Vec<crate::domain::actions::CentyIssue>,
             project_name: String,
+            org: String,
             idx: usize,
         },
         OpenIssueInVsCode {
@@ -114,6 +115,8 @@ fn handle_action_key(
         },
         OpenIssueInWeb {
             id: String,
+            org: String,
+            project_name: String,
         },
         OpenCentyWorkspace {
             issue_number: u64,
@@ -161,6 +164,7 @@ fn handle_action_key(
             },
             4 => Action::FetchIssues {
                 project_name: project.name.clone(),
+                org: project.org.clone(),
             },
             _ => Action::None,
         },
@@ -168,6 +172,7 @@ fn handle_action_key(
             issues,
             page,
             project_name,
+            org,
         } => {
             if matches!(key, 1..=10) {
                 let idx = page * 10 + (key as usize - 1);
@@ -175,6 +180,7 @@ fn handle_action_key(
                     Action::SelectIssue {
                         issues: issues.clone(),
                         project_name: project_name.clone(),
+                        org: org.clone(),
                         idx,
                     }
                 } else {
@@ -184,12 +190,18 @@ fn handle_action_key(
                 Action::None
             }
         }
-        Screen::CentyIssueActions { issue, .. } => match key {
+        Screen::CentyIssueActions {
+            issue,
+            project_name,
+            org,
+        } => match key {
             1 => Action::OpenIssueInVsCode {
                 file_path: issue.file_path.clone(),
             },
             2 => Action::OpenIssueInWeb {
                 id: issue.id.clone(),
+                org: org.clone(),
+                project_name: project_name.clone(),
             },
             3 => Action::OpenCentyWorkspace {
                 issue_number: issue.number,
@@ -247,7 +259,7 @@ fn handle_action_key(
             info!("centy: open {} in browser", name);
             open_in_chrome(&url);
         }
-        Action::FetchIssues { project_name } => {
+        Action::FetchIssues { project_name, org } => {
             state.lock().unwrap_or_else(|e| e.into_inner()).loading = true;
             let issues = fetch_centy_issues(&project_name);
             state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
@@ -256,6 +268,7 @@ fn handle_action_key(
                     issues,
                     page: 0,
                     project_name,
+                    org,
                 });
                 render_screen(nav, handle, state, dev_state);
             }
@@ -263,6 +276,7 @@ fn handle_action_key(
         Action::SelectIssue {
             issues,
             project_name,
+            org,
             idx,
         } => {
             if let Some(issue) = issues.into_iter().nth(idx) {
@@ -270,6 +284,7 @@ fn handle_action_key(
                 nav.push(Screen::CentyIssueActions {
                     issue,
                     project_name,
+                    org,
                 });
                 render_screen(nav, handle, state, dev_state);
             }
@@ -279,25 +294,21 @@ fn handle_action_key(
             info!("centy: open issue in VS Code at {}", path);
             open_vscode_in_path(path);
         }
-        Action::OpenIssueInWeb { id } => {
-            let url = format!("https://app.centy.io/{}", id);
+        Action::OpenIssueInWeb {
+            id,
+            org,
+            project_name,
+        } => {
+            let url = format!(
+                "https://app.centy.io/{}/{}/issues/{}",
+                org, project_name, id
+            );
             info!("centy: open issue in web: {}", url);
             open_in_chrome(&url);
         }
         Action::OpenCentyWorkspace { issue_number } => {
             info!("centy: opening workspace for issue {}", issue_number);
-            #[allow(clippy::zombie_processes)]
-            let _ = Command::new("pnpm")
-                .args([
-                    "dlx",
-                    "centy",
-                    "workspace",
-                    "open",
-                    &issue_number.to_string(),
-                    "--editor",
-                    "terminal",
-                ])
-                .spawn();
+            open_centy_workspace(issue_number);
         }
         Action::None => {}
     }

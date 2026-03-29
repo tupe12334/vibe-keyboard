@@ -16,10 +16,12 @@ pub enum Screen {
         issues: Vec<CentyIssue>,
         page: usize,
         project_name: String,
+        org: String,
     },
     CentyIssueActions {
         issue: CentyIssue,
         project_name: String,
+        org: String,
     },
 }
 
@@ -254,6 +256,7 @@ mod tests {
             issues: make_issues(5),
             page: 0,
             project_name: "p".into(),
+            org: "org".into(),
         });
         assert!(!nav.can_forward());
     }
@@ -265,6 +268,7 @@ mod tests {
             issues: make_issues(15),
             page: 0,
             project_name: "p".into(),
+            org: "org".into(),
         });
         assert!(nav.can_forward());
     }
@@ -284,6 +288,7 @@ mod tests {
         nav.push(Screen::CentyIssueActions {
             issue: make_issue(),
             project_name: "p".into(),
+            org: "org".into(),
         });
         assert!(!nav.can_forward());
     }
@@ -336,6 +341,7 @@ mod tests {
             issues: make_issues(15),
             page: 1,
             project_name: "p".into(),
+            org: "org".into(),
         });
         nav.back();
         assert!(matches!(
@@ -351,6 +357,7 @@ mod tests {
             issues: make_issues(5),
             page: 0,
             project_name: "p".into(),
+            org: "org".into(),
         });
         nav.back();
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
@@ -372,6 +379,7 @@ mod tests {
         nav.push(Screen::CentyIssueActions {
             issue: make_issue(),
             project_name: "p".into(),
+            org: "org".into(),
         });
         nav.back();
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
@@ -457,6 +465,7 @@ mod tests {
             issues: make_issues(15),
             page: 0,
             project_name: "p".into(),
+            org: "org".into(),
         });
         nav.forward();
         assert!(matches!(
@@ -472,6 +481,7 @@ mod tests {
             issues: make_issues(5),
             page: 0,
             project_name: "p".into(),
+            org: "org".into(),
         });
         nav.forward();
         assert!(matches!(
@@ -496,6 +506,7 @@ mod tests {
         nav.push(Screen::CentyIssueActions {
             issue: make_issue(),
             project_name: "p".into(),
+            org: "org".into(),
         });
         nav.forward();
         assert!(matches!(nav.current(), Screen::CentyIssueActions { .. }));

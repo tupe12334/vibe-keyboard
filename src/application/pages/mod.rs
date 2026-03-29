@@ -44,14 +44,16 @@ pub fn render_screen(
             issues,
             page,
             project_name,
+            ..
         } => {
             issue_list::render_issue_list(issues, *page, project_name, handle, state);
         }
         Screen::CentyIssueActions {
             issue,
             project_name,
+            org,
         } => {
-            issue_actions::render_issue_actions(issue, project_name, handle, state);
+            issue_actions::render_issue_actions(issue, project_name, org, handle, state);
         }
     }
 }
