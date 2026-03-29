@@ -27,5 +27,8 @@ hidapi = "2.6.5"
 all = "deny"
 unwrap_used = "deny"
 
+[package.metadata.cargo-machete]
+ignored = ["hidapi", "mirajazz", "tokio"]
+
 [dev-dependencies]
 cargo-husky = { version = "1", default-features = false, features = ["user-hooks"] }
