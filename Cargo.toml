@@ -26,6 +26,11 @@ unwrap_used = "deny"
 panic_in_result_fn = "deny"
 uninlined_format_args = "deny"
 manual_let_else = "deny"
+# Require doc comments to wrap code-like items (type names, function names,
+# paths, URLs) in backticks. Unbackticked identifiers render as prose in
+# rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
+# so this keeps the crate's documentation accurate and readable.
+doc_markdown = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
