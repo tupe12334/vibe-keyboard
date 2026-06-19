@@ -77,7 +77,7 @@ fn parse_centy_json(json: &str) -> Vec<CentyProject> {
                 .find_map(|k| item.get(k)?.as_str())
                 .map(|s| s.to_string());
 
-            let url = format!("https://app.centy.io/{}/{}", org, name);
+            let url = format!("https://app.centy.io/{org}/{name}");
 
             CentyProject {
                 name,

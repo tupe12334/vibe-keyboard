@@ -105,6 +105,6 @@ fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
         })
         .collect();
     issues.retain(|i| i.status != "closed");
-    issues.sort_by(|a, b| b.number.cmp(&a.number));
+    issues.sort_by_key(|i| std::cmp::Reverse(i.number));
     issues
 }

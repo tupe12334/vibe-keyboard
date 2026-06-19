@@ -43,7 +43,7 @@ pub fn render_issue_actions(
         ButtonAction {
             name: "Workspace".into(),
             title: "Open Centy Workspace".into(),
-            description: format!("cockpit for {}", project_name),
+            description: format!("cockpit for {project_name}"),
         },
     );
 
