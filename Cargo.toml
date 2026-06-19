@@ -24,6 +24,7 @@ throbber-widgets-tui = "0.11.0"
 all = "deny"
 unwrap_used = "deny"
 uninlined_format_args = "deny"
+manual_let_else = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
