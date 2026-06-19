@@ -20,9 +20,9 @@ pub fn write_cmd(handle: &DeviceHandle<Context>, body: &[u8]) {
 /// Reset endpoint data toggles and clear any stalls left over from dext eviction.
 /// Must be called after claim_interface and before the first write.
 pub fn reset_endpoints(handle: &DeviceHandle<Context>) {
-    handle.set_alternate_setting(0, 0).ok();
-    handle.clear_halt(EP_IN).ok();
-    handle.clear_halt(EP_OUT).ok();
+    let _ = handle.set_alternate_setting(0, 0);
+    let _ = handle.clear_halt(EP_IN);
+    let _ = handle.clear_halt(EP_OUT);
 }
 
 pub fn device_init(handle: &DeviceHandle<Context>) {
