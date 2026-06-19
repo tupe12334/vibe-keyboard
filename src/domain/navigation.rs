@@ -73,11 +73,9 @@ impl NavigationStack {
                 };
                 false
             }
-            Screen::CentyProjectList { page, .. } if *page > 0 => {
-                *page -= 1;
-                false
-            }
-            Screen::CentyIssueList { page, .. } if *page > 0 => {
+            Screen::CentyProjectList { page, .. } | Screen::CentyIssueList { page, .. }
+                if *page > 0 =>
+            {
                 *page -= 1;
                 false
             }
@@ -116,9 +114,9 @@ impl NavigationStack {
             Screen::CentyIssueList { issues, page, .. } => {
                 *page < issues.len().saturating_sub(1) / 10
             }
-            Screen::CentyProjectActions { .. } => false,
-            Screen::CentyIssueActions { .. } => false,
-            Screen::InputNumber { .. } => false,
+            Screen::CentyProjectActions { .. }
+            | Screen::CentyIssueActions { .. }
+            | Screen::InputNumber { .. } => false,
         }
     }
 
@@ -173,9 +171,9 @@ impl NavigationStack {
                     *page += 1;
                 }
             }
-            Screen::CentyProjectActions { .. } => {}
-            Screen::CentyIssueActions { .. } => {}
-            Screen::InputNumber { .. } => {}
+            Screen::CentyProjectActions { .. }
+            | Screen::CentyIssueActions { .. }
+            | Screen::InputNumber { .. } => {}
         }
     }
 

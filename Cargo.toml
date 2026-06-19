@@ -26,6 +26,11 @@ unwrap_used = "deny"
 panic_in_result_fn = "deny"
 uninlined_format_args = "deny"
 manual_let_else = "deny"
+# Flag two or more `match` arms that share an identical body. These are usually a
+# copy-paste slip or arms that should be merged with `|`; catching them keeps
+# `match` expressions DRY and surfaces accidental duplicate handling that can hide
+# logic bugs (e.g. an arm meant to behave differently that was never updated).
+match_same_arms = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
