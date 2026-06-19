@@ -26,6 +26,10 @@ unwrap_used = "deny"
 panic_in_result_fn = "deny"
 uninlined_format_args = "deny"
 manual_let_else = "deny"
+# Require `Arc::clone(&x)` / `Rc::clone(&x)` over `x.clone()` so cheap
+# refcount bumps on shared state (`Arc<Mutex<AppState>>` etc.) read
+# clearly as such and are never mistaken for a deep clone.
+clone_on_ref_ptr = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
