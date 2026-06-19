@@ -339,10 +339,7 @@ fn handle_action_key(
             org,
             project_name,
         } => {
-            let url = format!(
-                "https://app.centy.io/{}/{}/issues/{}",
-                org, project_name, id
-            );
+            let url = format!("https://app.centy.io/{org}/{project_name}/issues/{id}");
             info!("centy: open issue in web: {}", url);
             open_in_chrome(&url);
         }

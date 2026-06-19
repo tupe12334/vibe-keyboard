@@ -42,8 +42,7 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
             )
             }
             ScreenView::CentyProjectActions { project_name } => format!(
-                " Centy    {}    [11] back  [12] out    [q] quit ",
-                project_name,
+                " Centy    {project_name}    [11] back  [12] out    [q] quit ",
             ),
             ScreenView::CentyIssueList {
                 total,
@@ -72,8 +71,7 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                 issue_number,
                 project_name,
             } => format!(
-                " Centy    {} — Issue #{}    [11] back  [12] out    [q] quit ",
-                project_name, issue_number,
+                " Centy    {project_name} — Issue #{issue_number}    [11] back  [12] out    [q] quit ",
             ),
             ScreenView::InputNumber { value } => format!(
                 " Input Number    {}    [11] back  [12] out    [q] quit ",

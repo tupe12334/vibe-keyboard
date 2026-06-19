@@ -144,7 +144,7 @@ impl NavigationStack {
                 if desc {
                     issues.sort_by_key(|i| i.number);
                 } else {
-                    issues.sort_by(|a, b| b.number.cmp(&a.number));
+                    issues.sort_by_key(|i| std::cmp::Reverse(i.number));
                 }
             }
             _ => {}

@@ -23,6 +23,7 @@ throbber-widgets-tui = "0.11.0"
 [lints.clippy]
 all = "deny"
 unwrap_used = "deny"
+uninlined_format_args = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
