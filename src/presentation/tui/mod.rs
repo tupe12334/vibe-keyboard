@@ -58,7 +58,7 @@ fn run_inner(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) -> io::Resu
                         }
                         _ => {}
                     }
-                } else if matches!(key.code, KeyCode::Char('q') | KeyCode::Char('Q')) {
+                } else if matches!(key.code, KeyCode::Char('q' | 'Q')) {
                     shutdown.store(true, Ordering::Relaxed);
                     break;
                 }
