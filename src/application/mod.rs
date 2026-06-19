@@ -395,13 +395,6 @@ pub fn handle_filter_query(
 ) {
     use crate::domain::actions::{CentyIssue, CentyProject};
 
-    let q = query.to_lowercase();
-    let filter = if q.trim().is_empty() {
-        None
-    } else {
-        Some(query.to_string())
-    };
-
     enum FilterAction {
         Projects {
             projects: Vec<CentyProject>,
@@ -415,6 +408,13 @@ pub fn handle_filter_query(
         },
         None,
     }
+
+    let q = query.to_lowercase();
+    let filter = if q.trim().is_empty() {
+        None
+    } else {
+        Some(query.to_string())
+    };
 
     let fa = match nav.current() {
         Screen::CentyProjectList { projects, .. } => {

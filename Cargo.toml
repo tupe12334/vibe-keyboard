@@ -31,6 +31,11 @@ manual_let_else = "deny"
 # rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
 # so this keeps the crate's documentation accurate and readable.
 doc_markdown = "deny"
+# Items (enums, fns, consts) declared after statements are confusing because
+# they are visible from the start of the enclosing scope regardless of where
+# they appear in the body. Requiring them at the top of the block keeps each
+# function's control flow linear and easier to read.
+items_after_statements = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
