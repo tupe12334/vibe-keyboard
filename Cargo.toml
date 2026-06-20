@@ -21,7 +21,7 @@ tracing-appender = "0.2"
 throbber-widgets-tui = "0.11.0"
 
 [lints.clippy]
-all = "deny"
+all = { level = "deny", priority = -1 }
 unwrap_used = "deny"
 panic_in_result_fn = "deny"
 uninlined_format_args = "deny"
@@ -31,6 +31,11 @@ manual_let_else = "deny"
 # rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
 # so this keeps the crate's documentation accurate and readable.
 doc_markdown = "deny"
+# Flag functions that could be `const fn`. Marking pure, side-effect-free
+# functions `const` lets callers use them in const contexts and documents
+# their purity. Set to `warn` (not `deny`) because it lives in clippy's
+# unstable `nursery` group and may shift across toolchain versions.
+missing_const_for_fn = "warn"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]

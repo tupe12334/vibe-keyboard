@@ -95,11 +95,11 @@ impl NavigationStack {
         }
     }
 
-    pub fn can_back(&self) -> bool {
+    pub const fn can_back(&self) -> bool {
         true // back always navigates (prev page or pops to parent)
     }
 
-    pub fn can_out(&self) -> bool {
+    pub const fn can_out(&self) -> bool {
         self.stack.len() > 1
     }
 
