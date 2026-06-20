@@ -35,6 +35,7 @@ panic_in_result_fn = "deny"
 expect_used = "warn"
 uninlined_format_args = "deny"
 manual_let_else = "deny"
+dbg_macro = "deny"
 # Require doc comments to wrap code-like items (type names, function names,
 # paths, URLs) in backticks. Unbackticked identifiers render as prose in
 # rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
