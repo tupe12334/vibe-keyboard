@@ -14,4 +14,4 @@ pub const EP_OUT: u8 = 0x03;
 pub const EP_IN: u8 = 0x82;
 pub const PACKET: usize = 512;
 pub const CMD_PACKET: usize = 517; // 5-byte CRT prefix + 512-byte body
-pub const TIMEOUT: Duration = Duration::from_millis(1000);
+pub const TIMEOUT: Duration = Duration::from_secs(1);
