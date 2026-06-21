@@ -62,6 +62,15 @@ duration_suboptimal_units = "deny"
 # to the old type. It also reads as "this type" at a glance. The crate already
 # follows this style, so `deny` locks in the clean state and prevents future drift.
 use_self = "deny"
+# Collapse `.map(f).unwrap_or(default)` / `.map(f).unwrap_or_else(g)` chains on
+# `Option`/`Result` into the dedicated `.map_or(default, f)` / `.map_or_else(g, f)`
+# combinators. The single call states the "transform, else fall back" intent in one
+# step instead of a two-call chain the reader has to mentally unwind, and the
+# `unwrap_or` form eagerly builds its default on every call even when the value is
+# `Some`/`Ok` — `map_or` only constructs it on the fallback path. The crate has zero
+# violations today, so `deny` locks in the clean state and prevents the longer,
+# eager idiom from creeping back in.
+map_unwrap_or = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
