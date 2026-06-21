@@ -66,7 +66,7 @@ fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
                 .and_then(|m| m.get("displayNumber"))
                 .or_else(|| item.get("displayNumber"))
                 .or_else(|| item.get("number"))
-                .and_then(|v| v.as_u64())
+                .and_then(serde_json::Value::as_u64)
                 .unwrap_or(0);
 
             let title = ["title", "name", "summary"]
@@ -93,7 +93,7 @@ fn parse_centy_issues_json(json: &str) -> Vec<CentyIssue> {
                 .get("filePath")
                 .or_else(|| item.get("path"))
                 .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+                .map(ToString::to_string);
 
             CentyIssue {
                 number,

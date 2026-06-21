@@ -49,7 +49,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let initial_page = dev_state
         .lock()
-        .unwrap_or_else(|e| e.into_inner())
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
         .current_page;
     let mut nav = NavigationStack::new(initial_page, 2);
     render_screen(&nav, &handle, &app_state, &dev_state);
@@ -63,7 +63,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         let confirmed_query = {
-            let mut s = app_state.lock().unwrap_or_else(|e| e.into_inner());
+            let mut s = app_state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             if s.text_input_confirmed {
                 s.text_input_confirmed = false;
                 Some(s.text_input_value.clone())

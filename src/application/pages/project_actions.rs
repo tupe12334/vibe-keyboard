@@ -52,7 +52,9 @@ pub fn render_project_actions(
     );
 
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.actions = actions;
         s.screen = ScreenView::CentyProjectActions {
             project_name: project.name.clone(),

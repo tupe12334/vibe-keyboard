@@ -34,14 +34,18 @@ fn run_inner(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) -> io::Resu
         }
 
         {
-            let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+            let mut s = state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             s.throbber_state.calc_next();
             terminal.draw(|f| render::render(&mut s, f))?;
         }
 
         if event::poll(Duration::from_millis(33))? {
             if let Event::Key(key) = event::read()? {
-                let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+                let mut s = state
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner);
                 if s.text_input_mode {
                     match key.code {
                         KeyCode::Char(c) => s.text_input_value.push(c),

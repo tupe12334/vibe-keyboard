@@ -24,7 +24,9 @@ pub fn render_screen(
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.nav_can_back = nav.can_back();
         s.nav_can_out = nav.can_out();
         s.nav_can_forward = nav.can_forward();

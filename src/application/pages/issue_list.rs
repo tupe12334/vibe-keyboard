@@ -54,13 +54,15 @@ pub fn render_issue_list(
 
     let count = page_slice.len();
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.actions = actions;
         s.screen = ScreenView::CentyIssueList {
             total: issues.len(),
             page,
             project_name: project_name.to_string(),
-            filter: filter.map(|f| f.to_string()),
+            filter: filter.map(ToString::to_string),
         };
     }
 

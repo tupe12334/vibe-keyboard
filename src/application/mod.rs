@@ -37,11 +37,17 @@ pub fn handle_key_event(
     let Some(key) = raw_to_logical(raw_id) else {
         return;
     };
-    if state.lock().unwrap_or_else(|e| e.into_inner()).loading {
+    if state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .loading
+    {
         return;
     }
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.pressed_key = if state_byte == 1 { Some(key) } else { None };
     }
     if state_byte == 1 {
@@ -246,9 +252,15 @@ fn handle_action_key(
 
     match action {
         Action::FetchProjects => {
-            state.lock().unwrap_or_else(|e| e.into_inner()).loading = true;
+            state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .loading = true;
             let projects = fetch_centy_projects();
-            state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
+            state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .loading = false;
             if !projects.is_empty() {
                 nav.push(Screen::CentyProjectList {
                     projects,
@@ -298,9 +310,15 @@ fn handle_action_key(
             open_in_chrome(&url);
         }
         Action::FetchIssues { project_name, org } => {
-            state.lock().unwrap_or_else(|e| e.into_inner()).loading = true;
+            state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .loading = true;
             let issues = fetch_centy_issues(&project_name);
-            state.lock().unwrap_or_else(|e| e.into_inner()).loading = false;
+            state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .loading = false;
             if !issues.is_empty() {
                 nav.push(Screen::CentyIssueList {
                     issues,
@@ -377,7 +395,9 @@ fn handle_action_key(
         }
         Action::Search => {
             info!("activating filter input mode");
-            let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+            let mut s = state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
             s.text_input_mode = true;
             s.text_input_value = String::new();
             s.text_input_confirmed = false;

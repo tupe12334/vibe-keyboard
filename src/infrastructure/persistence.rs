@@ -82,7 +82,9 @@ mod tests {
     }
 
     fn with_temp_config<F: FnOnce()>(f: F) {
-        let _guard = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let dir = std::env::temp_dir().join(format!(
             "vibe-kb-test-{}-{}",
             std::process::id(),
@@ -144,7 +146,9 @@ mod tests {
 
     #[test]
     fn load_uses_home_when_xdg_not_set() {
-        let _guard = env_lock().lock().unwrap_or_else(|e| e.into_inner());
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let home_dir = std::env::temp_dir().join(format!(
             "vibe-kb-home-{}-{}",
             std::process::id(),
