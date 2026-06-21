@@ -62,6 +62,14 @@ duration_suboptimal_units = "deny"
 # to the old type. It also reads as "this type" at a glance. The crate already
 # follows this style, so `deny` locks in the clean state and prevents future drift.
 use_self = "deny"
+# Reject `match` wildcard arms (`_ =>`) that, given the other arms, can only
+# match a single remaining enum variant. The domain enums (keys, actions,
+# navigation) evolve over time; a `_` arm covering exactly one variant would
+# silently swallow any newly added variant instead of forcing a decision at the
+# call site. Naming the last variant keeps matches exhaustive-by-intent so a new
+# variant surfaces every site that must handle it. Currently clean, so `deny`
+# locks in the state and prevents regressions.
+match_wildcard_for_single_variants = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
