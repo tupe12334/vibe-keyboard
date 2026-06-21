@@ -36,6 +36,10 @@ expect_used = "warn"
 uninlined_format_args = "deny"
 unused_result_ok = "deny"
 manual_let_else = "deny"
+# Require `Arc::clone(&x)` / `Rc::clone(&x)` over `x.clone()` so cheap
+# refcount bumps on shared state (`Arc<Mutex<AppState>>` etc.) read
+# clearly as such and are never mistaken for a deep clone.
+clone_on_ref_ptr = "deny"
 dbg_macro = "deny"
 # Require doc comments to wrap code-like items (type names, function names,
 # paths, URLs) in backticks. Unbackticked identifiers render as prose in
