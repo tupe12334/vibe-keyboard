@@ -55,6 +55,13 @@ items_after_statements = "deny"
 # unit reads more clearly (e.g. `from_millis(1000)` -> `from_secs(1)`). Keeps
 # durations easy to read and harder to misparse (a stray zero turns 1s into 10s).
 duration_suboptimal_units = "deny"
+# Require `Self` instead of the concrete type name inside `impl` blocks (e.g.
+# `Self::new()` / `-> Self` rather than `AppState::new()` / `-> AppState`). Using
+# `Self` keeps each impl decoupled from the type's spelling, so renaming the type
+# is a one-line change and a copy-pasted impl block can't silently keep referring
+# to the old type. It also reads as "this type" at a glance. The crate already
+# follows this style, so `deny` locks in the clean state and prevents future drift.
+use_self = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
