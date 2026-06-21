@@ -21,11 +21,21 @@ tracing-appender = "0.2"
 throbber-widgets-tui = "0.11.0"
 
 [lints.clippy]
-all = "deny"
+# Group at lower priority so the specific lints below (which may set a
+# different level, e.g. `expect_used = "warn"`) take precedence over it.
+all = { level = "deny", priority = -1 }
 unwrap_used = "deny"
 panic_in_result_fn = "deny"
+# `.expect()` is the remaining panic vector once `unwrap_used` and
+# `panic_in_result_fn` are denied: it aborts the process on an unexpected
+# value instead of surfacing a recoverable error. This binary drives USB
+# hardware and a TUI, where a panic tears down the terminal and the live
+# device session. Start at "warn" to flag existing call sites for incremental
+# migration to proper error handling without breaking the build.
+expect_used = "warn"
 uninlined_format_args = "deny"
 manual_let_else = "deny"
+dbg_macro = "deny"
 # Require doc comments to wrap code-like items (type names, function names,
 # paths, URLs) in backticks. Unbackticked identifiers render as prose in
 # rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
@@ -36,6 +46,10 @@ doc_markdown = "deny"
 # they appear in the body. Requiring them at the top of the block keeps each
 # function's control flow linear and easier to read.
 items_after_statements = "deny"
+# Flag Duration constructors that use a smaller unit when a larger, equivalent
+# unit reads more clearly (e.g. `from_millis(1000)` -> `from_secs(1)`). Keeps
+# durations easy to read and harder to misparse (a stray zero turns 1s into 10s).
+duration_suboptimal_units = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
