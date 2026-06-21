@@ -34,6 +34,7 @@ panic_in_result_fn = "deny"
 # migration to proper error handling without breaking the build.
 expect_used = "warn"
 uninlined_format_args = "deny"
+unused_result_ok = "deny"
 manual_let_else = "deny"
 dbg_macro = "deny"
 # Require doc comments to wrap code-like items (type names, function names,
