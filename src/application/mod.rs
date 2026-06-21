@@ -34,9 +34,8 @@ pub fn handle_key_event(
         2 => "released",
         _ => return,
     };
-    let key = match raw_to_logical(raw_id) {
-        Some(k) => k,
-        None => return,
+    let Some(key) = raw_to_logical(raw_id) else {
+        return;
     };
     if state.lock().unwrap_or_else(|e| e.into_inner()).loading {
         return;
