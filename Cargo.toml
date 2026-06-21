@@ -46,6 +46,11 @@ dbg_macro = "deny"
 # rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
 # so this keeps the crate's documentation accurate and readable.
 doc_markdown = "deny"
+# Items (enums, fns, consts) declared after statements are confusing because
+# they are visible from the start of the enclosing scope regardless of where
+# they appear in the body. Requiring them at the top of the block keeps each
+# function's control flow linear and easier to read.
+items_after_statements = "deny"
 # Flag Duration constructors that use a smaller unit when a larger, equivalent
 # unit reads more clearly (e.g. `from_millis(1000)` -> `from_secs(1)`). Keeps
 # durations easy to read and harder to misparse (a stray zero turns 1s into 10s).
