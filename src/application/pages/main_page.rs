@@ -106,31 +106,31 @@ pub fn render_main_page(
     }
     match page {
         0 => {
-            send_button_image(handle, 1, DynamicImage::ImageRgb8(generate_centy_image()));
+            send_button_image(handle, 1, &DynamicImage::ImageRgb8(generate_centy_image()));
             send_button_image(
                 handle,
                 2,
-                DynamicImage::ImageRgb8(generate_terminal_image()),
+                &DynamicImage::ImageRgb8(generate_terminal_image()),
             );
-            send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_claude_image()));
-            send_button_image(handle, 4, DynamicImage::ImageRgb8(generate_web_image()));
+            send_button_image(handle, 3, &DynamicImage::ImageRgb8(generate_claude_image()));
+            send_button_image(handle, 4, &DynamicImage::ImageRgb8(generate_web_image()));
             info!("page 0: centy + terminal + claude + centy web");
         }
         1 => {
             send_button_image(
                 handle,
                 1,
-                DynamicImage::ImageRgb8(generate_numpad_entry_image()),
+                &DynamicImage::ImageRgb8(generate_numpad_entry_image()),
             );
             send_button_image(
                 handle,
                 14,
-                DynamicImage::ImageRgb8(generate_log_file_image()),
+                &DynamicImage::ImageRgb8(generate_log_file_image()),
             );
             send_button_image(
                 handle,
                 15,
-                DynamicImage::ImageRgb8(generate_vscode_config_image()),
+                &DynamicImage::ImageRgb8(generate_vscode_config_image()),
             );
             info!("page 1: numpad + log file + vscode config");
         }

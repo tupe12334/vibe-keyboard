@@ -84,12 +84,12 @@ pub fn render_input_number(
     send_button_image(
         handle,
         1,
-        DynamicImage::ImageRgb8(generate_numpad_clear_image()),
+        &DynamicImage::ImageRgb8(generate_numpad_clear_image()),
     );
     send_button_image(
         handle,
         2,
-        DynamicImage::ImageRgb8(generate_numpad_backspace_image()),
+        &DynamicImage::ImageRgb8(generate_numpad_backspace_image()),
     );
 
     for (key, digit) in [
@@ -106,7 +106,7 @@ pub fn render_input_number(
         send_button_image(
             handle,
             key,
-            DynamicImage::ImageRgb8(generate_numpad_digit_image(digit)),
+            &DynamicImage::ImageRgb8(generate_numpad_digit_image(digit)),
         );
     }
 }

@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     {
         let s = Arc::clone(&app_state);
         let q = Arc::clone(&shutdown);
-        std::thread::spawn(move || presentation::tui::run(s, q));
+        std::thread::spawn(move || presentation::tui::run(&s, &q));
     }
 
     let initial_page = dev_state
