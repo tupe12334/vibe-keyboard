@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let handle = ctx
         .open_device_with_vid_pid(VID, PID)
         .ok_or("Device not found — is it plugged in?")?;
-    handle.detach_kernel_driver(0).ok(); // terminates AppleUserHIDDrivers dext
+    let _ = handle.detach_kernel_driver(0); // terminates AppleUserHIDDrivers dext
     handle
         .claim_interface(0)
         .map_err(|e| format!("Failed to claim USB interface — run 'make install' once to set up permissions, or use sudo: {e}"))?;

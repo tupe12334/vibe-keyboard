@@ -34,7 +34,12 @@ panic_in_result_fn = "deny"
 # migration to proper error handling without breaking the build.
 expect_used = "warn"
 uninlined_format_args = "deny"
+unused_result_ok = "deny"
 manual_let_else = "deny"
+# Require `Arc::clone(&x)` / `Rc::clone(&x)` over `x.clone()` so cheap
+# refcount bumps on shared state (`Arc<Mutex<AppState>>` etc.) read
+# clearly as such and are never mistaken for a deep clone.
+clone_on_ref_ptr = "deny"
 dbg_macro = "deny"
 # Require doc comments to wrap code-like items (type names, function names,
 # paths, URLs) in backticks. Unbackticked identifiers render as prose in
@@ -46,10 +51,31 @@ doc_markdown = "deny"
 # their purity. Set to `warn` (not `deny`) because it lives in clippy's
 # unstable `nursery` group and may shift across toolchain versions.
 missing_const_for_fn = "warn"
+# Items (enums, fns, consts) declared after statements are confusing because
+# they are visible from the start of the enclosing scope regardless of where
+# they appear in the body. Requiring them at the top of the block keeps each
+# function's control flow linear and easier to read.
+items_after_statements = "deny"
 # Flag Duration constructors that use a smaller unit when a larger, equivalent
 # unit reads more clearly (e.g. `from_millis(1000)` -> `from_secs(1)`). Keeps
 # durations easy to read and harder to misparse (a stray zero turns 1s into 10s).
 duration_suboptimal_units = "deny"
+# Require `Self` instead of the concrete type name inside `impl` blocks (e.g.
+# `Self::new()` / `-> Self` rather than `AppState::new()` / `-> AppState`). Using
+# `Self` keeps each impl decoupled from the type's spelling, so renaming the type
+# is a one-line change and a copy-pasted impl block can't silently keep referring
+# to the old type. It also reads as "this type" at a glance. The crate already
+# follows this style, so `deny` locks in the clean state and prevents future drift.
+use_self = "deny"
+# Collapse `.map(f).unwrap_or(default)` / `.map(f).unwrap_or_else(g)` chains on
+# `Option`/`Result` into the dedicated `.map_or(default, f)` / `.map_or_else(g, f)`
+# combinators. The single call states the "transform, else fall back" intent in one
+# step instead of a two-call chain the reader has to mentally unwind, and the
+# `unwrap_or` form eagerly builds its default on every call even when the value is
+# `Some`/`Ok` — `map_or` only constructs it on the fallback path. The crate has zero
+# violations today, so `deny` locks in the clean state and prevents the longer,
+# eager idiom from creeping back in.
+map_unwrap_or = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
