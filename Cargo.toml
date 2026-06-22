@@ -46,6 +46,11 @@ dbg_macro = "deny"
 # rustdoc and can be silently mangled (e.g. `Vec<T>` losing its generics),
 # so this keeps the crate's documentation accurate and readable.
 doc_markdown = "deny"
+# Flag functions that could be `const fn`. Marking pure, side-effect-free
+# functions `const` lets callers use them in const contexts and documents
+# their purity. Set to `warn` (not `deny`) because it lives in clippy's
+# unstable `nursery` group and may shift across toolchain versions.
+missing_const_for_fn = "warn"
 # Items (enums, fns, consts) declared after statements are confusing because
 # they are visible from the start of the enclosing scope regardless of where
 # they appear in the body. Requiring them at the top of the block keeps each

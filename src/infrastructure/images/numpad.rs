@@ -13,7 +13,7 @@ fn fill_rect(img: &mut RgbImage, x0: u32, y0: u32, x1: u32, y1: u32, color: Rgb<
 
 /// Return (top, `top_left`, `top_right`, middle, `bot_left`, `bot_right`, bottom)
 /// for a 7-segment digit 1–9.
-fn segments(digit: u8) -> (bool, bool, bool, bool, bool, bool, bool) {
+const fn segments(digit: u8) -> (bool, bool, bool, bool, bool, bool, bool) {
     match digit {
         1 => (false, false, true, false, false, true, false),
         2 => (true, false, true, true, true, false, true),

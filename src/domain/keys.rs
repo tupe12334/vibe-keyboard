@@ -1,4 +1,4 @@
-pub fn raw_to_logical(raw: u8) -> Option<u8> {
+pub const fn raw_to_logical(raw: u8) -> Option<u8> {
     match raw {
         0x0D => Some(1),
         0x0A => Some(2),
