@@ -40,16 +40,15 @@ impl DeviceState {
     /// Returns defaults if the file is missing or unreadable.
     pub fn load() -> Self {
         let path = state_path();
-        match fs::read_to_string(&path) {
-            Ok(contents) => toml::from_str(&contents).unwrap_or_else(|e| {
+        if let Ok(contents) = fs::read_to_string(&path) {
+            toml::from_str(&contents).unwrap_or_else(|e| {
                 warn!("failed to parse {}: {e}, using defaults", path.display());
                 Self::default()
-            }),
-            Err(_) => {
-                let state = Self::default();
-                state.save(); // write defaults on first run
-                state
-            }
+            })
+        } else {
+            let state = Self::default();
+            state.save(); // write defaults on first run
+            state
         }
     }
 

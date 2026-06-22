@@ -62,6 +62,12 @@ duration_suboptimal_units = "deny"
 # to the old type. It also reads as "this type" at a glance. The crate already
 # follows this style, so `deny` locks in the clean state and prevents future drift.
 use_self = "deny"
+# A `match` with exactly two arms where one arm is the catch-all/else path is
+# really an `if let ... else`. Spelling it as a `match` adds visual weight and
+# invites a reader to scan for additional arms that do not exist. Requiring the
+# `if let ... else` form keeps these binary branches concise and signals at a
+# glance that there are only two outcomes.
+single_match_else = "deny"
 # Collapse `.map(f).unwrap_or(default)` / `.map(f).unwrap_or_else(g)` chains on
 # `Option`/`Result` into the dedicated `.map_or(default, f)` / `.map_or_else(g, f)`
 # combinators. The single call states the "transform, else fall back" intent in one
