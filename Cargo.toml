@@ -62,6 +62,17 @@ duration_suboptimal_units = "deny"
 # to the old type. It also reads as "this type" at a glance. The crate already
 # follows this style, so `deny` locks in the clean state and prevents future drift.
 use_self = "deny"
+# Replace a closure that does nothing but forward its receiver to a method call
+# (`|e| e.into_inner()`, `|s| s.to_string()`) with a direct method reference
+# (`std::sync::PoisonError::into_inner`, `ToString::to_string`). This crate is
+# closure-heavy: every shared-state access goes through
+# `.lock().unwrap_or_else(|e| e.into_inner())` for poison recovery, and the
+# wrapping closure only adds a layer of indirection that hides the single method
+# actually being applied. The method-reference form is shorter, states the intent
+# directly, and reads in the same family as the crate's other readability denies
+# (`use_self`, `items_after_statements`, `manual_let_else`). All existing call
+# sites have been migrated, so `deny` locks in the clean state and prevents drift.
+redundant_closure_for_method_calls = "deny"
 # Collapse `.map(f).unwrap_or(default)` / `.map(f).unwrap_or_else(g)` chains on
 # `Option`/`Result` into the dedicated `.map_or(default, f)` / `.map_or_else(g, f)`
 # combinators. The single call states the "transform, else fall back" intent in one

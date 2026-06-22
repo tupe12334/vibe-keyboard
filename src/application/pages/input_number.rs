@@ -72,7 +72,9 @@ pub fn render_input_number(
     }
 
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.actions = actions;
         s.screen = ScreenView::InputNumber {
             value: value.to_string(),

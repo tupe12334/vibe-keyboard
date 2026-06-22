@@ -53,12 +53,14 @@ pub fn render_project_list(
 
     let count = page_slice.len();
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.actions = actions;
         s.screen = ScreenView::CentyProjectList {
             total: projects.len(),
             page,
-            filter: filter.map(|f| f.to_string()),
+            filter: filter.map(ToString::to_string),
         };
     }
 

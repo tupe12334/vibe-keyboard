@@ -91,12 +91,16 @@ pub fn render_main_page(
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     {
-        let mut s = state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         s.actions = page_actions(page);
         s.screen = ScreenView::MainPage { page };
     }
     {
-        let mut ds = dev_state.lock().unwrap_or_else(|e| e.into_inner());
+        let mut ds = dev_state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         ds.current_page = page;
         ds.save();
     }
