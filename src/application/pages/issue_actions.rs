@@ -61,8 +61,8 @@ pub fn render_issue_actions(
     send_button_image(
         handle,
         1,
-        DynamicImage::ImageRgb8(generate_vscode_config_image()),
+        &DynamicImage::ImageRgb8(generate_vscode_config_image()),
     );
-    send_button_image(handle, 2, DynamicImage::ImageRgb8(generate_web_image()));
-    send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_centy_image()));
+    send_button_image(handle, 2, &DynamicImage::ImageRgb8(generate_web_image()));
+    send_button_image(handle, 3, &DynamicImage::ImageRgb8(generate_centy_image()));
 }

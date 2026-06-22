@@ -97,6 +97,13 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Flag function parameters that accept a value by ownership but never consume
+# it — only borrow it. Taking a reference instead makes the API more flexible
+# (callers don't surrender ownership) and documents "this function only reads,
+# it doesn't consume" directly in the signature. The private `run_inner` in
+# `presentation::tui` was the only violation; its `Arc` parameters only needed
+# to be dereferenced, not moved or consumed.
+needless_pass_by_value = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]

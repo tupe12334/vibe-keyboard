@@ -68,8 +68,8 @@ pub fn render_issue_list(
 
     let issue_img = DynamicImage::ImageRgb8(generate_project_item_image());
     for i in 0..count {
-        send_button_image(handle, (i + 1) as u8, issue_img.clone());
+        send_button_image(handle, (i + 1) as u8, &issue_img);
     }
-    send_button_image(handle, 14, DynamicImage::ImageRgb8(generate_sort_image()));
-    send_button_image(handle, 15, DynamicImage::ImageRgb8(generate_search_image()));
+    send_button_image(handle, 14, &DynamicImage::ImageRgb8(generate_sort_image()));
+    send_button_image(handle, 15, &DynamicImage::ImageRgb8(generate_search_image()));
 }

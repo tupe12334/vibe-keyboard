@@ -8,7 +8,7 @@ use super::{PACKET, TIMEOUT};
 
 /// Encode image as JPEG (rotate 180°, quality 90) and send via `CRT_BAT` + chunks + `CRT_STP`.
 /// `key` is 0-indexed (0–14); the device protocol uses 1-indexed key IDs.
-pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: DynamicImage) {
+pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: &DynamicImage) {
     let rgb = img.rotate180().to_rgb8();
     let (w, h) = rgb.dimensions();
     let mut jpeg = Vec::new();
