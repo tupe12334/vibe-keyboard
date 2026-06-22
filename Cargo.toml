@@ -34,6 +34,11 @@ panic_in_result_fn = "deny"
 # migration to proper error handling without breaking the build.
 expect_used = "warn"
 uninlined_format_args = "deny"
+# Collapse nested or-patterns into their shortest equivalent form, e.g.
+# `Char('q') | Char('Q')` becomes `Char('q' | 'Q')`. Factoring the shared
+# variant out makes the alternatives read at a glance and keeps `match`/`matches!`
+# arms from drifting apart as new cases are added.
+unnested_or_patterns = "deny"
 unused_result_ok = "deny"
 manual_let_else = "deny"
 # Flag two or more `match` arms that share an identical body. These are usually a
