@@ -97,6 +97,13 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Prefer `for x in &collection` / `for x in &mut collection` over the explicit
+# `for x in collection.iter()` / `.iter_mut()` form. The reference syntax is
+# shorter, is the idiomatic way to iterate without consuming, and removes the
+# need to confirm that `.iter()` is not secretly `.into_iter()` (which would
+# move the collection). The codebase has zero violations today, so `deny` locks
+# in the clean state and prevents future regressions.
+explicit_iter_loop = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
