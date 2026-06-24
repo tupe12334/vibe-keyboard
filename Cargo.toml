@@ -97,6 +97,12 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Prefer `if condition { a } else { b }` over `if !condition { b } else { a }`.
+# A negated condition in the leading branch makes readers flip the logic before
+# reaching the primary path. Inverting puts the expected case first, eliminating
+# the mental detour of reasoning through `!`. The crate has zero violations today,
+# so `deny` locks in the clean state.
+if_not_else = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
