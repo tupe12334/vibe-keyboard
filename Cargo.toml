@@ -97,6 +97,12 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Flag implicit clones: `x.into()` where `T -> T`, or `s.to_owned()` on an already-
+# owned `String`/`Vec`/etc., where the operation is really just `.clone()` in disguise.
+# Requiring explicit `.clone()` keeps allocation costs visible to reviewers scanning
+# for hot paths — a hidden clone spelled `.into()` is easy to miss in event-loop or
+# render code. The crate has zero violations, so `deny` locks in the clean state.
+implicit_clone = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
