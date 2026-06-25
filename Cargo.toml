@@ -97,6 +97,14 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Flag `&self` / `&mut self` methods that never access any field or call any
+# method on `self`. A method that ignores its receiver is better expressed as
+# an associated function (`fn foo()` vs `fn foo(&self)`): the caller cannot
+# accidentally rely on instance state, the signature is self-documenting, and
+# UFCS (`Type::foo()`) can be called without an instance at hand. One existing
+# site in `NavigationStack::can_back` — which always returns `true` regardless
+# of state — has been converted to an associated function.
+unused_self = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
