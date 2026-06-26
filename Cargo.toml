@@ -97,6 +97,12 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Ban `eprint!` / `eprintln!` from the codebase. This binary already uses
+# `tracing` for structured logging; raw writes to stderr bypass the
+# subscriber, can't be filtered or silenced, and won't appear in log files.
+# All diagnostic output should go through `tracing::{debug,info,warn,error}`.
+# Zero violations today, so `deny` locks in the clean state from the start.
+print_stderr = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
