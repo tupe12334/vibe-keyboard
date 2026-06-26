@@ -104,6 +104,12 @@ map_unwrap_or = "deny"
 # return value, this is a statement" intent explicit. The crate is clean
 # today, so `deny` locks in the consistent style and catches future omissions.
 semicolon_if_nothing_returned = "deny"
+# Prefer `.copied()` over `.cloned()` when iterating over `Copy` types (e.g.
+# integers, chars, simple enums). `.cloned()` implies a heap allocation or
+# deep-clone operation; `.copied()` makes the bitwise-copy semantics explicit,
+# which aids reasoning about performance and ownership. The codebase is clean
+# today, so `deny` locks in the correct idiom and prevents future drift.
+cloned_instead_of_copied = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
