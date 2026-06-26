@@ -97,6 +97,16 @@ redundant_closure_for_method_calls = "deny"
 # violations today, so `deny` locks in the clean state and prevents the longer,
 # eager idiom from creeping back in.
 map_unwrap_or = "deny"
+# Require every `#[allow(...)]` attribute to include a `reason = "..."` field
+# explaining WHY the lint is suppressed. Without a reason, a suppression is
+# silent policy — the next reader cannot tell whether it was an intentional
+# trade-off, a lazy workaround, or a mistake. Requiring a reason turns each
+# suppression into self-documenting code and makes code review easier: the
+# reviewer can evaluate the justification rather than guessing at intent.
+# This crate already has a small number of `#[allow(clippy::zombie_processes)]`
+# attributes (fire-and-forget OS application launchers); this lint enforces
+# that each of them carries an explicit rationale going forward.
+allow_attributes_without_reason = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
