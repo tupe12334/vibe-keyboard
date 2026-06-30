@@ -110,6 +110,13 @@ semicolon_if_nothing_returned = "deny"
 # which aids reasoning about performance and ownership. The codebase is clean
 # today, so `deny` locks in the correct idiom and prevents future drift.
 cloned_instead_of_copied = "deny"
+# Flag any direct write to stdout via `print!` / `println!`. vibe-keyboard is
+# a TUI application built on ratatui/crossterm: writing directly to stdout
+# bypasses the TUI rendering pipeline, corrupts the terminal output, and can
+# leave the screen in an inconsistent state. All output must go through the
+# ratatui render path or the `tracing` / `tracing-subscriber` logging facade.
+# The codebase contains no violations today, so `deny` locks in the clean state.
+print_stdout = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
