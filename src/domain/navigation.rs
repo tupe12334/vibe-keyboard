@@ -93,7 +93,7 @@ impl NavigationStack {
         }
     }
 
-    pub const fn can_back(&self) -> bool {
+    pub const fn can_back() -> bool {
         true // back always navigates (prev page or pops to parent)
     }
 
@@ -271,8 +271,7 @@ mod tests {
 
     #[test]
     fn can_back_always_true() {
-        let nav = NavigationStack::new(0, 2);
-        assert!(nav.can_back());
+        assert!(NavigationStack::can_back());
     }
 
     #[test]
