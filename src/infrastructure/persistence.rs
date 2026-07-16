@@ -26,13 +26,14 @@ fn state_path() -> PathBuf {
 }
 
 fn config_dir() -> PathBuf {
-    // ~/.config on Linux/macOS
+    // Respect an explicit XDG_CONFIG_HOME override on any platform (keeps
+    // existing Linux/macOS users on `~/.config` instead of silently
+    // relocating saved state to platform-native dirs), otherwise defer to
+    // the `dirs` crate for correct per-OS resolution (including Windows).
     if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
         return PathBuf::from(config);
     }
-    let mut home = PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/tmp".into()));
-    home.push(".config");
-    home
+    dirs::config_dir().unwrap_or_else(std::env::temp_dir)
 }
 
 impl DeviceState {
