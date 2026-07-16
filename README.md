@@ -75,6 +75,10 @@ cargo run --release
 State is persisted to `~/.config/vibe-keyboard/state.toml`.
 Logs are written to `~/.config/vibe-keyboard/app.log`.
 
+## See also
+
+- [moadim](https://moadim.io/) — loop engineering: build, schedule & run agent loops.
+
 ## License
 
 MIT
