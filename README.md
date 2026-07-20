@@ -45,12 +45,12 @@ Navigation is managed by a `NavigationStack` (domain layer) with three dedicated
 | 12     | Out — pop current screen from stack |
 | 13     | Forward — cycle page right / next page |
 
-Screens: `MainPage` → `CentyProjectList` → `CentyProjectActions` → `CentyIssueList`
+Screens: `MainPage` → `CentyProjectList` → `CentyProjectActions` → `CentyIssueList` → `CentyIssueActions`. `InputNumber` is reachable directly from `MainPage`.
 
 ### Pages
 
 **Main Page 0**: Centy projects, Terminal, Claude, Centy Web
-**Main Page 1**: Log file, VS Code config
+**Main Page 1**: Input number (numpad), Log file, VS Code config
 
 List screens (projects, issues) are paginated at 10 items per page.
 
@@ -71,6 +71,9 @@ cd vibe-keyboard
 cargo build --release
 cargo run --release
 ```
+
+USB access requires `sudo` (see `device.md`). To run without `sudo` each time, use
+`make install` to build and mark the binary setuid-root, then `make run`.
 
 State is persisted to `~/.config/vibe-keyboard/state.toml`.
 Logs are written to `~/.config/vibe-keyboard/app.log`.
