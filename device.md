@@ -180,4 +180,3 @@ Layout (logical numbers, as seen from the front):
 🌐 **Online**
 
 - Node.js (VID 0x5500): https://github.com/rigor789/mirabox-streamdock-node
-- Rust ajazz-sdk fork (VID 0x0300): https://github.com/tupe12334/ajazz-sdk
