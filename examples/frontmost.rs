@@ -4,6 +4,8 @@
 
 #![allow(clippy::print_stdout)] // ponytail: manual check, prints to the terminal
 
+// ponytail: the example uses only `watch`; the rest is dead here.
+#[allow(dead_code)]
 #[path = "../src/infrastructure/frontmost.rs"]
 mod frontmost;
 
