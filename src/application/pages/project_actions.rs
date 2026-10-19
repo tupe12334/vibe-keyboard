@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::infrastructure::usb::Device;
 use image::DynamicImage;
-use rusb::{Context, DeviceHandle};
 
 use crate::domain::actions::{ButtonAction, CentyProject, ScreenView};
 use crate::infrastructure::images::{
@@ -14,7 +14,7 @@ use crate::presentation::tui;
 
 pub fn render_project_actions(
     project: &CentyProject,
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();

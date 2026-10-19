@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::infrastructure::usb::Device;
 use image::DynamicImage;
-use rusb::{Context, DeviceHandle};
 
 use crate::domain::actions::{ButtonAction, ScreenView};
 use crate::infrastructure::images::{
@@ -11,11 +11,7 @@ use crate::infrastructure::images::{
 use crate::infrastructure::usb::send_button_image;
 use crate::presentation::tui;
 
-pub fn render_input_number(
-    value: &str,
-    handle: &DeviceHandle<Context>,
-    state: &Arc<Mutex<tui::AppState>>,
-) {
+pub fn render_input_number(value: &str, handle: &Device, state: &Arc<Mutex<tui::AppState>>) {
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
 
     actions.insert(
