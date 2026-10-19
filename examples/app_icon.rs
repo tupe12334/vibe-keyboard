@@ -2,6 +2,11 @@
 //!
 //! Run: `cargo run --example app_icon`
 
+#![allow(
+    clippy::print_stderr,
+    reason = "CLI example: its per-app results are its user-facing output, printed to stderr"
+)]
+
 // The app is a bin-only crate, so the module is included by path.
 #[path = "../src/infrastructure/app_icon.rs"]
 mod app_icon;
