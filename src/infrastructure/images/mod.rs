@@ -2,6 +2,7 @@ mod calibration;
 mod centy;
 mod claude;
 mod draw;
+mod fit;
 mod icon_pack;
 mod log_file;
 mod numpad;
