@@ -77,6 +77,9 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                 " Input Number    {}    [11] back  [12] out    [q] quit ",
                 if value.is_empty() { "_" } else { value },
             ),
+            ScreenView::NewSessionChoice => {
+                " New Claude session    [1] iTerm  [2] Terminal    [11] back  [q] quit ".into()
+            }
             ScreenView::ClaudeSessions { total, page } => format!(
                 " Claude Sessions    ({}-{} of {})    [11] back  [12] out  [14/15] page  [q] quit ",
                 page * 10 + 1,

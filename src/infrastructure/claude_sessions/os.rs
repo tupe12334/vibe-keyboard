@@ -9,9 +9,9 @@ use std::time::{Duration, Instant, SystemTime};
 
 use super::{
     build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_valid_tty,
-    parse_tab_titles, summary_from_jsonl,
+    new_session_script, parse_tab_titles, summary_from_jsonl,
 };
-use crate::domain::actions::ClaudeSession;
+use crate::domain::actions::{ClaudeSession, NewSessionTerminal};
 
 /// Budgets for one discovery pass, which takes at most about 0.9 s: ps, then one lsof, then
 /// the two terminal apps in parallel.
@@ -146,6 +146,11 @@ pub fn focus_session(tty: &str) {
     if !found {
         run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
     }
+}
+
+/// Open a new window in `app` that runs `claude`. Blocks until done, so call it from a thread.
+pub fn open_new_session(app: NewSessionTerminal) {
+    run("osascript", &["-e", new_session_script(app)], FOCUS_TIMEOUT);
 }
 
 /// Run a program with no shell. Returns its stdout when it ends within `timeout`. The exit

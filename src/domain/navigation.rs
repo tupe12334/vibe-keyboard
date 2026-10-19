@@ -32,6 +32,7 @@ pub enum Screen {
         sessions: Vec<ClaudeSession>,
         page: usize,
     },
+    NewSessionChoice,
 }
 
 pub struct NavigationStack {
@@ -151,7 +152,8 @@ impl NavigationStack {
             }
             Screen::CentyProjectActions { .. }
             | Screen::CentyIssueActions { .. }
-            | Screen::InputNumber { .. } => false,
+            | Screen::InputNumber { .. }
+            | Screen::NewSessionChoice => false,
         }
     }
 
@@ -230,7 +232,8 @@ impl NavigationStack {
             }
             Screen::CentyProjectActions { .. }
             | Screen::CentyIssueActions { .. }
-            | Screen::InputNumber { .. } => {}
+            | Screen::InputNumber { .. }
+            | Screen::NewSessionChoice => {}
         }
     }
 
