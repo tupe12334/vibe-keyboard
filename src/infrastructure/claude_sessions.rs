@@ -15,6 +15,10 @@ use crate::domain::actions::{ClaudeSession, Glyph, SessionStatus};
 /// works, so a session that is quiet for a minute is waiting or idle.
 pub const ACTIVE_WITHIN: Duration = Duration::from_secs(60);
 
+/// A spinner keeps a session `Active` only this long after its tty last printed. Past this, a tab
+/// left with a spinner (Claude exited mid-task) reads as `Stale`.
+pub const SPINNER_ACTIVE_WITHIN: Duration = Duration::from_mins(10);
+
 const CLAUDE_SUFFIX: &str = " (claude)";
 /// Longest session name shown on a key. The key font fits about three short lines.
 const SUMMARY_CHARS: usize = 60;
@@ -71,9 +75,11 @@ const fn is_spinner(c: char) -> bool {
 }
 
 /// Activity status from the tty age and the title glyph. A spinner means Claude is mid-task, so it
-/// is `Active` at any age. Otherwise the age decides. `✳` does not change the result.
+/// is `Active` while the tty is at most `SPINNER_ACTIVE_WITHIN` old. Otherwise the age decides
+/// against `ACTIVE_WITHIN`. `✳` does not change the result.
 pub fn status_for(age: Duration, title_glyph: Option<Glyph>) -> SessionStatus {
-    if title_glyph == Some(Glyph::Spinner) || age <= ACTIVE_WITHIN {
+    let spinning = title_glyph == Some(Glyph::Spinner) && age <= SPINNER_ACTIVE_WITHIN;
+    if spinning || age <= ACTIVE_WITHIN {
         SessionStatus::Active
     } else {
         SessionStatus::Stale
@@ -363,6 +369,24 @@ mod tests {
     }
 
     #[test]
+    fn spinner_keeps_active_only_within_ten_minutes() {
+        let nine_min = Duration::from_mins(9);
+        let eleven_min = Duration::from_mins(11);
+        assert_eq!(
+            status_for(nine_min, Some(Glyph::Spinner)),
+            SessionStatus::Active
+        );
+        assert_eq!(
+            status_for(eleven_min, Some(Glyph::Spinner)),
+            SessionStatus::Stale
+        );
+        assert_eq!(
+            status_for(Duration::MAX, Some(Glyph::Spinner)),
+            SessionStatus::Stale
+        );
+    }
+
+    #[test]
     fn age_label_units() {
         assert_eq!(age_label(None), "");
         assert_eq!(age_label(Some(Duration::from_secs(5))), "NOW");
@@ -459,7 +483,8 @@ mod tests {
             ("ttys004".to_string(), None),
         ];
         let summary = |cwd: &str| (cwd == "/a/two").then(|| "From summary".to_string());
-        let got = build_sessions(procs, &titles, &HashMap::new(), "/Users/me", summary);
+        let ages = HashMap::from([("ttys001".to_string(), Duration::ZERO)]);
+        let got = build_sessions(procs, &titles, &ages, "/Users/me", summary);
         let got: Vec<(&str, &str, SessionStatus)> = got
             .iter()
             .map(|s| (s.tty.as_str(), s.label.as_str(), s.status))

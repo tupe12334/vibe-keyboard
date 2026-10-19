@@ -8,8 +8,8 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 
 use super::{
-    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, parse_tab_titles,
-    summary_from_jsonl,
+    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_valid_tty,
+    parse_tab_titles, summary_from_jsonl,
 };
 use crate::domain::actions::ClaudeSession;
 
@@ -92,6 +92,7 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
     let home = std::env::var("HOME").unwrap_or_default();
     let ages = procs
         .iter()
+        .filter(|(_, tty)| is_valid_tty(tty))
         .filter_map(|(_, tty)| tty_age(tty).map(|age| (tty.clone(), age)))
         .collect::<HashMap<_, _>>();
     let entries = procs
