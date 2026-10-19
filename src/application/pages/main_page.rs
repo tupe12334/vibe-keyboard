@@ -6,10 +6,10 @@ use image::DynamicImage;
 use tracing::info;
 
 use crate::domain::actions::{ButtonAction, ScreenView};
-use crate::infrastructure::images::page_images;
+use crate::infrastructure::images::{page_images, side_image};
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::profile_store;
-use crate::infrastructure::usb::send_button_image;
+use crate::infrastructure::usb::{send_button_image, send_side_image};
 use crate::presentation::tui;
 
 /// The hard-coded pages from before profiles. Kept only as the reference for `default_from_legacy`.
@@ -89,14 +89,14 @@ pub fn render_main_page(
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
-    let keys = {
+    let (keys, side) = {
         let s = state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        s.profile
-            .pages
-            .get(page)
-            .map_or_else(Default::default, |p| p.keys.clone())
+        s.profile.pages.get(page).map_or_else(
+            || (Default::default(), None),
+            |p| (p.keys.clone(), p.side.clone()),
+        )
     };
     let actions: HashMap<u8, ButtonAction> = keys
         .iter()
@@ -129,6 +129,13 @@ pub fn render_main_page(
     let root = profile_store::root_dir();
     for (key, img) in page_images(&keys, &root) {
         send_button_image(handle, key, DynamicImage::ImageRgb8(img));
+    }
+    // Clearing the deck already blanked the side screen, so only a configured side is sent.
+    if side.is_some() {
+        send_side_image(
+            handle,
+            DynamicImage::ImageRgb8(side_image(side.as_ref(), &root)),
+        );
     }
     info!("page {}: {} key(s)", page + 1, keys.len());
 }

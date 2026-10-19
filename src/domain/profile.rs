@@ -39,6 +39,33 @@ pub struct Page {
     /// Bundle ids (for example `com.google.Chrome`). The page shows when one is in front.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub apps: Vec<String>,
+    /// Content for the side screen next to keys 5, 10 and 15. Absent means no side content.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub side: Option<SideConfig>,
+}
+
+/// The side screen: a 480x100 strip. Same image sources as keys, else the label.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SideConfig {
+    #[serde(default)]
+    pub label: String,
+    #[serde(default = "default_bg")]
+    pub bg: String,
+    #[serde(default = "default_fg")]
+    pub fg: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image: Option<PathBuf>,
+}
+
+impl Default for SideConfig {
+    fn default() -> Self {
+        Self {
+            label: String::new(),
+            bg: default_bg(),
+            fg: default_fg(),
+            image: None,
+        }
+    }
 }
 
 /// TOML tables need string keys, so key numbers are written as `"1"`, `"14"`, etc.
@@ -182,6 +209,7 @@ impl Page {
             name: name.into(),
             keys: BTreeMap::new(),
             apps: Vec::new(),
+            side: None,
         }
     }
 }
@@ -205,6 +233,7 @@ impl Profile {
                 Page {
                     name: "Main".into(),
                     apps: Vec::new(),
+                    side: None,
                     keys: BTreeMap::from([
                         (1, builtin("List Projects", "centy_projects")),
                         (2, builtin("Open Terminal", "terminal")),
@@ -215,6 +244,7 @@ impl Profile {
                 Page {
                     name: "Tools".into(),
                     apps: Vec::new(),
+                    side: None,
                     keys: BTreeMap::from([
                         (1, builtin("Input Number", "numpad")),
                         (14, builtin("Open Log", "log_file")),
@@ -244,6 +274,13 @@ impl Profile {
     pub fn set_key(&mut self, page: usize, key: u8, config: KeyConfig) {
         if let Some(p) = self.pages.get_mut(page) {
             p.keys.insert(key, config);
+        }
+    }
+
+    /// Set or clear the side screen of `page`. Does nothing if the page does not exist.
+    pub fn set_side(&mut self, page: usize, side: Option<SideConfig>) {
+        if let Some(p) = self.pages.get_mut(page) {
+            p.side = side;
         }
     }
 
@@ -634,6 +671,32 @@ mod tests {
         assert!(with.contains("apps = [\"com.google.Chrome\"]"));
         let back: Profile = toml::from_str(&with).unwrap_or_default();
         assert_eq!(back, profile);
+    }
+
+    #[test]
+    fn side_round_trip_and_absent_side_is_byte_stable() {
+        let plain = Profile::default_from_legacy();
+        let plain_text = toml::to_string_pretty(&plain).unwrap_or_default();
+        assert!(!plain_text.contains("side"));
+
+        let mut profile = plain.clone();
+        profile.set_side(
+            0,
+            Some(SideConfig {
+                label: "Build ok".into(),
+                bg: "#102030".into(),
+                fg: "#FFFFFF".into(),
+                image: Some(PathBuf::from("icon:back")),
+            }),
+        );
+        let text = toml::to_string_pretty(&profile).unwrap_or_default();
+        assert!(text.contains("[pages.side]"), "text was:\n{text}");
+        let back: Profile = toml::from_str(&text).unwrap_or_default();
+        assert_eq!(back, profile);
+        // Clearing the side returns the exact bytes of the plain layout.
+        profile.set_side(0, None);
+        let cleared = toml::to_string_pretty(&profile).unwrap_or_default();
+        assert_eq!(cleared, plain_text);
     }
 
     #[test]

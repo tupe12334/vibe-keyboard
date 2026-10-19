@@ -55,7 +55,7 @@ fn render_key(config: &KeyConfig, root: &Path) -> RgbImage {
     if let Some(img) = config
         .image
         .as_deref()
-        .and_then(|image| source_image(image, root))
+        .and_then(|image| source_image(image, root, KEY_SIZE))
     {
         return img;
     }
@@ -71,24 +71,25 @@ fn render_key(config: &KeyConfig, root: &Path) -> RgbImage {
 
 /// Image sources: `icon:<name>` (embedded icon pack), `app:<bundle id>` (installed app icon),
 /// or a file path. A source that fails returns `None`, so the key falls back to its label.
-fn source_image(image: &Path, root: &Path) -> Option<RgbImage> {
+/// Result is `size` by `size` pixels.
+pub(super) fn source_image(image: &Path, root: &Path, size: u32) -> Option<RgbImage> {
     let text = image.to_string_lossy();
     if let Some(name) = text.strip_prefix("icon:") {
-        return icon_image(name, KEY_SIZE);
+        return icon_image(name, size);
     }
     if let Some(bundle_id) = text.strip_prefix("app:") {
-        return app_icon_cached(bundle_id);
+        return app_icon_cached(bundle_id, size);
     }
-    load_image(&resolve_image(root, image))
+    load_image(&resolve_image(root, image), size)
 }
 
 /// Installed-app icons, looked up off-thread. Results are cached, misses included.
 #[derive(Default)]
 struct AppIconCache {
-    /// Finished lookups. `None` is a miss (no such app, or no icon).
-    ready: HashMap<String, Option<RgbImage>>,
+    /// Finished lookups by (bundle id, size). `None` is a miss (no such app, or no icon).
+    ready: HashMap<(String, u32), Option<RgbImage>>,
     /// Lookups still running on a worker thread.
-    pending: HashSet<String>,
+    pending: HashSet<(String, u32)>,
 }
 
 static APP_ICONS: OnceLock<Mutex<AppIconCache>> = OnceLock::new();
@@ -109,21 +110,21 @@ pub fn app_icon_generation() -> u64 {
 
 /// The icon for `bundle_id` if it is already known. Otherwise start a background lookup and
 /// return `None`, so the key shows its label until the lookup finishes.
-fn app_icon_cached(bundle_id: &str) -> Option<RgbImage> {
+fn app_icon_cached(bundle_id: &str, size: u32) -> Option<RgbImage> {
+    let key = (bundle_id.to_string(), size);
     let mut cache = app_cache();
-    if let Some(known) = cache.ready.get(bundle_id) {
+    if let Some(known) = cache.ready.get(&key) {
         return known.clone();
     }
-    if cache.pending.insert(bundle_id.to_string()) {
-        let id = bundle_id.to_string();
+    if cache.pending.insert(key.clone()) {
         std::thread::spawn(move || {
-            let icon = app_icon(&id, KEY_SIZE).map(|img| {
-                img.resize_to_fill(KEY_SIZE, KEY_SIZE, FilterType::Triangle)
+            let icon = app_icon(&key.0, key.1).map(|img| {
+                img.resize_to_fill(key.1, key.1, FilterType::Triangle)
                     .to_rgb8()
             });
             let mut cache = app_cache();
-            cache.pending.remove(&id);
-            cache.ready.insert(id, icon);
+            cache.pending.remove(&key);
+            cache.ready.insert(key, icon);
             APP_ICON_GENERATION.fetch_add(1, Ordering::Relaxed);
         });
     }
@@ -167,9 +168,9 @@ fn nav_image(key: u8) -> RgbImage {
     label_tile(label, [40, 40, 40], [200, 200, 200])
 }
 
-fn load_image(path: &Path) -> Option<RgbImage> {
+fn load_image(path: &Path, size: u32) -> Option<RgbImage> {
     image::open(path).ok().map(|img| {
-        img.resize_to_fill(KEY_SIZE, KEY_SIZE, FilterType::Triangle)
+        img.resize_to_fill(size, size, FilterType::Triangle)
             .to_rgb8()
     })
 }

@@ -228,6 +228,19 @@ Column-major, numbered from top-right:
 - Key index at byte 9 (1–15).
 - State at byte 10: `01` down, `00` up. **Conflict:** the Input Event Format table (`1` pressed, `2` released).
 
+### Side screen
+
+🔌 **Device** — verified on hardware with a Python test script. The side screen sits next to keys 5, 10 and 15 and shares one panel with them.
+
+- Output report `0x00` (no report ID), then one stream: a 32-byte header, then the JPEG. Cut the stream into 1024-byte chunks. Prefix each chunk with `0x00`.
+- Header: `CRT\0\0` + `DRA` + size (u32 BE, JPEG length + 32) + key byte (`0`) + w, h, x, y (u16 BE each).
+- Geometry: `w=480`, `h=100`, `x=0`, `y=0`. No rotation (keys are rotated, the side screen is not).
+- Keep content inside the visible safe area, x 30..440. Center text there.
+- Never send `h > 100`. A 480×272 image spills onto keys 5, 10 and 15.
+- Commit with `STP`.
+
+Rust: `side_header` and `send_side_image` in `src/infrastructure/usb/image.rs`.
+
 ### macOS access
 
 - hidapi opens devices exclusively by default. The keyboard interface then fails with "open failed", even with Input Monitoring granted.
