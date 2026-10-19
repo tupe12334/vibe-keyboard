@@ -55,3 +55,84 @@ pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
 
     refresh(handle);
 }
+
+/// Side screen geometry, verified on hardware. Keys 5, 10 and 15 share the panel. No rotation.
+pub const SIDE_W: u16 = 480;
+pub const SIDE_H: u16 = 100;
+
+/// 32-byte side image header: `CRT\0\0` + `DRA`, size (jpeg length + 32, u32 BE), key byte
+/// (always 0), then w, h, x, y as u16 BE.
+pub fn side_header(jpeg_len: usize, w: u16, h: u16, x: u16, y: u16) -> [u8; 32] {
+    let mut hdr = [0u8; 32];
+    hdr[0..3].copy_from_slice(b"CRT");
+    hdr[5..8].copy_from_slice(b"DRA");
+    let size = u32::try_from(jpeg_len + 32).unwrap_or(u32::MAX);
+    hdr[8..12].copy_from_slice(&size.to_be_bytes());
+    hdr[13..15].copy_from_slice(&w.to_be_bytes());
+    hdr[15..17].copy_from_slice(&h.to_be_bytes());
+    hdr[17..19].copy_from_slice(&x.to_be_bytes());
+    hdr[19..21].copy_from_slice(&y.to_be_bytes());
+    hdr
+}
+
+/// Send `img` to the side screen as one stream: header, then JPEG, cut into output reports.
+/// Image is cropped to 480x100. Never send a taller image: it spills onto keys 5, 10 and 15.
+pub fn send_side_image(handle: &Device, img: DynamicImage) {
+    let rgb = img
+        .resize_to_fill(
+            u32::from(SIDE_W),
+            u32::from(SIDE_H),
+            image::imageops::FilterType::Triangle,
+        )
+        .to_rgb8();
+    let mut jpeg = Vec::new();
+    if let Err(e) = JpegEncoder::new_with_quality(&mut jpeg, 90).encode(
+        &rgb.into_raw(),
+        u32::from(SIDE_W),
+        u32::from(SIDE_H),
+        ColorType::Rgb8.into(),
+    ) {
+        error!("side JPEG encode failed: {e}");
+        return;
+    }
+
+    let mut stream = side_header(jpeg.len(), SIDE_W, SIDE_H, 0, 0).to_vec();
+    stream.extend_from_slice(&jpeg);
+    for chunk in stream.chunks(PACKET) {
+        // Output report: `0x00` (no report ID) + up to `PACKET` bytes.
+        let mut pkt = [0u8; CMD_PACKET];
+        pkt[1..=chunk.len()].copy_from_slice(chunk);
+        if let Err(e) = handle.write(&pkt) {
+            error!("side image chunk write failed: {e}");
+            return;
+        }
+    }
+
+    refresh(handle);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::side_header;
+
+    #[test]
+    fn side_header_bytes_match_the_verified_layout() {
+        // jpeg 1000 bytes -> size field 1032 = 0x0408; w 480 = 0x01E0; h 100 = 0x0064.
+        let hdr = side_header(1000, 480, 100, 0, 0);
+        assert_eq!(
+            &hdr[..21],
+            &[
+                b'C', b'R', b'T', 0, 0, b'D', b'R', b'A', 0x00, 0x00, 0x04, 0x08, 0x00, 0x01, 0xE0,
+                0x00, 0x64, 0x00, 0x00, 0x00, 0x00,
+            ]
+        );
+        assert!(hdr[21..].iter().all(|&b| b == 0));
+        assert_eq!(hdr.len(), 32);
+    }
+
+    #[test]
+    fn side_header_carries_x_and_y() {
+        let hdr = side_header(0, 480, 100, 0x0102, 0x0304);
+        assert_eq!(&hdr[17..21], &[0x01, 0x02, 0x03, 0x04]);
+    }
+}

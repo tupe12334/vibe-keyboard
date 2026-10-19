@@ -7,6 +7,7 @@ mod numpad;
 mod profile_key;
 mod project_item;
 mod search;
+mod side;
 mod sort;
 mod terminal;
 mod text;
@@ -26,6 +27,7 @@ pub use profile_key::{
 };
 pub use project_item::generate_project_item_image;
 pub use search::generate_search_image;
+pub use side::{side_image, SAFE_WIDTH, SAFE_X, SIDE_HEIGHT, SIDE_WIDTH};
 pub use sort::generate_sort_image;
 pub use terminal::generate_terminal_image;
 pub use vscode_config::generate_vscode_config_image;

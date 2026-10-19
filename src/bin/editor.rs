@@ -9,10 +9,11 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, BUILTIN_NAMES,
+    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, SideConfig, BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
-    app_icon_generation, icon_image, key_image, ICON_NAMES,
+    app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_WIDTH, SAFE_X,
+    SIDE_HEIGHT, SIDE_WIDTH,
 };
 use vibe_keyboard::infrastructure::profile_store;
 
@@ -29,6 +30,8 @@ const PAGES_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 200.0..=360.0;
 const KEY_PANEL_WIDTH: f32 = 320.0;
 const KEY_PANEL_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 260.0..=420.0;
 const RED: Color32 = Color32::from_rgb(230, 80, 80);
+/// Side strip preview: at most the device width, same 480:100 ratio.
+const SIDE_STRIP_MAX: f32 = SIDE_WIDTH as f32;
 
 fn main() -> eframe::Result {
     eframe::run_native(
@@ -107,6 +110,12 @@ struct Preview {
     config: Option<KeyConfig>,
     /// `app_icon_generation()` when rendered, so finished app lookups show up.
     generation: u64,
+    texture: egui::TextureHandle,
+}
+
+/// Rendered side preview, with the config it was rendered from.
+struct SidePreview {
+    config: Option<SideConfig>,
     texture: egui::TextureHandle,
 }
 
@@ -218,6 +227,10 @@ struct Editor {
     icon_textures: HashMap<&'static str, egui::TextureHandle>,
     /// Set when `profile.toml` could not be read. Saving is refused while it is set.
     load_error: Option<String>,
+    /// Last rendered side preview of the current page.
+    side_preview: Option<SidePreview>,
+    /// The side panel is shown instead of the key panel.
+    side_open: bool,
 }
 
 impl Editor {
@@ -240,6 +253,8 @@ impl Editor {
             image_app_text: String::new(),
             icon_textures: HashMap::new(),
             load_error,
+            side_preview: None,
+            side_open: false,
         };
         editor.start_running_refresh();
         editor
@@ -332,6 +347,7 @@ impl Editor {
             self.key = None;
             self.previews.clear();
             self.clamp_selection();
+            self.side_preview = None;
             self.status = "Changes discarded".into();
         }
     }
@@ -340,6 +356,7 @@ impl Editor {
         if self.session.undo(Instant::now()) {
             self.previews.clear();
             self.clamp_selection();
+            self.side_preview = None;
             self.status = "Discard undone".into();
         }
     }
@@ -407,6 +424,107 @@ impl Editor {
             },
         );
         texture
+    }
+
+    /// Texture of the side screen of the current page. Re-rendered only when its config changes.
+    fn side_texture(&mut self, ctx: &egui::Context) -> egui::TextureHandle {
+        let config = self
+            .session
+            .profile
+            .pages
+            .get(self.page)
+            .and_then(|p| p.side.clone());
+        if let Some(cached) = &self.side_preview {
+            if cached.config == config {
+                return cached.texture.clone();
+            }
+        }
+        let img = side_image(config.as_ref(), &self.root);
+        let texture = texture_from(ctx, "side", &img);
+        self.side_preview = Some(SidePreview {
+            config,
+            texture: texture.clone(),
+        });
+        texture
+    }
+
+    /// Side preview strip above the keys, with the safe area drawn faintly. True when clicked.
+    fn side_strip(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> bool {
+        let size = side_strip_size(ui.available_width());
+        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
+        let texture = self.side_texture(ctx);
+        let painter = ui.painter_at(rect);
+        let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+        painter.image(texture.id(), rect, uv, Color32::WHITE);
+        let scale = size.x / SIDE_WIDTH as f32;
+        let safe = Rect::from_min_size(
+            rect.min + Vec2::new(SAFE_X as f32 * scale, 0.0),
+            Vec2::new(SAFE_WIDTH as f32 * scale, size.y),
+        );
+        painter.rect_stroke(
+            safe,
+            0.0,
+            Stroke::new(1.0, Color32::from_white_alpha(70)),
+            StrokeKind::Inside,
+        );
+        if self.side_open {
+            painter.rect_stroke(
+                rect,
+                4.0,
+                Stroke::new(2.0, Color32::LIGHT_BLUE),
+                StrokeKind::Inside,
+            );
+        }
+        ui.add_space(GAP);
+        response.clicked()
+    }
+
+    /// Edit the side screen of the current page: label, colors, image. Add or remove it.
+    fn side_panel(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Side screen");
+        let page = self.page;
+        let Some(original) = self
+            .session
+            .profile
+            .pages
+            .get(page)
+            .and_then(|p| p.side.clone())
+        else {
+            ui.label("This page has no side screen.");
+            if ui.button("Add side screen").clicked() {
+                self.session
+                    .profile
+                    .set_side(page, Some(SideConfig::default()));
+            }
+            return;
+        };
+        let mut edited = original.clone();
+        let ctx = ui.ctx().clone();
+        ui.horizontal(|ui| {
+            ui.label("Label");
+            ui.text_edit_singleline(&mut edited.label);
+        });
+        ui.horizontal(|ui| {
+            ui.label("Background");
+            let mut rgb = parse_color(&edited.bg).unwrap_or([20, 20, 20]);
+            if egui::color_picker::color_edit_button_srgb(ui, &mut rgb).changed() {
+                edited.bg = format_color(rgb);
+            }
+            ui.label("Text");
+            let mut rgb = parse_color(&edited.fg).unwrap_or([230, 230, 230]);
+            if egui::color_picker::color_edit_button_srgb(ui, &mut rgb).changed() {
+                edited.fg = format_color(rgb);
+            }
+        });
+        self.image_picker(ui, &ctx, &mut edited.image);
+        ui.separator();
+        let remove = ui.button("Remove side screen").clicked();
+        // Write only real changes, so an untouched panel never dirties the profile.
+        if remove {
+            self.session.profile.set_side(page, None);
+        } else if edited != original {
+            self.session.profile.set_side(page, Some(edited));
+        }
     }
 
     fn top_bar(&mut self, ui: &mut egui::Ui) {
@@ -766,6 +884,10 @@ impl Editor {
     }
 
     fn key_panel(&mut self, ui: &mut egui::Ui) {
+        if self.side_open {
+            self.side_panel(ui);
+            return;
+        }
         let Some(key) = self.key else {
             ui.label("Click a key to edit it.");
             return;
@@ -828,6 +950,12 @@ impl Editor {
             self.session.profile.set_key(self.page, key, edited);
         }
     }
+}
+
+/// Size of the side strip for `avail_width`: at most the device width, 480:100 ratio.
+fn side_strip_size(avail_width: f32) -> Vec2 {
+    let width = (avail_width - GRID_MARGIN).clamp(1.0, SIDE_STRIP_MAX);
+    Vec2::new(width, width * SIDE_HEIGHT as f32 / SIDE_WIDTH as f32)
 }
 
 /// Largest square cell that fits the 3x5 grid in `avail`, never below `CELL_MIN`.
@@ -985,14 +1113,22 @@ impl eframe::App for Editor {
             .size_range(KEY_PANEL_WIDTH_RANGE)
             .default_size(KEY_PANEL_WIDTH)
             .show(ui, |ui| self.key_panel(ui));
-        let clicked = egui::CentralPanel::default()
-            .show(ui, |ui| self.grid(ui, &ctx))
+        let (side_clicked, clicked) = egui::CentralPanel::default()
+            .show(ui, |ui| {
+                let side = self.side_strip(ui, &ctx);
+                (side, self.grid(ui, &ctx))
+            })
             .inner;
         if let Some(op) = page_op {
             self.apply_page_op(op);
         }
+        if side_clicked {
+            self.side_open = true;
+            self.key = None;
+        }
         if let Some(key) = clicked {
             self.key = Some(key);
+            self.side_open = false;
         }
     }
 }
@@ -1000,8 +1136,8 @@ impl eframe::App for Editor {
 #[cfg(test)]
 mod tests {
     use super::{
-        cell_size, parse_lsappinfo, Session, GAP, GRID_MARGIN, KEY_PANEL_WIDTH, PAGES_WIDTH,
-        UNDO_WINDOW,
+        cell_size, parse_lsappinfo, side_strip_size, Session, GAP, GRID_MARGIN, KEY_PANEL_WIDTH,
+        PAGES_WIDTH, UNDO_WINDOW,
     };
     use eframe::egui::Vec2;
     use std::time::{Duration, Instant};
@@ -1083,9 +1219,12 @@ mod tests {
 
     #[test]
     fn grid_fits_the_default_and_minimum_window() {
-        // Window minus both side panels and the top and bottom bars.
-        let central =
-            |window: Vec2| Vec2::new(window.x - PAGES_WIDTH - KEY_PANEL_WIDTH, window.y - 60.0);
+        // Window minus both side panels, the top and bottom bars, and the side strip.
+        let central = |window: Vec2| {
+            let width = window.x - PAGES_WIDTH - KEY_PANEL_WIDTH;
+            let strip = side_strip_size(width).y + GAP;
+            Vec2::new(width, window.y - 60.0 - strip)
+        };
         for window in [Vec2::new(1200.0, 720.0), Vec2::new(900.0, 600.0)] {
             let area = central(window);
             let cell = cell_size(area);
