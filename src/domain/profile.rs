@@ -293,6 +293,13 @@ impl Profile {
                 if *key == 0 || *key > KEY_COUNT || is_nav_key(*key) {
                     out.push(format!("{place}: key is reserved or out of range"));
                 }
+                if config
+                    .image
+                    .as_deref()
+                    .is_some_and(|p| p.as_os_str().is_empty())
+                {
+                    out.push(format!("{place}: image is empty"));
+                }
                 if parse_color(&config.bg).is_none() {
                     out.push(format!("{place}: bg must be #RRGGBB"));
                 }
@@ -583,6 +590,22 @@ mod tests {
             },
         );
         assert_eq!(profile.problems().len(), 1);
+    }
+
+    #[test]
+    fn empty_image_path_is_reported() {
+        let mut profile = Profile::default_from_legacy();
+        profile.set_key(
+            0,
+            2,
+            KeyConfig {
+                image: Some(PathBuf::new()),
+                ..KeyConfig::default()
+            },
+        );
+        let problems = profile.problems();
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("image is empty"));
     }
 
     #[test]

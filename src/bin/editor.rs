@@ -10,7 +10,7 @@ use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
     format_color, parse_color, Action, ActionKind, KeyConfig, Profile, BUILTIN_NAMES,
 };
-use vibe_keyboard::infrastructure::images::key_image;
+use vibe_keyboard::infrastructure::images::{icon_image, key_image, ICON_NAMES};
 use vibe_keyboard::infrastructure::profile_store;
 
 /// Physical layout as seen from the front. Matches `device.md`.
@@ -52,6 +52,53 @@ enum PageOp {
     Delete(usize),
 }
 
+/// Where a key's image comes from, read from the stored text.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ImageKind {
+    None,
+    File,
+    Icon,
+    App,
+}
+
+impl ImageKind {
+    const ALL: [Self; 4] = [Self::None, Self::File, Self::Icon, Self::App];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::None => "None",
+            Self::File => "File",
+            Self::Icon => "Icon",
+            Self::App => "App icon",
+        }
+    }
+
+    fn of(image: Option<&std::path::Path>) -> Self {
+        let Some(path) = image else {
+            return Self::None;
+        };
+        let text = path.to_string_lossy();
+        if text.starts_with("icon:") {
+            Self::Icon
+        } else if text.starts_with("app:") {
+            Self::App
+        } else {
+            Self::File
+        }
+    }
+}
+
+/// Upload an RGB image as an egui texture, fully opaque.
+fn texture_from(ctx: &egui::Context, name: &str, img: &image::RgbImage) -> egui::TextureHandle {
+    let size = [img.width() as usize, img.height() as usize];
+    let rgba: Vec<u8> = img
+        .pixels()
+        .flat_map(|p| [p.0[0], p.0[1], p.0[2], 255])
+        .collect();
+    let color = egui::ColorImage::from_rgba_unmultiplied(size, &rgba);
+    ctx.load_texture(name.to_string(), color, egui::TextureOptions::LINEAR)
+}
+
 /// A rendered key preview.
 struct Preview {
     config: Option<KeyConfig>,
@@ -72,6 +119,10 @@ struct Editor {
     /// Pending result of a background `lsappinfo` run.
     running_rx: Option<mpsc::Receiver<Vec<(String, String)>>>,
     new_app: String,
+    /// Bundle id typed into the app image picker.
+    image_app_text: String,
+    /// Textures of the icon pack, loaded on first use.
+    icon_textures: HashMap<&'static str, egui::TextureHandle>,
     /// Set when `profile.toml` could not be read. Saving is refused while it is set.
     load_error: Option<String>,
 }
@@ -95,6 +146,8 @@ impl Editor {
             running: Vec::new(),
             running_rx: None,
             new_app: String::new(),
+            image_app_text: String::new(),
+            icon_textures: HashMap::new(),
             load_error,
         };
         editor.start_running_refresh();
@@ -225,6 +278,128 @@ impl Editor {
             op = Some(PageOp::Add);
         }
         op
+    }
+
+    /// Image source for one key: none, a file, an embedded icon, or an installed app's icon.
+    fn image_picker(
+        &mut self,
+        ui: &mut egui::Ui,
+        ctx: &egui::Context,
+        image: &mut Option<PathBuf>,
+    ) {
+        let current = ImageKind::of(image.as_deref());
+        let mut chosen = current;
+        egui::ComboBox::from_label("Image")
+            .selected_text(current.label())
+            .show_ui(ui, |ui| {
+                for kind in ImageKind::ALL {
+                    ui.selectable_value(&mut chosen, kind, kind.label());
+                }
+            });
+        if chosen != current {
+            *image = match chosen {
+                ImageKind::None => None,
+                // Empty placeholders: the key shows its label until a value is chosen.
+                ImageKind::File => Some(PathBuf::new()),
+                ImageKind::Icon => Some(PathBuf::from("icon:back")),
+                ImageKind::App => Some(PathBuf::from("app:")),
+            };
+        }
+        match ImageKind::of(image.as_deref()) {
+            ImageKind::None => {}
+            ImageKind::File => {
+                ui.horizontal(|ui| {
+                    if ui.button("Browse...").clicked() {
+                        let picked = rfd::FileDialog::new()
+                            .add_filter("Images", &["png", "jpg", "jpeg"])
+                            .pick_file();
+                        if let Some(path) = picked {
+                            match profile_store::import_image(&self.root, &path) {
+                                Ok(relative) => *image = Some(relative),
+                                Err(e) => self.status = e,
+                            }
+                        }
+                    }
+                    if let Some(path) = image.as_ref() {
+                        ui.monospace(path.display().to_string());
+                    }
+                });
+            }
+            ImageKind::Icon => self.icon_grid(ui, ctx, image),
+            ImageKind::App => self.app_picker(ui, image),
+        }
+    }
+
+    /// Icon pack as clickable thumbnails. The selected icon is highlighted.
+    fn icon_grid(&mut self, ui: &mut egui::Ui, ctx: &egui::Context, image: &mut Option<PathBuf>) {
+        let selected = image
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        ui.horizontal_wrapped(|ui| {
+            for name in ICON_NAMES.iter().copied() {
+                let Some(texture) = self.icon_texture(ctx, name) else {
+                    continue;
+                };
+                let thumb = egui::Image::new((texture.id(), Vec2::splat(40.0)));
+                let button =
+                    egui::Button::image(thumb).selected(selected == format!("icon:{name}"));
+                if ui.add(button).on_hover_text(name).clicked() {
+                    *image = Some(PathBuf::from(format!("icon:{name}")));
+                }
+            }
+        });
+    }
+
+    /// Installed-app icon by bundle id: pick a running app, or type the id.
+    fn app_picker(&mut self, ui: &mut egui::Ui, image: &mut Option<PathBuf>) {
+        let bundle = image
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let bundle = bundle.strip_prefix("app:").unwrap_or_default().to_string();
+        ui.monospace(if bundle.is_empty() {
+            "(no app chosen)".to_string()
+        } else {
+            bundle.clone()
+        });
+        let mut pick = None;
+        egui::ComboBox::from_id_salt("image-app")
+            .selected_text("Pick a running app")
+            .show_ui(ui, |ui| {
+                for (name, id) in &self.running {
+                    if ui
+                        .selectable_label(false, format!("{name} ({id})"))
+                        .clicked()
+                    {
+                        pick = Some(id.clone());
+                    }
+                }
+            });
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut self.image_app_text);
+            if ui.button("Use").clicked() {
+                pick = Some(self.image_app_text.trim().to_string());
+            }
+        });
+        if let Some(id) = pick.filter(|id| !id.is_empty()) {
+            *image = Some(PathBuf::from(format!("app:{id}")));
+        }
+    }
+
+    /// Texture of one icon-pack image, cached per name.
+    fn icon_texture(
+        &mut self,
+        ctx: &egui::Context,
+        name: &'static str,
+    ) -> Option<egui::TextureHandle> {
+        if let Some(texture) = self.icon_textures.get(name) {
+            return Some(texture.clone());
+        }
+        let img = icon_image(name, 64)?;
+        let texture = texture_from(ctx, name, &img);
+        self.icon_textures.insert(name, texture.clone());
+        Some(texture)
     }
 
     /// Bundle ids that show the page at `index` when they are in front.
@@ -388,25 +563,8 @@ impl Editor {
                 edited.fg = format_color(rgb);
             }
         });
-        ui.horizontal(|ui| {
-            if ui.button("Browse image...").clicked() {
-                let picked = rfd::FileDialog::new()
-                    .add_filter("Images", &["png", "jpg", "jpeg"])
-                    .pick_file();
-                if let Some(path) = picked {
-                    match profile_store::import_image(&self.root, &path) {
-                        Ok(relative) => edited.image = Some(relative),
-                        Err(e) => self.status = e,
-                    }
-                }
-            }
-            if edited.image.is_some() && ui.button("Clear image").clicked() {
-                edited.image = None;
-            }
-        });
-        if let Some(image) = &edited.image {
-            ui.monospace(image.display().to_string());
-        }
+        let ctx = ui.ctx().clone();
+        self.image_picker(ui, &ctx, &mut edited.image);
 
         let mut kind = edited.action.kind();
         egui::ComboBox::from_label("Action")

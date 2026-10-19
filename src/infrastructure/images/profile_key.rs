@@ -4,6 +4,7 @@ use std::path::Path;
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb, RgbImage};
 
+use super::icon_image;
 use super::text::draw_label;
 use super::{
     generate_centy_image, generate_claude_image, generate_log_file_image,
@@ -13,6 +14,7 @@ use super::{
 use crate::domain::keys::is_nav_key;
 use crate::domain::profile::KEY_COUNT;
 use crate::domain::profile::{parse_color, Action, KeyConfig};
+use crate::infrastructure::app_icon::app_icon;
 use crate::infrastructure::profile_store::resolve_image;
 
 const KEY_SIZE: u32 = 100;
@@ -59,13 +61,18 @@ fn render_key(config: &KeyConfig, root: &Path) -> RgbImage {
     label_tile(&config.label, bg, fg)
 }
 
-/// Image sources. A file path is loaded from disk.
-/// `icon:<name>` (assets/icons, PR #81) and `app:<bundle id>` are not wired yet: they return
-/// `None`, so the key falls back to its label. Wire them here once the assets land.
+/// Image sources: `icon:<name>` (embedded icon pack), `app:<bundle id>` (installed app icon),
+/// or a file path. A source that fails returns `None`, so the key falls back to its label.
 fn source_image(image: &Path, root: &Path) -> Option<RgbImage> {
     let text = image.to_string_lossy();
-    if text.starts_with("icon:") || text.starts_with("app:") {
-        return None;
+    if let Some(name) = text.strip_prefix("icon:") {
+        return icon_image(name, KEY_SIZE);
+    }
+    if let Some(bundle_id) = text.strip_prefix("app:") {
+        return app_icon(bundle_id, KEY_SIZE).map(|img| {
+            img.resize_to_fill(KEY_SIZE, KEY_SIZE, FilterType::Triangle)
+                .to_rgb8()
+        });
     }
     load_image(&resolve_image(root, image))
 }
@@ -155,13 +162,23 @@ mod tests {
         let root = PathBuf::from("/nonexistent");
         let blank = key_image(5, None, &root);
         assert!(blank.pixels().all(|p| p.0 == BLANK));
-        let config = KeyConfig {
+        let icon = KeyConfig {
             image: Some(PathBuf::from("icon:back")),
             label: "Hi".into(),
             ..KeyConfig::default()
         };
         assert_eq!(
-            key_image(5, Some(&config), &root),
+            key_image(5, Some(&icon), &root),
+            icon_image("back", KEY_SIZE).unwrap_or_default()
+        );
+        // An app that is not installed falls back to the label.
+        let app = KeyConfig {
+            image: Some(PathBuf::from("app:com.example.NotInstalled")),
+            label: "Hi".into(),
+            ..KeyConfig::default()
+        };
+        assert_eq!(
+            key_image(5, Some(&app), &root),
             label_tile("Hi", FALLBACK_BG, FALLBACK_FG)
         );
     }

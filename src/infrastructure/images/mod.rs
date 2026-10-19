@@ -1,6 +1,7 @@
 mod centy;
 mod claude;
 mod draw;
+mod icon_pack;
 mod log_file;
 mod numpad;
 mod profile_key;
@@ -14,6 +15,7 @@ mod web;
 
 pub use centy::generate_centy_image;
 pub use claude::generate_claude_image;
+pub use icon_pack::{icon_image, ICON_NAMES};
 pub use log_file::generate_log_file_image;
 pub use numpad::{
     generate_numpad_backspace_image, generate_numpad_clear_image, generate_numpad_digit_image,
