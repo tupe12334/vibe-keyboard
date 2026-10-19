@@ -108,13 +108,21 @@ pub fn summary_from_jsonl(text: &str) -> Option<String> {
                     .map(str::to_string)
                     .or(summary);
             }
-            Some("user") if first_prompt.is_none() => first_prompt = user_text(&value),
+            // A prompt that is only a pasted link makes a poor session name, so skip it.
+            Some("user") if first_prompt.is_none() => {
+                first_prompt = user_text(&value).filter(|text| !is_url(text));
+            }
             _ => {}
         }
     }
     summary
         .or(first_prompt)
         .map(|text| text.chars().take(SUMMARY_CHARS).collect())
+}
+
+fn is_url(text: &str) -> bool {
+    let text = text.trim_start();
+    text.starts_with("http://") || text.starts_with("https://")
 }
 
 /// Prompt text of a user line. Content is either a string or a list of parts with `text`.
@@ -335,6 +343,28 @@ mod tests {
             summary_from_jsonl(&long).map(|s| s.chars().count()),
             Some(SUMMARY_CHARS)
         );
+    }
+
+    #[test]
+    fn real_tab_line_gives_the_title_and_url_prompts_are_skipped() {
+        let out = "/dev/ttys000\t✳ Centy availability (claude)\n";
+        let titles = parse_tab_titles(out);
+        assert_eq!(
+            titles.get("ttys000").map(String::as_str),
+            Some("✳ Centy availability (claude)")
+        );
+        let url_first = concat!(
+            r#"{"type":"user","message":{"content":"https://example.com/pasted"}}"#,
+            "\n",
+            r#"{"type":"user","message":{"content":"Write the report"}}"#,
+            "\n",
+        );
+        assert_eq!(
+            summary_from_jsonl(url_first),
+            Some("Write the report".to_string())
+        );
+        let url_only = r#"{"type":"user","message":{"content":"http://x.test"}}"#;
+        assert_eq!(summary_from_jsonl(url_only), None);
     }
 
     #[test]
