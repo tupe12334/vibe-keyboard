@@ -1,14 +1,13 @@
 use image::codecs::jpeg::JpegEncoder;
 use image::{ColorType, DynamicImage};
-use rusb::{Context, DeviceHandle};
 use tracing::error;
 
 use super::commands::{refresh, write_cmd};
-use super::{PACKET, TIMEOUT};
+use super::{Device, CMD_PACKET, PACKET};
 
 /// Encode image as JPEG (rotate 180°, quality 90) and send via `CRT_BAT` + chunks + `CRT_STP`.
 /// `key` is 0-indexed (0–14); the device protocol uses 1-indexed key IDs.
-pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: DynamicImage) {
+pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
     let rgb = img.rotate180().to_rgb8();
     let (w, h) = rgb.dimensions();
     let mut jpeg = Vec::new();
@@ -38,9 +37,10 @@ pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: DynamicIm
     );
 
     for chunk in jpeg.chunks(PACKET) {
-        let mut pkt = [0u8; PACKET];
-        pkt[..chunk.len()].copy_from_slice(chunk);
-        if let Err(e) = handle.write_interrupt(super::EP_OUT, &pkt, TIMEOUT) {
+        // Image chunk output report: `0x00` (no report ID) + up to `PACKET` bytes.
+        let mut pkt = [0u8; CMD_PACKET];
+        pkt[1..=chunk.len()].copy_from_slice(chunk);
+        if let Err(e) = handle.write(&pkt) {
             error!("image chunk write failed: {e}");
             return;
         }

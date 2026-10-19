@@ -7,8 +7,7 @@ mod presentation;
 use application::{handle_filter_query, handle_key_event, render_screen};
 use domain::navigation::NavigationStack;
 use infrastructure::persistence::DeviceState;
-use infrastructure::usb::{device_init, keep_alive, read_event, reset_endpoints, PID, VID};
-use rusb::{Context, UsbContext as _};
+use infrastructure::usb::{device_init, keep_alive, read_event, Device};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -18,16 +17,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app_state = Arc::new(Mutex::new(presentation::tui::AppState::new(2)));
     let _log_guard = logging::init(Arc::clone(&app_state));
 
-    let ctx = Context::new().map_err(|e| format!("rusb context: {e}"))?;
-    let handle = ctx
-        .open_device_with_vid_pid(VID, PID)
-        .ok_or("Device not found — is it plugged in?")?;
-    let _ = handle.detach_kernel_driver(0); // terminates AppleUserHIDDrivers dext
-    handle
-        .claim_interface(0)
-        .map_err(|e| format!("Failed to claim USB interface — run 'make install' once to set up permissions, or use sudo: {e}"))?;
-    info!("interface 0 claimed");
-    reset_endpoints(&handle);
+    let handle = Device::open()?;
+    info!("device opened");
 
     let dev_state_val = DeviceState::load();
 

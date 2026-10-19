@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::infrastructure::usb::Device;
 use image::DynamicImage;
-use rusb::{Context, DeviceHandle};
 use tracing::info;
 
 use crate::domain::actions::{ButtonAction, ScreenView};
@@ -86,7 +86,7 @@ pub fn page_actions(page: usize) -> HashMap<u8, ButtonAction> {
 
 pub fn render_main_page(
     page: usize,
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {

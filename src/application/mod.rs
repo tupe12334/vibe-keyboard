@@ -3,12 +3,12 @@ mod pages;
 
 pub use pages::render_screen;
 
+use crate::infrastructure::usb::Device;
 use actions::{
     open_centy_workspace, open_claude_terminal, open_config_in_vscode, open_in_chrome,
     open_log_file, open_terminal, open_terminal_in_path, open_vscode_in_path,
 };
 use pages::{fetch_centy_issues, fetch_centy_projects};
-use rusb::{Context, DeviceHandle};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -19,7 +19,7 @@ use crate::presentation::tui;
 
 pub fn handle_key_event(
     buf: &[u8],
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     nav: &mut NavigationStack,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
@@ -31,7 +31,7 @@ pub fn handle_key_event(
     }
     let state_str = match state_byte {
         1 => "pressed",
-        2 => "released",
+        0 => "released",
         _ => return,
     };
     let Some(key) = raw_to_logical(raw_id) else {
@@ -80,7 +80,7 @@ pub fn handle_key_event(
 fn handle_action_key(
     key: u8,
     nav: &mut NavigationStack,
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
@@ -408,7 +408,7 @@ fn handle_action_key(
 
 pub fn handle_filter_query(
     query: &str,
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     nav: &mut NavigationStack,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
