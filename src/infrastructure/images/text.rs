@@ -11,8 +11,17 @@ const MAX_LINES: usize = 4;
 
 /// Draw `text` centered on `img`, word-wrapped to as many lines as fit.
 pub fn draw_label(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
+    draw_wrapped(img, text, fg, MAX_LINES);
+}
+
+/// Like `draw_label`, but at most three lines. Used for session titles under a status bar.
+pub fn draw_title(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
+    draw_wrapped(img, text, fg, 3);
+}
+
+fn draw_wrapped(img: &mut RgbImage, text: &str, fg: Rgb<u8>, max_lines: usize) {
     let per_line = (img.width() / ADVANCE) as usize;
-    let lines = wrap(text, per_line, MAX_LINES);
+    let lines = wrap(text, per_line, max_lines);
     let total = lines.len() as u32 * LINE_H;
     let top = img.height().saturating_sub(total) / 2;
     for (row, line) in lines.iter().enumerate() {

@@ -77,6 +77,12 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                 " Input Number    {}    [11] back  [12] out    [q] quit ",
                 if value.is_empty() { "_" } else { value },
             ),
+            ScreenView::ClaudeSessions { total, page } => format!(
+                " Claude Sessions    ({}-{} of {})    [11] back  [12] out  [14/15] page  [q] quit ",
+                page * 10 + 1,
+                (page * 10 + 10).min(*total),
+                total,
+            ),
         }
     };
     frame.render_widget(

@@ -3,6 +3,7 @@ mod pages;
 
 pub use pages::render_screen;
 
+use crate::infrastructure::claude_sessions::focus_session;
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
 use pages::fetch_centy_issues;
@@ -130,6 +131,12 @@ fn handle_action_key(
             issue_number: u64,
         },
         SortList,
+        FocusSession {
+            tty: String,
+        },
+        TurnSessionsPage {
+            forward: bool,
+        },
         InputNumberDigit {
             digit: char,
         },
@@ -239,6 +246,19 @@ fn handle_action_key(
             },
             _ => Action::None,
         },
+        Screen::ClaudeSessions { sessions, page } => match key {
+            1..=10 => {
+                let idx = page * 10 + (key as usize - 1);
+                sessions
+                    .get(idx)
+                    .map_or(Action::None, |session| Action::FocusSession {
+                        tty: session.tty.clone(),
+                    })
+            }
+            14 => Action::TurnSessionsPage { forward: false },
+            15 => Action::TurnSessionsPage { forward: true },
+            _ => Action::None,
+        },
         Screen::InputNumber { .. } => match key {
             1 => Action::InputNumberClear,
             2 => Action::InputNumberBackspace,
@@ -333,6 +353,19 @@ fn handle_action_key(
         Action::SortList => {
             info!("sort: toggling sort order");
             nav.toggle_sort();
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::FocusSession { tty } => {
+            info!("claude sessions: focus {tty}");
+            // Off the device loop: osascript can take a while to answer.
+            std::thread::spawn(move || focus_session(&tty));
+        }
+        Action::TurnSessionsPage { forward } => {
+            if forward {
+                nav.forward();
+            } else {
+                nav.previous_page();
+            }
             render_screen(nav, handle, state, dev_state);
         }
         Action::InputNumberDigit { digit } => {

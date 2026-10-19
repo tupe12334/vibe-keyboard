@@ -46,4 +46,27 @@ pub enum ScreenView {
     InputNumber {
         value: String,
     },
+    ClaudeSessions {
+        total: usize,
+        page: usize,
+    },
+}
+
+/// What a Claude Code session is doing, from the glyph on its tab title. Declared in sort order.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SessionStatus {
+    /// `✳`: idle, waiting for the user.
+    Waiting,
+    /// A spinner glyph: working.
+    Working,
+    /// No glyph, or no terminal title.
+    Unknown,
+}
+
+/// A Claude Code process on a terminal. `tty` is the bare name, e.g. `ttys003`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClaudeSession {
+    pub tty: String,
+    pub label: String,
+    pub status: SessionStatus,
 }

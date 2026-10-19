@@ -10,7 +10,7 @@ use super::keys::is_nav_key;
 pub const KEY_COUNT: u8 = 15;
 
 /// Names accepted by `Action::Builtin`. Each one maps to hard-coded code in the app.
-pub const BUILTIN_NAMES: [&str; 7] = [
+pub const BUILTIN_NAMES: [&str; 8] = [
     "centy_projects",
     "terminal",
     "claude",
@@ -18,6 +18,7 @@ pub const BUILTIN_NAMES: [&str; 7] = [
     "numpad",
     "log_file",
     "vscode_config",
+    "claude_sessions",
 ];
 
 const DEFAULT_BG: &str = "#141414";
