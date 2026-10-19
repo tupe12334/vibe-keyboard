@@ -64,6 +64,8 @@ pub fn read_event(handle: &Device, timeout: Duration) -> Option<Vec<u8>> {
         }
         Err(e) => {
             warn!("USB read error: {e}");
+            // Unplugged device returns errors at once. Sleep so the main loop does not spin.
+            std::thread::sleep(Duration::from_millis(200));
             None
         }
     }

@@ -55,10 +55,10 @@ Product page: https://sdk.key123.vip/en/guide/overview.html#stream-dock-293s
 
 🔌 **Device** — all observations made on macOS with this specific unit.
 
-- The `AppleUserHIDDrivers` DriverKit dext claims interface 0 exclusively via `kIOHIDOptionsTypeSeizeDevice`.
-- `hidapi` with `set_open_exclusive(true)` fails with `kIOReturnExclusiveAccess (0xE00002C5)` — cannot evict the dext via HID layer.
-- Use `rusb` / `libusb` instead: `detach_kernel_driver(interface)` calls `USBInterfaceOpenSeize` which **can** evict the dext.
-- Requires `sudo` (or appropriate udev rules / IOKit entitlements).
+- Open with `hidapi` and `set_open_exclusive(false)`. No root and no sudo needed.
+- The vendor interface is opened non-exclusively, so the system HID driver keeps its claim.
+- Match usage page `0xFFA0` and usage `0x01` (the `0x02` collection is not used).
+- Historical: exclusive `hidapi` open failed, and `rusb` was tried. That path is gone.
 
 ## Protocol
 
@@ -232,7 +232,7 @@ Column-major, numbered from top-right:
 
 - hidapi opens devices exclusively by default. The keyboard interface then fails with "open failed", even with Input Monitoring granted.
 - `hid_darwin_set_open_exclusive(0)` fixes this.
-- With non-exclusive hidapi, no root or setuid is needed. **Conflict:** the macOS Access Notes and the `sudo` note above.
+- With non-exclusive hidapi, no root, sudo, or setuid is needed.
 
 ### Rust init
 

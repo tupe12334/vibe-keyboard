@@ -37,6 +37,14 @@ pub fn handle_key_event(
     let Some(key) = raw_to_logical(raw_id) else {
         return;
     };
+    // Release always clears the highlight, even while loading.
+    if state_byte != 1 {
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .pressed_key = None;
+        return;
+    }
     if state
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -44,18 +52,11 @@ pub fn handle_key_event(
     {
         return;
     }
-    {
-        let mut s = state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        s.pressed_key = if state_byte == 1 { Some(key) } else { None };
-    }
-    if state_byte == 1 {
-        info!("key {:2} {state_str}", key);
-    }
-    if state_byte != 1 {
-        return;
-    }
+    state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .pressed_key = Some(key);
+    info!("key {:2} {state_str}", key);
 
     let is_input_number = matches!(nav.current(), Screen::InputNumber { .. });
 

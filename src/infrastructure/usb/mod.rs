@@ -10,6 +10,8 @@ pub const VID: u16 = 0x0300;
 pub const PID: u16 = 0x3010;
 /// Vendor interface (no report IDs). Skips the boot keyboard interface.
 const USAGE_PAGE: u16 = 0xFFA0;
+/// Primary usage on the vendor page. Usage `0x02` is a second collection on the same page.
+const USAGE: u16 = 0x01;
 /// Output payload size of the vendor interface (`MaxOutputReportSize`).
 pub const PACKET: usize = 1024;
 /// Output report: leading `0x00` (no report ID) + one `PACKET`.
@@ -28,7 +30,12 @@ impl Device {
         api.set_open_exclusive(false);
         let info = api
             .device_list()
-            .find(|d| d.vendor_id() == VID && d.product_id() == PID && d.usage_page() == USAGE_PAGE)
+            .find(|d| {
+                d.vendor_id() == VID
+                    && d.product_id() == PID
+                    && d.usage_page() == USAGE_PAGE
+                    && d.usage() == USAGE
+            })
             .ok_or("Device not found — is it plugged in?")?;
         let hid = info
             .open_device(&api)
