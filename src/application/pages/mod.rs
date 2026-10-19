@@ -11,6 +11,7 @@ mod session_actions;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
+pub use main_page::refresh_side_widgets;
 pub use session_actions::show_focus_only;
 
 use crate::infrastructure::usb::Device;

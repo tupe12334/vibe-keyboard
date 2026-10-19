@@ -32,6 +32,7 @@ signal-hook = "0.3"
 eframe = "0.37.0"
 rfd = "0.17.2"
 fs4 = "1.1.0"
+sysinfo = "0.39.6"
 
 [lints.clippy]
 # Group at lower priority so the specific lints below (which may set a

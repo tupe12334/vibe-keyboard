@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, Prompt, SideConfig,
+    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, Prompt, SideConfig, Widget,
     BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
@@ -17,6 +17,7 @@ use vibe_keyboard::infrastructure::images::{
     SIDE_HEIGHT, SIDE_WIDTH,
 };
 use vibe_keyboard::infrastructure::profile_store;
+use vibe_keyboard::infrastructure::system_metrics::{self, Metrics, Shared};
 
 /// Physical layout as seen from the front. Matches `device.md`.
 const GRID: [[u8; 5]; 3] = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]];
@@ -117,6 +118,7 @@ struct Preview {
 /// Rendered side preview, with the config it was rendered from.
 struct SidePreview {
     config: Option<SideConfig>,
+    metrics: Metrics,
     texture: egui::TextureHandle,
 }
 
@@ -228,6 +230,8 @@ struct Editor {
     icon_textures: HashMap<&'static str, egui::TextureHandle>,
     /// Set when `profile.toml` could not be read. Saving is refused while it is set.
     load_error: Option<String>,
+    /// Latest system sample, shared with the sampler thread. Widgets in the preview use it.
+    metrics: Shared,
     /// Last rendered side preview of the current page.
     side_preview: Option<SidePreview>,
     /// The side panel is shown instead of the key panel.
@@ -256,6 +260,7 @@ impl Editor {
             load_error,
             side_preview: None,
             side_open: false,
+            metrics: system_metrics::start(),
         };
         editor.start_running_refresh();
         editor
@@ -428,6 +433,8 @@ impl Editor {
     }
 
     /// Texture of the side screen of the current page. Re-rendered only when its config changes.
+    /// Re-rendered when its config or the latest system sample changes. Widget pages ask for
+    /// a repaint every sample, so the values stay live.
     fn side_texture(&mut self, ctx: &egui::Context) -> egui::TextureHandle {
         let config = self
             .session
@@ -435,15 +442,20 @@ impl Editor {
             .pages
             .get(self.page)
             .and_then(|p| p.side.clone());
+        let metrics = system_metrics::snapshot(&self.metrics);
+        if config.as_ref().is_some_and(|c| !c.widgets.is_empty()) {
+            ctx.request_repaint_after(system_metrics::SAMPLE_INTERVAL);
+        }
         if let Some(cached) = &self.side_preview {
-            if cached.config == config {
+            if cached.config == config && cached.metrics == metrics {
                 return cached.texture.clone();
             }
         }
-        let img = side_image(config.as_ref(), &self.root);
+        let img = side_image(config.as_ref(), &self.root, &metrics);
         let texture = texture_from(ctx, "side", &img);
         self.side_preview = Some(SidePreview {
             config,
+            metrics,
             texture: texture.clone(),
         });
         texture
@@ -518,6 +530,7 @@ impl Editor {
             }
         });
         self.image_picker(ui, &ctx, &mut edited.image);
+        widget_editor(ui, &mut edited.widgets);
         ui.separator();
         let remove = ui.button("Remove side screen").clicked();
         // Write only real changes, so an untouched panel never dirties the profile.
@@ -990,6 +1003,69 @@ impl Editor {
         } else if edited != original {
             self.session.profile.set_key(self.page, key, edited);
         }
+    }
+}
+
+/// List of side widgets: reorder, remove, edit text, and add one of each kind.
+/// Widgets replace the side label and image when the list is not empty.
+fn widget_editor(ui: &mut egui::Ui, widgets: &mut Vec<Widget>) {
+    ui.separator();
+    ui.strong("Widgets");
+    let last = widgets.len().saturating_sub(1);
+    let (mut remove, mut swap) = (None, None);
+    for (i, widget) in widgets.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            ui.label(widget_name(widget));
+            if let Widget::Text { value } = widget {
+                ui.text_edit_singleline(value);
+            }
+            if ui.add_enabled(i > 0, egui::Button::new("Up")).clicked() {
+                swap = Some((i, i - 1));
+            }
+            if ui
+                .add_enabled(i < last, egui::Button::new("Down"))
+                .clicked()
+            {
+                swap = Some((i, i + 1));
+            }
+            if ui.button("Remove").clicked() {
+                remove = Some(i);
+            }
+        });
+    }
+    if let Some(i) = remove {
+        widgets.remove(i);
+    }
+    if let Some((a, b)) = swap {
+        widgets.swap(a, b);
+    }
+    ui.horizontal_wrapped(|ui| {
+        for (label, widget) in [
+            ("+ CPU %", Widget::CpuPercent),
+            ("+ CPU bar", Widget::CpuBar),
+            ("+ Temp", Widget::Temperature),
+            ("+ Disk", Widget::DiskFree),
+            (
+                "+ Text",
+                Widget::Text {
+                    value: String::new(),
+                },
+            ),
+        ] {
+            if ui.button(label).clicked() {
+                widgets.push(widget);
+            }
+        }
+    });
+}
+
+const fn widget_name(widget: &Widget) -> &'static str {
+    match widget {
+        Widget::CpuPercent => "CPU %",
+        Widget::CpuBar => "CPU bar",
+        Widget::Temperature => "Temperature",
+        Widget::DiskFree => "Disk free",
+        Widget::Text { .. } => "Text",
     }
 }
 

@@ -89,14 +89,15 @@ pub fn render_main_page(
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
-    let (keys, side) = {
+    let (keys, side, metrics) = {
         let s = state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        s.profile.pages.get(page).map_or_else(
+        let (keys, side) = s.profile.pages.get(page).map_or_else(
             || (Default::default(), None),
             |p| (p.keys.clone(), p.side.clone()),
-        )
+        );
+        (keys, side, s.metrics.clone())
     };
     let actions: HashMap<u8, ButtonAction> = keys
         .iter()
@@ -134,10 +135,41 @@ pub fn render_main_page(
     if side.is_some() {
         send_side_image(
             handle,
-            DynamicImage::ImageRgb8(side_image(side.as_ref(), &root)),
+            DynamicImage::ImageRgb8(side_image(side.as_ref(), &root, &metrics)),
         );
     }
     info!("page {}: {} key(s)", page + 1, keys.len());
+}
+
+/// Re-sends the side screen of `page` when its widgets render a new frame. Called on the
+/// controller tick. `last` holds the page and bytes of the last frame sent by this tick, so
+/// an unchanged frame costs no USB traffic. Other side content is sent only on page entry.
+pub fn refresh_side_widgets(
+    handle: &Device,
+    state: &Arc<Mutex<tui::AppState>>,
+    page: usize,
+    last: &mut Option<(usize, Vec<u8>)>,
+) {
+    let (side, metrics) = {
+        let s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let side = s.profile.pages.get(page).and_then(|p| p.side.clone());
+        (side, s.metrics.clone())
+    };
+    let Some(side) = side.filter(|side| !side.widgets.is_empty()) else {
+        *last = None;
+        return;
+    };
+    let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics);
+    if last
+        .as_ref()
+        .is_some_and(|(sent, bytes)| *sent == page && bytes == frame.as_raw())
+    {
+        return;
+    }
+    send_side_image(handle, DynamicImage::ImageRgb8(frame.clone()));
+    *last = Some((page, frame.into_raw()));
 }
 
 #[cfg(test)]
