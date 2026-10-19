@@ -9,7 +9,8 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, SideConfig, BUILTIN_NAMES,
+    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, Prompt, SideConfig,
+    BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_WIDTH, SAFE_X,
@@ -582,6 +583,46 @@ impl Editor {
         }
     }
 
+    /// Edit the session prompts: label and text, reorder, delete, add. Changes are saved with the
+    /// layout, so the same Save and Discard rules apply.
+    fn prompts_section(&mut self, ui: &mut egui::Ui) {
+        ui.separator();
+        ui.heading("Prompts");
+        if self.session.profile.prompts.is_empty() {
+            ui.label("None set. Session actions use Recap and Voice.");
+        }
+        let count = self.session.profile.prompts.len();
+        let mut op = None;
+        for (index, prompt) in self.session.profile.prompts.iter_mut().enumerate() {
+            ui.push_id(index, |ui| {
+                ui.horizontal(|ui| {
+                    ui.add(egui::TextEdit::singleline(&mut prompt.label).desired_width(70.0));
+                    ui.add(egui::TextEdit::singleline(&mut prompt.text).desired_width(120.0));
+                });
+                ui.horizontal(|ui| {
+                    if ui.add_enabled(index > 0, egui::Button::new("Up")).clicked() {
+                        op = Some(PromptOp::Up(index));
+                    }
+                    if ui
+                        .add_enabled(index + 1 < count, egui::Button::new("Down"))
+                        .clicked()
+                    {
+                        op = Some(PromptOp::Down(index));
+                    }
+                    if ui.button("Delete").clicked() {
+                        op = Some(PromptOp::Delete(index));
+                    }
+                });
+            });
+        }
+        if ui.button("Add prompt").clicked() {
+            op = Some(PromptOp::Add);
+        }
+        if let Some(op) = op {
+            apply_prompt_op(&mut self.session.profile.prompts, op);
+        }
+    }
+
     fn page_list(&mut self, ui: &mut egui::Ui) -> Option<PageOp> {
         let mut op = None;
         ui.heading("Pages");
@@ -1106,7 +1147,11 @@ impl eframe::App for Editor {
             .resizable(true)
             .size_range(PAGES_WIDTH_RANGE)
             .default_size(PAGES_WIDTH)
-            .show(ui, |ui| self.page_list(ui))
+            .show(ui, |ui| {
+                let op = self.page_list(ui);
+                self.prompts_section(ui);
+                op
+            })
             .inner;
         egui::Panel::right("key")
             .resizable(true)
@@ -1133,8 +1178,62 @@ impl eframe::App for Editor {
     }
 }
 
+/// One edit to the prompt list. The index is the row the user pressed on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum PromptOp {
+    Up(usize),
+    Down(usize),
+    Delete(usize),
+    Add,
+}
+
+/// Apply `op` to the prompt list. Out-of-range rows do nothing.
+fn apply_prompt_op(prompts: &mut Vec<Prompt>, op: PromptOp) {
+    match op {
+        PromptOp::Up(index) if index > 0 && index < prompts.len() => prompts.swap(index - 1, index),
+        PromptOp::Down(index) if index + 1 < prompts.len() => prompts.swap(index, index + 1),
+        PromptOp::Delete(index) if index < prompts.len() => {
+            prompts.remove(index);
+        }
+        // Empty text fails `problems()`, so the save gate stops until the user fills it in.
+        PromptOp::Add => prompts.push(Prompt {
+            label: "New".into(),
+            text: String::new(),
+        }),
+        _ => {}
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use super::{apply_prompt_op, PromptOp};
+    use vibe_keyboard::domain::profile::Prompt;
+
+    #[test]
+    fn prompt_ops_reorder_delete_and_add() {
+        let prompt = |label: &str| Prompt {
+            label: label.into(),
+            text: format!("/{label}"),
+        };
+        let mut prompts = vec![prompt("a"), prompt("b"), prompt("c")];
+        apply_prompt_op(&mut prompts, PromptOp::Down(0));
+        assert_eq!(
+            prompts.iter().map(|p| p.label.as_str()).collect::<Vec<_>>(),
+            ["b", "a", "c"]
+        );
+        apply_prompt_op(&mut prompts, PromptOp::Up(0));
+        assert_eq!(prompts[0].label, "b", "Up on the first row does nothing");
+        apply_prompt_op(&mut prompts, PromptOp::Delete(1));
+        assert_eq!(
+            prompts.iter().map(|p| p.label.as_str()).collect::<Vec<_>>(),
+            ["b", "c"]
+        );
+        apply_prompt_op(&mut prompts, PromptOp::Delete(9));
+        apply_prompt_op(&mut prompts, PromptOp::Add);
+        assert_eq!(prompts.len(), 3);
+        assert_eq!(prompts[2].text, "");
+    }
+
     use super::{
         cell_size, parse_lsappinfo, side_strip_size, Session, GAP, GRID_MARGIN, KEY_PANEL_WIDTH,
         PAGES_WIDTH, UNDO_WINDOW,
