@@ -16,7 +16,8 @@ use crate::domain::actions::ClaudeSession;
 /// the two terminal apps in parallel.
 const PS_TIMEOUT: Duration = Duration::from_millis(150);
 const LSOF_TIMEOUT: Duration = Duration::from_millis(250);
-const TITLE_TIMEOUT: Duration = Duration::from_millis(500);
+// ponytail: iTerm2 took about 380 ms live. Runs off the device loop, so a generous budget is safe.
+const TITLE_TIMEOUT: Duration = Duration::from_millis(1500);
 
 /// Hard limit for one `osascript` focus call. Terminal apps can be slow to answer when they activate.
 const FOCUS_TIMEOUT: Duration = Duration::from_secs(5);
@@ -29,7 +30,7 @@ const ITERM_TITLES: &str = r#"if application "iTerm2" is running then
     repeat with w in windows
       repeat with t in tabs of w
         repeat with s in sessions of t
-          set out to out & (tty of s) & tab & (name of s) & linefeed
+          set out to out & (tty of s) & (character id 9) & (name of s) & linefeed
         end repeat
       end repeat
     end repeat
@@ -44,7 +45,7 @@ const TERMINAL_TITLES: &str = r#"if application "Terminal" is running then
     set out to ""
     repeat with w in windows
       repeat with t in tabs of w
-        set out to out & (tty of t) & tab & (custom title of t) & linefeed
+        set out to out & (tty of t) & (character id 9) & (custom title of t) & linefeed
       end repeat
     end repeat
     return out
