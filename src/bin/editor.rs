@@ -11,7 +11,9 @@ use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
     format_color, parse_color, Action, ActionKind, KeyConfig, Profile, BUILTIN_NAMES,
 };
-use vibe_keyboard::infrastructure::images::{icon_image, key_image, ICON_NAMES};
+use vibe_keyboard::infrastructure::images::{
+    app_icon_generation, icon_image, key_image, ICON_NAMES,
+};
 use vibe_keyboard::infrastructure::profile_store;
 
 /// Physical layout as seen from the front. Matches `device.md`.
@@ -103,6 +105,8 @@ fn texture_from(ctx: &egui::Context, name: &str, img: &image::RgbImage) -> egui:
 /// A rendered key preview.
 struct Preview {
     config: Option<KeyConfig>,
+    /// `app_icon_generation()` when rendered, so finished app lookups show up.
+    generation: u64,
     texture: egui::TextureHandle,
 }
 
@@ -139,6 +143,13 @@ impl Session {
     }
 
     /// Drop unsaved edits and adopt `disk`, the file as it is now. False when nothing is dirty.
+    /// Replace everything with the file as it is on disk. Used when the user chooses Reload.
+    fn replace_with_disk(&mut self, disk: Profile) {
+        self.saved = disk.clone();
+        self.profile = disk;
+        self.dropped = None;
+    }
+
     fn discard(&mut self, disk: Profile, now: Instant) -> bool {
         if !self.dirty() {
             return false;
@@ -187,6 +198,10 @@ struct Editor {
     session: Session,
     /// The unsaved-changes dialog is open (window close was requested while dirty).
     close_prompt: bool,
+    /// File modification time when it was last loaded or written by this editor.
+    loaded_mtime: Option<std::time::SystemTime>,
+    /// The file changed on disk since it was loaded. Save waits for the user's choice.
+    disk_conflict: bool,
     page: usize,
     key: Option<u8>,
     status: String,
@@ -213,6 +228,8 @@ impl Editor {
             root,
             session: Session::new(profile),
             close_prompt: false,
+            loaded_mtime: profile_store::modified_at(&profile_store::profile_path()),
+            disk_conflict: false,
             page: 0,
             key: None,
             status: "Loaded profile.".to_string(),
@@ -252,14 +269,35 @@ impl Editor {
 
     /// Write the layout to disk. Returns true when the file was written.
     fn save(&mut self) -> bool {
+        self.write_file(false)
+    }
+
+    /// Write the layout. Refuses on load errors, layout problems, or (unless `overwrite`)
+    /// when the file changed on disk since it was loaded.
+    fn write_file(&mut self, overwrite: bool) -> bool {
         if let Some(error) = &self.load_error {
             self.status =
                 format!("Cannot save: {error}. Fix the file by hand, then reopen the editor.");
             return false;
         }
-        match profile_store::save(&profile_store::profile_path(), &self.session.profile) {
+        let problems = self.session.profile.problems();
+        if !problems.is_empty() {
+            self.status = format!(
+                "Cannot save: {} problem(s) in the layout. Fix them first (listed below).",
+                problems.len()
+            );
+            return false;
+        }
+        let path = profile_store::profile_path();
+        if !overwrite && profile_store::modified_at(&path) != self.loaded_mtime {
+            self.disk_conflict = true;
+            return false;
+        }
+        match profile_store::save(&path, &self.session.profile) {
             Ok(()) => {
                 self.session.mark_saved();
+                self.loaded_mtime = profile_store::modified_at(&path);
+                self.disk_conflict = false;
                 self.status = "Saved. The controller reloads within a second.".into();
                 true
             }
@@ -270,13 +308,30 @@ impl Editor {
         }
     }
 
+    /// Adopt the file as it is on disk now, the same way startup loads it.
+    fn adopt_disk(&mut self) {
+        let (disk, error) = load_from_disk();
+        self.load_error = error;
+        self.session.replace_with_disk(disk);
+        self.loaded_mtime = profile_store::modified_at(&profile_store::profile_path());
+        self.disk_conflict = false;
+        self.key = None;
+        self.previews.clear();
+        self.clamp_selection();
+    }
+
     /// Drop unsaved edits and reload the file, the same way startup does.
     fn discard(&mut self) {
+        if !self.session.dirty() {
+            return;
+        }
         let (disk, error) = load_from_disk();
         if self.session.discard(disk, Instant::now()) {
             self.load_error = error;
+            self.loaded_mtime = profile_store::modified_at(&profile_store::profile_path());
             self.key = None;
             self.previews.clear();
+            self.clamp_selection();
             self.status = "Changes discarded".into();
         }
     }
@@ -284,15 +339,54 @@ impl Editor {
     fn undo(&mut self) {
         if self.session.undo(Instant::now()) {
             self.previews.clear();
+            self.clamp_selection();
             self.status = "Discard undone".into();
+        }
+    }
+
+    /// Keep the selected page inside the current layout. The key selection is dropped when
+    /// the page moves.
+    fn clamp_selection(&mut self) {
+        let count = self.session.profile.pages.len();
+        let page = self.page.min(count.saturating_sub(1));
+        if page != self.page {
+            self.page = page;
+            self.key = None;
+        }
+    }
+
+    /// Shown when the file changed on disk since it was loaded.
+    fn conflict_dialog(&mut self, ctx: &egui::Context) {
+        let (mut reload, mut overwrite, mut keep) = (false, false, false);
+        egui::Window::new("profile.toml changed on disk")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+            .show(ctx, |ui| {
+                ui.label("Another program changed the file after it was loaded.");
+                ui.label("Reload discards your edits. Overwrite replaces the file.");
+                ui.horizontal(|ui| {
+                    reload |= ui.button("Reload").clicked();
+                    overwrite |= ui.button("Overwrite").clicked();
+                    keep |= ui.button("Keep editing").clicked();
+                });
+            });
+        if reload {
+            self.adopt_disk();
+            self.status = "Reloaded profile.toml from disk.".into();
+        } else if overwrite {
+            self.write_file(true);
+        } else if keep {
+            self.disk_conflict = false;
         }
     }
 
     /// Texture of the deck image for `key`. Re-rendered only when that key's config changes.
     fn preview(&mut self, ctx: &egui::Context, key: u8) -> egui::TextureHandle {
         let config = self.session.profile.key_at(self.page, key).cloned();
+        let generation = app_icon_generation();
         if let Some(cached) = self.previews.get(&key) {
-            if cached.config == config {
+            if cached.config == config && cached.generation == generation {
                 return cached.texture.clone();
             }
         }
@@ -308,6 +402,7 @@ impl Editor {
             key,
             Preview {
                 config,
+                generation,
                 texture: texture.clone(),
             },
         );
@@ -845,6 +940,9 @@ impl eframe::App for Editor {
         }
         if self.close_prompt {
             self.close_dialog(&ctx);
+        }
+        if self.disk_conflict {
+            self.conflict_dialog(&ctx);
         }
         if self.session.undo_available(now) {
             ctx.request_repaint_after(Duration::from_millis(500));

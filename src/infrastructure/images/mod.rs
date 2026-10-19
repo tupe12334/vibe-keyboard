@@ -21,7 +21,7 @@ pub use numpad::{
     generate_numpad_backspace_image, generate_numpad_clear_image, generate_numpad_digit_image,
     generate_numpad_entry_image,
 };
-pub use profile_key::{calibration_image, key_image, page_images};
+pub use profile_key::{app_icon_generation, calibration_image, key_image, page_images};
 pub use project_item::generate_project_item_image;
 pub use search::generate_search_image;
 pub use sort::generate_sort_image;

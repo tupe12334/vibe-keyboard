@@ -11,7 +11,7 @@ use tracing::{error, info, warn};
 use vibe_keyboard::domain::navigation::NavigationStack;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::frontmost;
-use vibe_keyboard::infrastructure::images::calibration_image;
+use vibe_keyboard::infrastructure::images::{app_icon_generation, calibration_image};
 use vibe_keyboard::infrastructure::persistence::DeviceState;
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::usb::{
@@ -94,6 +94,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut last_heartbeat = Instant::now();
     let frontmost_rx = frontmost::watch(FRONTMOST_POLL);
     let mut was_on_main_page = nav.main_page().is_some();
+    let mut icon_generation = app_icon_generation();
 
     loop {
         if shutdown.load(Ordering::Relaxed) {
@@ -113,6 +114,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         while let Ok(bundle_id) = frontmost_rx.try_recv() {
             handle_frontmost(&bundle_id, &mut nav, &handle, &app_state, &dev_state);
+        }
+
+        // A background app-icon lookup finished: redraw so the key shows its icon.
+        let generation = app_icon_generation();
+        if generation != icon_generation {
+            icon_generation = generation;
+            if nav.main_page().is_some() {
+                render_screen(&nav, &handle, &app_state, &dev_state);
+            }
         }
 
         let confirmed_query = {

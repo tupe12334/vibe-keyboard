@@ -1,5 +1,7 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Mutex, OnceLock};
 
 use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb, RgbImage};
@@ -74,12 +76,57 @@ fn source_image(image: &Path, root: &Path) -> Option<RgbImage> {
         return icon_image(name, KEY_SIZE);
     }
     if let Some(bundle_id) = text.strip_prefix("app:") {
-        return app_icon(bundle_id, KEY_SIZE).map(|img| {
-            img.resize_to_fill(KEY_SIZE, KEY_SIZE, FilterType::Triangle)
-                .to_rgb8()
-        });
+        return app_icon_cached(bundle_id);
     }
     load_image(&resolve_image(root, image))
+}
+
+/// Installed-app icons, looked up off-thread. Results are cached, misses included.
+#[derive(Default)]
+struct AppIconCache {
+    /// Finished lookups. `None` is a miss (no such app, or no icon).
+    ready: HashMap<String, Option<RgbImage>>,
+    /// Lookups still running on a worker thread.
+    pending: HashSet<String>,
+}
+
+static APP_ICONS: OnceLock<Mutex<AppIconCache>> = OnceLock::new();
+/// Bumped whenever a lookup finishes, so callers know to re-render.
+static APP_ICON_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+fn app_cache() -> std::sync::MutexGuard<'static, AppIconCache> {
+    APP_ICONS
+        .get_or_init(|| Mutex::new(AppIconCache::default()))
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Counter that changes each time an app icon lookup finishes.
+pub fn app_icon_generation() -> u64 {
+    APP_ICON_GENERATION.load(Ordering::Relaxed)
+}
+
+/// The icon for `bundle_id` if it is already known. Otherwise start a background lookup and
+/// return `None`, so the key shows its label until the lookup finishes.
+fn app_icon_cached(bundle_id: &str) -> Option<RgbImage> {
+    let mut cache = app_cache();
+    if let Some(known) = cache.ready.get(bundle_id) {
+        return known.clone();
+    }
+    if cache.pending.insert(bundle_id.to_string()) {
+        let id = bundle_id.to_string();
+        std::thread::spawn(move || {
+            let icon = app_icon(&id, KEY_SIZE).map(|img| {
+                img.resize_to_fill(KEY_SIZE, KEY_SIZE, FilterType::Triangle)
+                    .to_rgb8()
+            });
+            let mut cache = app_cache();
+            cache.pending.remove(&id);
+            cache.ready.insert(id, icon);
+            APP_ICON_GENERATION.fetch_add(1, Ordering::Relaxed);
+        });
+    }
+    None
 }
 
 fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {

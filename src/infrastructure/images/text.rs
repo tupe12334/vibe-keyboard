@@ -26,6 +26,7 @@ pub fn draw_label(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
 }
 
 fn wrap(text: &str, per_line: usize, max_lines: usize) -> Vec<String> {
+    let per_line = per_line.max(1);
     let mut lines = Vec::new();
     let mut current = String::new();
     for word in text.split_whitespace() {
