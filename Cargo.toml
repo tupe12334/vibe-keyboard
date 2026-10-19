@@ -9,7 +9,7 @@ path = "src/main.rs"
 
 [dependencies]
 rusb = "0.9"
-image = { version = "0.25", default-features = false, features = ["jpeg"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 ratatui = "0.30"
 crossterm = "0.28"
 serde = { version = "1", features = ["derive"] }

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="200" fill="#141414"/>
+  <rect x="182" y="320" width="108" height="108" rx="26" fill="#DA783C"/>
+  <rect x="320" y="320" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="458" y="320" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="596" y="320" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="734" y="320" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="182" y="458" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="320" y="458" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="458" y="458" width="108" height="108" rx="26" fill="#6366F1"/>
+  <rect x="596" y="458" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="734" y="458" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="182" y="596" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="320" y="596" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="458" y="596" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="596" y="596" width="108" height="108" rx="26" fill="#EDEDED"/>
+  <rect x="734" y="596" width="108" height="108" rx="26" fill="#EDEDED"/>
+</svg>
