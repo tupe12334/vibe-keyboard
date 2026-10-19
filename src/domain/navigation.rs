@@ -300,11 +300,13 @@ impl NavigationStack {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::actions::SessionStatus;
+    use crate::domain::actions::{SessionStatus, TerminalApp};
 
     #[test]
     fn set_sessions_replaces_the_list_and_keeps_the_page_in_range() {
         let session = |i: usize| ClaudeSession {
+            pid: i as u32,
+            app: TerminalApp::Other,
             tty: format!("ttys{i:03}"),
             label: format!("s{i}"),
             status: SessionStatus::Active,
@@ -388,6 +390,8 @@ mod tests {
     fn claude_sessions_page_forward_back_and_stop_at_edges() {
         let sessions: Vec<ClaudeSession> = (0..11)
             .map(|i| ClaudeSession {
+                pid: i as u32,
+                app: TerminalApp::Other,
                 status: SessionStatus::Stale,
                 age: None,
                 tty: format!("ttys{i:03}"),

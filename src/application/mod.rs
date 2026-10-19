@@ -3,13 +3,13 @@ mod pages;
 
 pub use pages::{render_screen, SessionsRefresh};
 
-use crate::domain::actions::NewSessionTerminal;
+use crate::domain::actions::{NewSessionTerminal, TerminalApp};
 use crate::infrastructure::claude_sessions::{
     focus_session, open_new_session, send_prompt, SESSION_PROMPTS,
 };
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
-use pages::fetch_centy_issues;
+use pages::{fetch_centy_issues, show_focus_only};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -150,8 +150,12 @@ fn handle_action_key(
             session: crate::domain::actions::ClaudeSession,
         },
         SendPrompt {
+            pid: u32,
             tty: String,
             text: &'static str,
+        },
+        PromptUnsupported {
+            key: u8,
         },
 
         NewSession {
@@ -288,10 +292,15 @@ fn handle_action_key(
                 tty: session.tty.clone(),
             },
             2 | 3 => {
-                let (_, text) = SESSION_PROMPTS[usize::from(key) - 2];
-                Action::SendPrompt {
-                    tty: session.tty.clone(),
-                    text,
+                if session.app == TerminalApp::Other {
+                    Action::PromptUnsupported { key }
+                } else {
+                    let (_, text) = SESSION_PROMPTS[usize::from(key) - 2];
+                    Action::SendPrompt {
+                        pid: session.pid,
+                        tty: session.tty.clone(),
+                        text,
+                    }
                 }
             }
             _ => Action::None,
@@ -411,10 +420,14 @@ fn handle_action_key(
             nav.push(Screen::SessionActions { session });
             render_screen(nav, handle, state, dev_state);
         }
-        Action::SendPrompt { tty, text } => {
+        Action::SendPrompt { pid, tty, text } => {
             info!("claude sessions: send {text} to {tty}");
             // Off the device loop: osascript can take a while to answer.
-            std::thread::spawn(move || send_prompt(&tty, text));
+            std::thread::spawn(move || send_prompt(pid, &tty, text));
+        }
+        Action::PromptUnsupported { key } => {
+            info!("claude sessions: key {key} needs iTerm2 or Terminal; focus only");
+            show_focus_only(handle, key);
         }
         Action::OpenNewSessionChoice => {
             info!("claude sessions: choose a terminal for a new session");

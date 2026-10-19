@@ -9,7 +9,9 @@ pub use os::{focus_session, list_sessions, open_new_session, send_prompt};
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::domain::actions::{ClaudeSession, Glyph, NewSessionTerminal, SessionStatus};
+use crate::domain::actions::{
+    ClaudeSession, Glyph, NewSessionTerminal, SessionStatus, TerminalApp,
+};
 
 /// A tty that printed within this long is `Active`. Older is `Stale`. Claude Code redraws while it
 /// works, so a session that is quiet for a minute is waiting or idle.
@@ -172,22 +174,33 @@ fn user_text(value: &serde_json::Value) -> Option<String> {
     }
 }
 
-/// Build the session list from `(tty, cwd)` pairs. `ages` holds the tty age per tty.
+/// True when `pid` is still a `claude` process on `tty`, per a fresh `ps` output. A tty that
+/// closed and was reused by another tab fails this check.
+pub fn is_session_on_tty(ps: &str, pid: u32, tty: &str) -> bool {
+    claude_processes(ps)
+        .iter()
+        .any(|(live_pid, live_tty)| *live_pid == pid && live_tty == tty)
+}
+
+/// Build the session list from `(pid, tty, cwd)` triples. `ages` holds the tty age per tty.
+/// `owners` maps each tty to the app whose tab output listed it. Unlisted ttys are `Other`.
 ///
 /// Title source, first match wins: the terminal tab title, then the transcript summary for the
 /// working directory (`summary_for`), then the directory label, then the tty. The status comes
 /// from `status_for`. The list is sorted: active first by label, then stale by most recent.
 pub fn build_sessions(
-    procs: Vec<(String, Option<String>)>,
+    procs: Vec<(u32, String, Option<String>)>,
     tab_titles: &HashMap<String, String>,
+    owners: &HashMap<String, TerminalApp>,
     ages: &HashMap<String, Duration>,
     home: &str,
     summary_for: impl Fn(&str) -> Option<String>,
 ) -> Vec<ClaudeSession> {
     let mut sessions: Vec<ClaudeSession> = procs
         .into_iter()
-        .map(|(tty, cwd)| {
+        .map(|(pid, tty, cwd)| {
             let age = ages.get(&tty).copied();
+            let app = owners.get(&tty).copied().unwrap_or(TerminalApp::Other);
             let titled = tab_titles
                 .get(&tty)
                 .map(|raw| parse_title(raw))
@@ -204,6 +217,8 @@ pub fn build_sessions(
             };
             let status = status_for(age.unwrap_or(Duration::MAX), glyph);
             ClaudeSession {
+                pid,
+                app,
                 tty,
                 label,
                 status,
@@ -260,19 +275,36 @@ pub const fn new_session_script(app: NewSessionTerminal) -> &'static str {
 /// Prompts that a session action sends, as `(label, text)`. Fixed text, never user input.
 pub const SESSION_PROMPTS: [(&str, &str); 2] = [("Recap", "/recap"), ("Voice", "/voice")];
 
-/// `AppleScript` string literal for `text`. Escapes backslash and double quote.
-pub fn applescript_string(text: &str) -> String {
-    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
+/// `AppleScript` expression for `text`. Escapes backslash and double quote. `\n`, `\r` and `\t`
+/// become `linefeed`, `return` and `tab` joined by `&`. Any other control character gives None.
+pub fn applescript_string(text: &str) -> Option<String> {
+    let mut out = String::from("\"");
+    let mut joined = false;
+    for c in text.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\" & linefeed & \""),
+            '\r' => out.push_str("\" & return & \""),
+            '\t' => out.push_str("\" & tab & \""),
+            c if c.is_control() => return None,
+            c => out.push(c),
+        }
+        joined |= matches!(c, '\n' | '\r' | '\t');
+    }
+    out.push('"');
+    Some(if joined { format!("({out})") } else { out })
 }
 
 /// Two `AppleScript`s that type `text` and Enter into the tab on `/dev/<tty>`: `[iTerm2,
-/// Terminal.app]`. Each prints `found` on success and `missing` otherwise. None for an invalid tty.
+/// Terminal.app]`. Each prints `found` on success and `missing` otherwise. None for an invalid tty
+/// or text that holds an unsafe control character.
 pub fn send_text_scripts(tty: &str, text: &str) -> Option<[String; 2]> {
     if !is_valid_tty(tty) {
         return None;
     }
     let device = format!("/dev/{tty}");
-    let text = applescript_string(text);
+    let text = applescript_string(text)?;
     let iterm = format!(
         r#"if application "iTerm2" is running then
   tell application "iTerm2"
@@ -551,14 +583,14 @@ mod tests {
         titles.insert("ttys001".to_string(), "◐ Titled (claude)".to_string());
         titles.insert("ttys002".to_string(), "   ".to_string());
         let procs = vec![
-            ("ttys001".to_string(), Some("/a/one".to_string())),
-            ("ttys002".to_string(), Some("/a/two".to_string())),
-            ("ttys003".to_string(), Some("/a/three".to_string())),
-            ("ttys004".to_string(), None),
+            (101, "ttys001".to_string(), Some("/a/one".to_string())),
+            (102, "ttys002".to_string(), Some("/a/two".to_string())),
+            (103, "ttys003".to_string(), Some("/a/three".to_string())),
+            (104, "ttys004".to_string(), None),
         ];
         let summary = |cwd: &str| (cwd == "/a/two").then(|| "From summary".to_string());
         let ages = HashMap::from([("ttys001".to_string(), Duration::ZERO)]);
-        let got = build_sessions(procs, &titles, &ages, "/Users/me", summary);
+        let got = build_sessions(procs, &titles, &HashMap::new(), &ages, "/Users/me", summary);
         let got: Vec<(&str, &str, SessionStatus)> = got
             .iter()
             .map(|s| (s.tty.as_str(), s.label.as_str(), s.status))
@@ -570,6 +602,35 @@ mod tests {
                 ("ttys002", "From summary", SessionStatus::Stale),
                 ("ttys003", "three", SessionStatus::Stale),
                 ("ttys004", "ttys004", SessionStatus::Stale),
+            ]
+        );
+    }
+
+    #[test]
+    fn sessions_record_pid_and_owning_app() {
+        let mut owners = HashMap::new();
+        owners.insert("ttys001".to_string(), TerminalApp::ITerm);
+        owners.insert("ttys002".to_string(), TerminalApp::Terminal);
+        let procs = vec![
+            (11, "ttys001".to_string(), None),
+            (22, "ttys002".to_string(), None),
+            (33, "ttys009".to_string(), None),
+        ];
+        let got = build_sessions(
+            procs,
+            &HashMap::new(),
+            &owners,
+            &HashMap::new(),
+            "/",
+            |_| None,
+        );
+        let pairs: Vec<(u32, TerminalApp)> = got.iter().map(|s| (s.pid, s.app)).collect();
+        assert_eq!(
+            pairs,
+            vec![
+                (11, TerminalApp::ITerm),
+                (22, TerminalApp::Terminal),
+                (33, TerminalApp::Other),
             ]
         );
     }
@@ -592,16 +653,17 @@ mod tests {
         .map(|(tty, secs)| (tty.to_string(), Duration::from_secs(secs)))
         .collect();
         let procs = vec![
-            ("ttys001".to_string(), None),
-            ("ttys002".to_string(), None),
-            ("ttys003".to_string(), None),
-            ("ttys004".to_string(), None),
-            ("ttys005".to_string(), None),
+            (1, "ttys001".to_string(), None),
+            (2, "ttys002".to_string(), None),
+            (3, "ttys003".to_string(), None),
+            (4, "ttys004".to_string(), None),
+            (5, "ttys005".to_string(), None),
         ];
-        let order: Vec<String> = build_sessions(procs, &titles, &ages, "/", |_| None)
-            .into_iter()
-            .map(|s| s.label)
-            .collect();
+        let order: Vec<String> =
+            build_sessions(procs, &titles, &HashMap::new(), &ages, "/", |_| None)
+                .into_iter()
+                .map(|s| s.label)
+                .collect();
         // Active (Zed spinning, Gamma at 10 s) by label, then stale 100 s, 500 s, 900 s.
         assert_eq!(order, ["Gamma", "Zed", "Alpha", "Beta", "ttys004"]);
     }
@@ -641,10 +703,55 @@ mod tests {
 
     #[test]
     fn applescript_string_escapes_quotes_and_backslashes() {
-        assert_eq!(applescript_string("/recap"), r#""/recap""#);
-        assert_eq!(applescript_string(r#"say "hi""#), r#""say \"hi\"""#);
-        assert_eq!(applescript_string(r"a\b"), r#""a\\b""#);
-        assert_eq!(applescript_string("héllo ✳"), "\"héllo ✳\"");
+        assert_eq!(applescript_string("/recap").as_deref(), Some(r#""/recap""#));
+        assert_eq!(
+            applescript_string(r#"say "hi""#).as_deref(),
+            Some(r#""say \"hi\"""#)
+        );
+        assert_eq!(applescript_string(r"a\b").as_deref(), Some(r#""a\\b""#));
+        assert_eq!(
+            applescript_string("héllo ✳").as_deref(),
+            Some("\"héllo ✳\"")
+        );
+    }
+
+    #[test]
+    fn applescript_string_joins_newline_cr_and_tab_as_constants() {
+        assert_eq!(
+            applescript_string("a\nb").as_deref(),
+            Some(r#"("a" & linefeed & "b")"#)
+        );
+        assert_eq!(
+            applescript_string("\r").as_deref(),
+            Some(r#"("" & return & "")"#)
+        );
+        assert_eq!(
+            applescript_string("x\t\"y\\\n").as_deref(),
+            Some(r#"("x" & tab & "\"y\\" & linefeed & "")"#)
+        );
+    }
+
+    #[test]
+    fn applescript_string_refuses_other_control_chars() {
+        assert_eq!(applescript_string("a\u{0}b"), None);
+        assert_eq!(applescript_string("\u{7f}"), None);
+        assert_eq!(applescript_string("\u{1b}[31m"), None);
+        assert_eq!(send_text_scripts("ttys001", "a\u{7}b"), None);
+    }
+
+    #[test]
+    fn send_text_scripts_joins_multiline_text() {
+        let [iterm, _] = send_text_scripts("ttys007", "one\ntwo").unwrap_or_default();
+        assert!(iterm.contains(r#"write text ("one" & linefeed & "two")"#));
+    }
+
+    #[test]
+    fn is_session_on_tty_needs_the_same_pid_and_tty() {
+        let ps = "  101 ttys003 claude\n  202 ttys004 claude\n";
+        assert!(is_session_on_tty(ps, 101, "ttys003"));
+        assert!(!is_session_on_tty(ps, 101, "ttys004"), "pid moved tty");
+        assert!(!is_session_on_tty(ps, 999, "ttys003"), "pid gone");
+        assert!(!is_session_on_tty("", 101, "ttys003"));
     }
 
     #[test]

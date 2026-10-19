@@ -83,10 +83,21 @@ pub enum Glyph {
     Spinner,
 }
 
-/// A Claude Code process on a terminal. `tty` is the bare name, e.g. `ttys003`. `age` is the time
-/// since the tty last printed, or `None` when the tty could not be read.
+/// The app that owns a session's tab. Only iTerm2 and Terminal.app accept typed text. Other apps
+/// (VS Code, unknown terminals) only support focus.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TerminalApp {
+    ITerm,
+    Terminal,
+    Other,
+}
+
+/// A Claude Code process on a terminal. `pid` and `tty` identify it. `tty` is the bare name, e.g.
+/// `ttys003`. `age` is the time since the tty last printed, or `None` when the tty could not be read.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ClaudeSession {
+    pub pid: u32,
+    pub app: TerminalApp,
     pub tty: String,
     pub label: String,
     pub status: SessionStatus,

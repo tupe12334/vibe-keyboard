@@ -8,10 +8,10 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 
 use super::{
-    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_valid_tty,
-    new_session_script, parse_tab_titles, send_text_scripts, summary_from_jsonl,
+    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_session_on_tty,
+    is_valid_tty, new_session_script, parse_tab_titles, send_text_scripts, summary_from_jsonl,
 };
-use crate::domain::actions::{ClaudeSession, NewSessionTerminal};
+use crate::domain::actions::{ClaudeSession, NewSessionTerminal, TerminalApp};
 
 /// Budgets for one discovery pass, which takes at most about 0.9 s: ps, then one lsof, then
 /// the two terminal apps in parallel.
@@ -77,17 +77,27 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
     .unwrap_or_default();
 
     let iterm = std::thread::spawn(|| run("osascript", &["-e", ITERM_TITLES], TITLE_TIMEOUT));
-    let mut tab_titles = run("osascript", &["-e", TERMINAL_TITLES], TITLE_TIMEOUT)
+    let terminal_titles = run("osascript", &["-e", TERMINAL_TITLES], TITLE_TIMEOUT)
         .map(|out| parse_tab_titles(&out))
         .unwrap_or_default();
-    tab_titles.extend(
-        iterm
-            .join()
-            .ok()
-            .flatten()
-            .map(|out| parse_tab_titles(&out))
-            .unwrap_or_default(),
-    );
+    let iterm_titles = iterm
+        .join()
+        .ok()
+        .flatten()
+        .map(|out| parse_tab_titles(&out))
+        .unwrap_or_default();
+    // The app whose tab output lists a tty owns that tab. Title or not, the tab is there.
+    let owners = terminal_titles
+        .keys()
+        .map(|tty| (tty.clone(), TerminalApp::Terminal))
+        .chain(
+            iterm_titles
+                .keys()
+                .map(|tty| (tty.clone(), TerminalApp::ITerm)),
+        )
+        .collect::<HashMap<_, _>>();
+    let mut tab_titles = terminal_titles;
+    tab_titles.extend(iterm_titles);
 
     let home = std::env::var("HOME").unwrap_or_default();
     let ages = procs
@@ -97,9 +107,9 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
         .collect::<HashMap<_, _>>();
     let entries = procs
         .into_iter()
-        .map(|(pid, tty)| (tty, cwds.get(&pid).cloned()))
+        .map(|(pid, tty)| (pid, tty, cwds.get(&pid).cloned()))
         .collect();
-    build_sessions(entries, &tab_titles, &ages, &home, |cwd| {
+    build_sessions(entries, &tab_titles, &owners, &ages, &home, |cwd| {
         summary_for(cwd, &home)
     })
 }
@@ -148,17 +158,26 @@ pub fn focus_session(tty: &str) {
     }
 }
 
-/// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Logs when
-/// neither app has the tab, such as VS Code. Blocks until done, so call it from a thread.
-pub fn send_prompt(tty: &str, text: &str) {
+/// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Skips when `pid`
+/// no longer runs `claude` on `tty`, because the tty may have been reused. Logs when no app
+/// confirms the send. Blocks until done, so call it from a thread.
+pub fn send_prompt(pid: u32, tty: &str, text: &str) {
     let Some(scripts) = send_text_scripts(tty, text) else {
         return;
     };
+    let still_there = run("ps", &["-Ao", "pid=,tty=,comm="], PS_TIMEOUT)
+        .is_some_and(|ps| is_session_on_tty(&ps, pid, tty));
+    if !still_there {
+        tracing::warn!("claude sessions: pid {pid} no longer on {tty}; prompt skipped");
+        return;
+    }
     let sent = scripts.iter().any(|script| {
         run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
     });
     if !sent {
-        tracing::warn!("claude sessions: no iTerm2 or Terminal tab on {tty}; prompt not sent");
+        tracing::warn!(
+            "claude sessions: no iTerm2 or Terminal tab confirmed on {tty}; send may not have completed"
+        );
     }
 }
 
