@@ -1,5 +1,6 @@
+use hidapi::HidResult;
 use std::time::Duration;
-use tracing::{error, warn};
+use tracing::error;
 
 use super::{Device, CMD_PACKET};
 
@@ -53,20 +54,15 @@ pub fn keep_alive(handle: &Device) {
     write_cmd(handle, b"CONNECT");
 }
 
-pub fn read_event(handle: &Device, timeout: Duration) -> Option<Vec<u8>> {
+/// `Ok(None)` on timeout, `Err` when the device read fails (e.g. unplugged).
+pub fn read_event(handle: &Device, timeout: Duration) -> HidResult<Option<Vec<u8>>> {
     let mut buf = vec![0u8; IN_PACKET];
     let timeout_ms = i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX);
-    match handle.read_timeout(&mut buf, timeout_ms) {
-        Ok(0) => None,
-        Ok(n) => {
+    match handle.read_timeout(&mut buf, timeout_ms)? {
+        0 => Ok(None),
+        n => {
             buf.truncate(n);
-            Some(buf)
-        }
-        Err(e) => {
-            warn!("USB read error: {e}");
-            // Unplugged device returns errors at once. Sleep so the main loop does not spin.
-            std::thread::sleep(Duration::from_millis(200));
-            None
+            Ok(Some(buf))
         }
     }
 }
