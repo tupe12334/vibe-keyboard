@@ -23,21 +23,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         signal_hook::flag::register(sig, Arc::clone(&shutdown))?;
     }
 
+    let dev_state_val = DeviceState::load();
+    let brightness = dev_state_val.brightness;
+
     let mut handle = match Device::open() {
-        Ok(dev) => dev,
+        Ok(dev) => {
+            device_init(&dev, brightness);
+            dev
+        }
         Err(e) => {
             info!("waiting for device: {e}");
-            match wait_for_device(&shutdown) {
+            match wait_for_device(&shutdown, brightness) {
                 Some(dev) => dev,
                 None => return Ok(()),
             }
         }
     };
-    info!("device opened");
-
-    let dev_state_val = DeviceState::load();
-
-    device_init(&handle, dev_state_val.brightness);
     info!("device ready");
 
     let dev_state = Arc::new(Mutex::new(dev_state_val));
@@ -99,14 +100,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if read_lost || handle.has_failed() {
             warn!("device disconnected");
-            let Some(new_handle) = wait_for_device(&shutdown) else {
-                break;
-            };
+            // Release the stale handle before waiting for the device to come back.
+            drop(handle);
             let brightness = dev_state
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .brightness;
-            device_init(&new_handle, brightness);
+            let Some(new_handle) = wait_for_device(&shutdown, brightness) else {
+                break;
+            };
             handle = new_handle;
             render_screen(&nav, &handle, &app_state, &dev_state);
             info!("device reconnected");

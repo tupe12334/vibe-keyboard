@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tracing::warn;
 
-use super::Device;
+use super::{device_init, Device};
 
 const RETRY_INTERVAL: Duration = Duration::from_secs(1);
 
@@ -11,11 +11,26 @@ const fn should_log_failure(failures: u32) -> bool {
     failures % 10 == 1
 }
 
-/// Retry `Device::open` every second until it succeeds or `shutdown` is set.
-pub fn wait_for_device(shutdown: &AtomicBool) -> Option<Device> {
+/// Open and init as one attempt. Fails if the handle hits any I/O error during init.
+fn open_and_init(brightness: u8) -> Result<Device, String> {
+    let dev = Device::open()?;
+    device_init(&dev, brightness);
+    if dev.has_failed() {
+        return Err("device init I/O failed".to_string());
+    }
+    Ok(dev)
+}
+
+/// Retry open + init every second until one attempt succeeds or `shutdown` is set.
+/// Sleeps before every attempt, so a handle that opens but fails at once cannot spin the loop.
+pub fn wait_for_device(shutdown: &AtomicBool, brightness: u8) -> Option<Device> {
     let mut failures = 0u32;
-    while !shutdown.load(Ordering::Relaxed) {
-        match Device::open() {
+    loop {
+        std::thread::sleep(RETRY_INTERVAL);
+        if shutdown.load(Ordering::Relaxed) {
+            return None;
+        }
+        match open_and_init(brightness) {
             Ok(dev) => return Some(dev),
             Err(e) => {
                 failures += 1;
@@ -24,9 +39,7 @@ pub fn wait_for_device(shutdown: &AtomicBool) -> Option<Device> {
                 }
             }
         }
-        std::thread::sleep(RETRY_INTERVAL);
     }
-    None
 }
 
 #[cfg(test)]
