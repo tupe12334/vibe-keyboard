@@ -195,7 +195,7 @@ Every command is `CRT\0\0` + body, zero-padded to **1024 bytes**. **Conflict:** 
 
 1. `DIS` — wake
 2. `LIG\0\0\x0f` — brightness byte at offset 10
-3. `QUCMD\x11\x11\x00\x11\x00\x11`
+3. `QUCMD\x11\x11\x00\x11\x00\x11` — meaning unknown; sent because StreamDock sends it
 4. `CLE\0\0\0\xff` — clear all
 5. `STP` — refresh and commit
 
@@ -234,9 +234,9 @@ Column-major, numbered from top-right:
 - `hid_darwin_set_open_exclusive(0)` fixes this.
 - With non-exclusive hidapi, no root or setuid is needed. **Conflict:** the macOS Access Notes and the `sudo` note above.
 
-### Gap in current Rust init
+### Rust init
 
-`device_init` in `src/infrastructure/usb/commands.rs` sends `CONNECT`, `DIS`, and `LIG` only. It does not send `QUCMD` or `STP`. This is a finding. The code is not changed.
+`device_init` in `src/infrastructure/usb/commands.rs` sends this order: `DIS`, `LIG`, `QUCMD`, `CLE`, `STP`, then `CONNECT`.
 
 ## Reference Implementations
 
