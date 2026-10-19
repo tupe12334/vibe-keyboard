@@ -5,6 +5,7 @@ use image::imageops::FilterType;
 use image::{DynamicImage, RgbImage};
 
 use crate::domain::actions::{ButtonAction, ScreenView};
+use crate::domain::profile::KeyInset;
 use crate::infrastructure::app_icon::app_icon;
 use crate::infrastructure::images::label_image;
 use crate::infrastructure::usb::{send_button_image, Device};
@@ -39,9 +40,15 @@ pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppStat
         s.actions = actions;
         s.screen = ScreenView::NewSessionChoice;
     }
+    let inset = state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .profile
+        .display
+        .key_inset;
     let tiles = [
-        (1, app_tile("com.googlecode.iterm2", "iTerm")),
-        (2, app_tile("com.apple.Terminal", "Terminal")),
+        (1, app_tile("com.googlecode.iterm2", "iTerm", &inset)),
+        (2, app_tile("com.apple.Terminal", "Terminal", &inset)),
     ];
     for (key, img) in tiles {
         send_button_image(handle, key, DynamicImage::ImageRgb8(img));
@@ -49,9 +56,9 @@ pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppStat
 }
 
 /// The app icon scaled to a key, or a label tile when the icon is not available.
-fn app_tile(bundle_id: &str, fallback: &str) -> RgbImage {
+fn app_tile(bundle_id: &str, fallback: &str, inset: &KeyInset) -> RgbImage {
     app_icon(bundle_id, 85).map_or_else(
-        || label_image(fallback),
+        || label_image(fallback, inset),
         |icon| {
             icon.resize_to_fill(KEY_SIZE, KEY_SIZE, FilterType::Triangle)
                 .to_rgb8()

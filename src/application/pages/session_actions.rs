@@ -5,6 +5,7 @@ use image::DynamicImage;
 
 use crate::domain::actions::{ButtonAction, ClaudeSession, ScreenView, TerminalApp};
 use crate::domain::navigation::{action_pages, prompt_index, PROMPTS_PER_PAGE};
+use crate::domain::profile::KeyInset;
 use crate::infrastructure::images::{label_image, muted_image};
 use crate::infrastructure::usb::{send_button_image, Device};
 use crate::presentation::tui;
@@ -18,6 +19,12 @@ pub fn render_session_actions(
     handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
+    let inset = state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .profile
+        .display
+        .key_inset;
     let prompts = state
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -25,7 +32,10 @@ pub fn render_session_actions(
         .session_prompts();
     let typed = session.app != TerminalApp::Other;
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-    let mut tiles = vec![(1, label_image("FOCUS")), (12, label_image("BACK"))];
+    let mut tiles = vec![
+        (1, label_image("FOCUS", &inset)),
+        (12, label_image("BACK", &inset)),
+    ];
     actions.insert(
         1,
         ButtonAction {
@@ -56,18 +66,18 @@ pub fn render_session_actions(
         tiles.push((
             key,
             if typed {
-                label_image(&label)
+                label_image(&label, &inset)
             } else {
-                muted_image(&label)
+                muted_image(&label, &inset)
             },
         ));
     }
     let pages = action_pages(prompts.len());
     if page > 0 {
-        tiles.push((14, label_image("PREV")));
+        tiles.push((14, label_image("PREV", &inset)));
     }
     if page + 1 < pages {
-        tiles.push((15, label_image("NEXT")));
+        tiles.push((15, label_image("NEXT", &inset)));
     }
     actions.insert(
         12,
@@ -93,10 +103,10 @@ pub fn render_session_actions(
 
 /// Shows a short message on a prompt key that the session's app cannot take. It stays until the
 /// user leaves the page.
-pub fn show_focus_only(handle: &Device, key: u8) {
+pub fn show_focus_only(handle: &Device, key: u8, inset: &KeyInset) {
     send_button_image(
         handle,
         key,
-        DynamicImage::ImageRgb8(label_image("FOCUS ONLY")),
+        DynamicImage::ImageRgb8(label_image("FOCUS ONLY", inset)),
     );
 }

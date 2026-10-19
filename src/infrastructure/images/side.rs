@@ -48,9 +48,6 @@ const BAR_VALUE_SCALE: u32 = 3;
 
 /// The bitmap the side screen shows, portrait `SIDE_WIDTH` x `SIDE_HEIGHT`. The editor
 /// previews this image as is. The controller rotates it for upload. `None` gives a black
-/// column. `metrics` feeds the widgets.
-/// The bitmap the side screen shows, portrait `SIDE_WIDTH` x `SIDE_HEIGHT`. The editor
-/// previews this image as is. The controller rotates it for upload. `None` gives a black
 /// column. `metrics` feeds the widgets. The inset band keeps the background color.
 pub fn side_image(
     side: Option<&SideConfig>,
@@ -290,6 +287,47 @@ mod tests {
                     "foreground pixel at y={y} is outside the safe area"
                 );
             }
+        }
+    }
+
+    #[test]
+    fn oversized_side_inset_gives_a_solid_background() {
+        let root = PathBuf::from("/nonexistent");
+        let insets = [
+            SideInset {
+                top: SIDE_HEIGHT,
+                bottom: 0,
+            },
+            SideInset {
+                top: 400,
+                bottom: 400,
+            },
+            SideInset {
+                top: u32::MAX,
+                bottom: u32::MAX,
+            },
+        ];
+        for widgets in [Vec::new(), all_widgets()] {
+            let side = black_on_white(widgets);
+            for inset in insets {
+                let img = side_image(Some(&side), &root, &sample(), &inset);
+                assert_eq!(img.dimensions(), (SIDE_WIDTH, SIDE_HEIGHT));
+                assert!(img.pixels().all(|p| p.0 == [0, 0, 0]), "{inset:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn tiny_visible_side_rect_does_not_panic() {
+        let root = PathBuf::from("/nonexistent");
+        let side = black_on_white(all_widgets());
+        for visible in 1..=10 {
+            let inset = SideInset {
+                top: 0,
+                bottom: SIDE_HEIGHT - visible,
+            };
+            let img = side_image(Some(&side), &root, &sample(), &inset);
+            assert_eq!(img.dimensions(), (SIDE_WIDTH, SIDE_HEIGHT));
         }
     }
 

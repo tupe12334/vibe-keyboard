@@ -92,10 +92,18 @@ pub fn render_screen(
     }
     // Every sub-screen shows OUT on key 11. Drawn last, so a page cannot cover it.
     if back_key_on(screen) == BackKey::Out {
+        let inset = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .profile
+            .display
+            .key_inset;
         send_button_image(
             handle,
             11,
-            image::DynamicImage::ImageRgb8(crate::infrastructure::images::label_image("OUT")),
+            image::DynamicImage::ImageRgb8(crate::infrastructure::images::label_image(
+                "OUT", &inset,
+            )),
         );
     }
     render_side(handle, state, nav);

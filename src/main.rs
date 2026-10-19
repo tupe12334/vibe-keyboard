@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 use vibe_keyboard::domain::navigation::NavigationStack;
-use vibe_keyboard::domain::profile::Profile;
+use vibe_keyboard::domain::profile::{KeyInset, Profile};
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::frontmost;
 use vibe_keyboard::infrastructure::images::{app_icon_generation, calibration_image};
@@ -238,8 +238,16 @@ fn calibrate() -> Result<(), Box<dyn std::error::Error>> {
     let dev = Device::open()?;
     let brightness = DeviceState::load().brightness;
     device_init(&dev, brightness);
+    // The loaded profile's key inset, so the tiles show the visible rect the user tunes.
+    let inset = match profile_store::read(&profile_store::profile_path()) {
+        Ok(profile) => profile.map(|p| p.display.key_inset).unwrap_or_default(),
+        Err(e) => {
+            warn!("profile: {e}; calibrating with default insets");
+            KeyInset::default()
+        }
+    };
     for key in 1..=15u8 {
-        let tile = calibration_image(key);
+        let tile = calibration_image(key, &inset);
         send_button_image(&dev, key, image::DynamicImage::ImageRgb8(tile));
     }
     Ok(())

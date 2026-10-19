@@ -444,7 +444,13 @@ fn handle_action_key(
         }
         Action::PromptUnsupported { key } => {
             info!("claude sessions: key {key} needs iTerm2 or Terminal; focus only");
-            show_focus_only(handle, key);
+            let inset = state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .profile
+                .display
+                .key_inset;
+            show_focus_only(handle, key, &inset);
         }
         Action::OpenNewSessionChoice => {
             info!("claude sessions: choose a terminal for a new session");

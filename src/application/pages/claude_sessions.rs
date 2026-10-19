@@ -83,6 +83,12 @@ pub fn render_claude_sessions(
 ) {
     const PER_PAGE: usize = 10;
     let pages = sessions.len().div_ceil(PER_PAGE).max(1);
+    let inset = state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .profile
+        .display
+        .key_inset;
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
     let mut tiles = Vec::new();
 
@@ -103,7 +109,12 @@ pub fn render_claude_sessions(
         );
         tiles.push((
             key,
-            session_image(&session.label, session.status, &age_label(session.age)),
+            session_image(
+                &session.label,
+                session.status,
+                &age_label(session.age),
+                &inset,
+            ),
         ));
     }
     if page > 0 {
@@ -115,7 +126,7 @@ pub fn render_claude_sessions(
                 description: "Previous page of sessions".into(),
             },
         );
-        tiles.push((14, label_image("BACK")));
+        tiles.push((14, label_image("BACK", &inset)));
     }
     actions.insert(
         13,
@@ -125,7 +136,7 @@ pub fn render_claude_sessions(
             description: "Open a new Claude Code window".into(),
         },
     );
-    tiles.push((13, label_image("NEW +")));
+    tiles.push((13, label_image("NEW +", &inset)));
     if pages > 1 {
         actions.insert(
             15,
@@ -136,7 +147,10 @@ pub fn render_claude_sessions(
             },
         );
         let word = if page + 1 < pages { "MORE" } else { "PAGE" };
-        tiles.push((15, label_image(&format!("{word} {}/{pages}", page + 1))));
+        tiles.push((
+            15,
+            label_image(&format!("{word} {}/{pages}", page + 1), &inset),
+        ));
     }
 
     {

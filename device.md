@@ -262,7 +262,7 @@ Rust: `side_header`, `side_upload` and `send_side_image` in `src/infrastructure/
 
 🌐 **Online** — research for the hidden band at the top of keys and the side column. Not verified on this unit. Sources conflict on sizes and none gives a bezel overlap figure.
 
-- Key image size: 96×96 for the AKP153 in the AKP153-DOCK notes ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)); 85 for the v1 protocol in Deck Commander and in the python-elgato-streamdeck community PR ([ohotnik PR #148](https://ohotnik.duckdns.org/abcminiuser/python-elgato-streamdeck/pull/148), search snippet only, fetch failed).
+- Key image size: 96×96 for the AKP153 in the AKP153-DOCK notes ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)). This repo uses 85 (`DECK_IMAGE_SIZE`).
 - Side column: 80×80 display-only slots in column 5 for the AKP153 ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)). Not the 100×480 strip used here. Verified 🔌 geometry stays in the section above.
 - Rotation: the AKP153 panel is turned 90° relative to image coordinates, so the image is rotated before send ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)). Matches the 🔌 side-screen note.
 - Bezel: the AKP153-DOCK notes say long text wraps and shrinks so it is not hidden by the acrylic keycap edge. No pixel margin is given ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)).
