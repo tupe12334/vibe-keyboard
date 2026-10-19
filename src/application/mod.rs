@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use crate::domain::keys::raw_to_logical;
-use crate::domain::navigation::{NavigationStack, Screen};
+use crate::domain::navigation::{back_key_on, BackKey, NavigationStack, Screen};
 use crate::infrastructure::persistence::DeviceState;
 use crate::presentation::tui;
 
@@ -69,7 +69,10 @@ pub fn handle_key_event(
 
     match key {
         11 => {
-            nav.back();
+            match back_key_on(nav.current()) {
+                BackKey::Back => nav.back(),
+                BackKey::Out => nav.out(),
+            }
             render_screen(nav, handle, state, dev_state);
         }
         12 => {
