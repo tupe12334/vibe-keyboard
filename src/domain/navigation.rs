@@ -91,7 +91,9 @@ impl Screen {
             | Self::CentyIssueList { .. }
             | Self::CentyIssueActions { .. }
             | Self::InputNumber { .. }
-            | Self::ClaudeSessions { .. } => None,
+            | Self::ClaudeSessions { .. }
+            | Self::SessionActions { .. }
+            | Self::NewSessionChoice => None,
         }
     }
 }
