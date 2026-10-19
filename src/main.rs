@@ -126,7 +126,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut sessions_refresh = SessionsRefresh::default();
     let metrics = system_metrics::start();
     let mut last_side_tick = Instant::now();
-    let mut last_side_frame = None;
 
     loop {
         if shutdown.load(Ordering::Relaxed) {
@@ -193,12 +192,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .metrics = sample;
-            match nav.main_page() {
-                Some(page) => {
-                    refresh_side_widgets(&handle, &app_state, page, &mut last_side_frame);
-                }
-                None => last_side_frame = None,
-            }
+            refresh_side_widgets(&handle, &app_state, &nav);
         }
 
         if last_heartbeat.elapsed() >= Duration::from_secs(8) {

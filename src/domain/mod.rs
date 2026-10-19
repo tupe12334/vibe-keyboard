@@ -3,4 +3,5 @@ pub mod hotkey;
 pub mod keys;
 pub mod navigation;
 pub mod profile;
+pub mod side;
 pub mod switching;

@@ -1,4 +1,5 @@
 use crate::domain::actions::{CentyIssue, CentyProject, ClaudeSession};
+use crate::domain::profile::SideConfig;
 
 #[derive(Clone)]
 pub enum Screen {
@@ -80,6 +81,21 @@ pub const fn back_key_on(screen: &Screen) -> BackKey {
     }
 }
 
+impl Screen {
+    /// Side content this screen declares. None keeps the side screen of the home page.
+    pub fn side(&self) -> Option<SideConfig> {
+        match self {
+            Self::MainPage { .. }
+            | Self::CentyProjectList { .. }
+            | Self::CentyProjectActions { .. }
+            | Self::CentyIssueList { .. }
+            | Self::CentyIssueActions { .. }
+            | Self::InputNumber { .. }
+            | Self::ClaudeSessions { .. } => None,
+        }
+    }
+}
+
 pub struct NavigationStack {
     stack: Vec<Screen>,
     total_main_pages: usize,
@@ -112,6 +128,18 @@ impl NavigationStack {
             Some(Screen::MainPage { page }) => Some(*page),
             _ => None,
         }
+    }
+
+    /// The main page the stack opened from. Built-in screens keep its side screen.
+    pub fn home_page(&self) -> usize {
+        self.stack
+            .iter()
+            .rev()
+            .find_map(|screen| match screen {
+                Screen::MainPage { page } => Some(*page),
+                _ => None,
+            })
+            .unwrap_or(0)
     }
 
     /// Show main page `page` (0-based) if the top screen is a main page.
@@ -1126,6 +1154,16 @@ mod tests {
         });
         nav.input_number_clear();
         assert_eq!(nav.input_number_value(), Some(""));
+    }
+
+    #[test]
+    fn home_page_stays_on_sub_screen() {
+        let mut nav = NavigationStack::new(1, 3);
+        nav.push(Screen::InputNumber {
+            value: String::new(),
+        });
+        assert_eq!(nav.home_page(), 1);
+        assert!(nav.current().side().is_none());
     }
 
     #[test]

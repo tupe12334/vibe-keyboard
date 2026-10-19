@@ -14,6 +14,8 @@ pub struct AppState {
     pub profile: Profile,
     /// Latest system sample, refreshed by the controller tick. Side widgets read it.
     pub metrics: Metrics,
+    /// Side frame last sent to the device. Cleared on every full redraw.
+    pub side_frame: Option<Vec<u8>>,
     /// Whether the shown main page was picked by the app in front.
     pub auto_page: AutoPage,
     pub pressed_key: Option<u8>,
@@ -36,6 +38,7 @@ impl AppState {
             total_pages,
             profile: Profile::default(),
             metrics: Metrics::default(),
+            side_frame: None,
             auto_page: AutoPage::default(),
             pressed_key: None,
             loading: false,

@@ -2,13 +2,17 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::infrastructure::usb::Device;
-use image::DynamicImage;
+use image::{DynamicImage, RgbImage};
 use tracing::info;
 
 use crate::domain::actions::{ButtonAction, ScreenView};
+use crate::domain::navigation::NavigationStack;
+use crate::domain::profile::SideConfig;
+use crate::domain::side::{resolve_side, SideContent};
 use crate::infrastructure::images::{page_images, side_image};
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::profile_store;
+use crate::infrastructure::system_metrics::Metrics;
 use crate::infrastructure::usb::{send_button_image, send_side_image};
 use crate::presentation::tui;
 
@@ -89,15 +93,15 @@ pub fn render_main_page(
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
-    let (keys, side, metrics) = {
+    let keys = {
         let s = state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let (keys, side) = s.profile.pages.get(page).map_or_else(
-            || (Default::default(), None),
-            |p| (p.keys.clone(), p.side.clone()),
-        );
-        (keys, side, s.metrics.clone())
+        s.profile
+            .pages
+            .get(page)
+            .map(|p| p.keys.clone())
+            .unwrap_or_default()
     };
     let actions: HashMap<u8, ButtonAction> = keys
         .iter()
@@ -131,45 +135,67 @@ pub fn render_main_page(
     for (key, img) in page_images(&keys, &root) {
         send_button_image(handle, key, DynamicImage::ImageRgb8(img));
     }
-    // Clearing the deck already blanked the side screen, so only a configured side is sent.
-    if side.is_some() {
-        send_side_image(
-            handle,
-            DynamicImage::ImageRgb8(side_image(side.as_ref(), &root, &metrics)),
-        );
-    }
     info!("page {}: {} key(s)", page + 1, keys.len());
 }
 
-/// Re-sends the side screen of `page` when its widgets render a new frame. Called on the
-/// controller tick. `last` holds the page and bytes of the last frame sent by this tick, so
-/// an unchanged frame costs no USB traffic. Other side content is sent only on page entry.
-pub fn refresh_side_widgets(
-    handle: &Device,
+/// The side screen `nav` shows, with the metrics it reads. None keeps the side screen.
+/// The home page is the main page the stack opened from.
+fn side_to_show(
     state: &Arc<Mutex<tui::AppState>>,
-    page: usize,
-    last: &mut Option<(usize, Vec<u8>)>,
-) {
-    let (side, metrics) = {
-        let s = state
+    nav: &NavigationStack,
+) -> Option<(SideConfig, Metrics)> {
+    let s = state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    let page_side = s
+        .profile
+        .pages
+        .get(nav.home_page())
+        .and_then(|p| p.side.clone());
+    match resolve_side(page_side, nav.current().side()) {
+        SideContent::Show(side) => Some((side, s.metrics.clone())),
+        SideContent::Keep => None,
+    }
+}
+
+/// Sends `frame` unless the device already shows it. `side_frame` is cleared on every full
+/// redraw, because that redraw blanks the side screen too.
+fn send_side_frame(handle: &Device, state: &Arc<Mutex<tui::AppState>>, frame: &RgbImage) {
+    {
+        let mut s = state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let side = s.profile.pages.get(page).and_then(|p| p.side.clone());
-        (side, s.metrics.clone())
-    };
-    let Some(side) = side.filter(|side| !side.widgets.is_empty()) else {
-        *last = None;
+        if s.side_frame.as_deref() == Some(frame.as_raw().as_slice()) {
+            return;
+        }
+        s.side_frame = Some(frame.as_raw().clone());
+    }
+    send_side_image(handle, DynamicImage::ImageRgb8(frame.clone()));
+}
+
+/// Draws the side screen `nav` shows. Called after every full redraw.
+pub fn render_side(handle: &Device, state: &Arc<Mutex<tui::AppState>>, nav: &NavigationStack) {
+    let Some((side, metrics)) = side_to_show(state, nav) else {
         return;
     };
     let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics);
-    if last
-        .as_ref()
-        .is_some_and(|(sent, bytes)| *sent == page && bytes == frame.as_raw())
-    {
+    send_side_frame(handle, state, &frame);
+}
+
+/// Re-sends the side screen when it has widgets and their frame changed. Called on the
+/// controller tick, on main pages and on built-in screens.
+pub fn refresh_side_widgets(
+    handle: &Device,
+    state: &Arc<Mutex<tui::AppState>>,
+    nav: &NavigationStack,
+) {
+    let Some((side, metrics)) =
+        side_to_show(state, nav).filter(|(side, _)| !side.widgets.is_empty())
+    else {
         return;
-    }
-    send_side_image(handle, DynamicImage::ImageRgb8(frame.clone()));
-    *last = Some((page, frame.into_raw()));
+    };
+    let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics);
+    send_side_frame(handle, state, &frame);
 }
 
 #[cfg(test)]
