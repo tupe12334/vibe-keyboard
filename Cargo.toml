@@ -130,6 +130,7 @@ explicit_iter_loop = "deny"
 if_not_else = "deny"
 implicit_clone = "deny"
 print_stderr = "deny"
+allow_attributes_without_reason = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]

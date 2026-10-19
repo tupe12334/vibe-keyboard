@@ -2,10 +2,10 @@
 //!
 //! Run with `cargo run --example frontmost`, then switch apps.
 
-#![allow(clippy::print_stdout)] // ponytail: manual check, prints to the terminal
+#![allow(clippy::print_stdout, reason = "manual check: prints to the terminal")] // ponytail: manual check, prints to the terminal
 
 // ponytail: the example uses only `watch`; the rest is dead here.
-#[allow(dead_code)]
+#[allow(dead_code, reason = "the example uses only `watch`")]
 #[path = "../src/infrastructure/frontmost.rs"]
 mod frontmost;
 

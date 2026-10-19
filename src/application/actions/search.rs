@@ -2,7 +2,10 @@ use std::process::{Command, Stdio};
 use tracing::error;
 
 /// Open macOS Spotlight search.
-#[allow(clippy::zombie_processes)]
+#[allow(
+    clippy::zombie_processes,
+    reason = "fire-and-forget launcher: the spawned app outlives this binary"
+)]
 pub fn open_spotlight() {
     Command::new("osascript")
         .arg("-e")

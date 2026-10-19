@@ -1,7 +1,10 @@
 use std::process::Command;
 use tracing::error;
 
-#[allow(clippy::zombie_processes)]
+#[allow(
+    clippy::zombie_processes,
+    reason = "fire-and-forget launcher: the spawned app outlives this binary"
+)]
 pub fn open_in_chrome(url: &str) {
     Command::new("open")
         .args(["-a", "Google Chrome", url])
