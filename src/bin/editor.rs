@@ -13,8 +13,8 @@ use vibe_keyboard::domain::profile::{
     BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
-    app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_WIDTH, SAFE_X,
-    SIDE_HEIGHT, SIDE_WIDTH,
+    app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_HEIGHT, SAFE_WIDTH,
+    SAFE_X, SAFE_Y, SIDE_HEIGHT, SIDE_WIDTH,
 };
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::system_metrics::{self, Metrics, Shared};
@@ -32,8 +32,8 @@ const PAGES_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 200.0..=360.0;
 const KEY_PANEL_WIDTH: f32 = 320.0;
 const KEY_PANEL_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 260.0..=420.0;
 const RED: Color32 = Color32::from_rgb(230, 80, 80);
-/// Side strip preview: at most the device width, same 480:100 ratio.
-const SIDE_STRIP_MAX: f32 = SIDE_WIDTH as f32;
+/// Side strip preview: at most the device render height, same 100:480 ratio.
+const SIDE_STRIP_MAX: f32 = SIDE_HEIGHT as f32;
 
 fn main() -> eframe::Result {
     eframe::run_native(
@@ -461,18 +461,18 @@ impl Editor {
         texture
     }
 
-    /// Side preview strip above the keys, with the safe area drawn faintly. True when clicked.
+    /// Tall side preview beside the keys, with the safe area drawn faintly. True when clicked.
     fn side_strip(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> bool {
-        let size = side_strip_size(ui.available_width());
+        let size = side_strip_size(ui.available_height());
         let (rect, response) = ui.allocate_exact_size(size, Sense::click());
         let texture = self.side_texture(ctx);
         let painter = ui.painter_at(rect);
         let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
         painter.image(texture.id(), rect, uv, Color32::WHITE);
-        let scale = size.x / SIDE_WIDTH as f32;
+        let scale = size.y / SIDE_HEIGHT as f32;
         let safe = Rect::from_min_size(
-            rect.min + Vec2::new(SAFE_X as f32 * scale, 0.0),
-            Vec2::new(SAFE_WIDTH as f32 * scale, size.y),
+            rect.min + Vec2::new(SAFE_X as f32 * scale, SAFE_Y as f32 * scale),
+            Vec2::new(SAFE_WIDTH as f32 * scale, SAFE_HEIGHT as f32 * scale),
         );
         painter.rect_stroke(
             safe,
@@ -1069,10 +1069,10 @@ const fn widget_name(widget: &Widget) -> &'static str {
     }
 }
 
-/// Size of the side strip for `avail_width`: at most the device width, 480:100 ratio.
-fn side_strip_size(avail_width: f32) -> Vec2 {
-    let width = (avail_width - GRID_MARGIN).clamp(1.0, SIDE_STRIP_MAX);
-    Vec2::new(width, width * SIDE_HEIGHT as f32 / SIDE_WIDTH as f32)
+/// Size of the side strip for `avail_height`: at most the device render height, 100:480 ratio.
+fn side_strip_size(avail_height: f32) -> Vec2 {
+    let height = (avail_height - GRID_MARGIN).clamp(1.0, SIDE_STRIP_MAX);
+    Vec2::new(height * SIDE_WIDTH as f32 / SIDE_HEIGHT as f32, height)
 }
 
 /// Largest square cell that fits the 3x5 grid in `avail`, never below `CELL_MIN`.
@@ -1236,8 +1236,11 @@ impl eframe::App for Editor {
             .show(ui, |ui| self.key_panel(ui));
         let (side_clicked, clicked) = egui::CentralPanel::default()
             .show(ui, |ui| {
-                let side = self.side_strip(ui, &ctx);
-                (side, self.grid(ui, &ctx))
+                ui.horizontal_top(|ui| {
+                    let side = self.side_strip(ui, &ctx);
+                    (side, self.grid(ui, &ctx))
+                })
+                .inner
             })
             .inner;
         if let Some(op) = page_op {
@@ -1394,11 +1397,11 @@ mod tests {
 
     #[test]
     fn grid_fits_the_default_and_minimum_window() {
-        // Window minus both side panels, the top and bottom bars, and the side strip.
+        // Window minus both side panels, the top and bottom bars, and the side strip beside the keys.
         let central = |window: Vec2| {
-            let width = window.x - PAGES_WIDTH - KEY_PANEL_WIDTH;
-            let strip = side_strip_size(width).y + GAP;
-            Vec2::new(width, window.y - 60.0 - strip)
+            let height = window.y - 60.0;
+            let strip = side_strip_size(height).x + GAP;
+            Vec2::new(window.x - PAGES_WIDTH - KEY_PANEL_WIDTH - strip, height)
         };
         for window in [Vec2::new(1200.0, 720.0), Vec2::new(900.0, 600.0)] {
             let area = central(window);

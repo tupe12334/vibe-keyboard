@@ -234,12 +234,13 @@ Column-major, numbered from top-right:
 
 - Output report `0x00` (no report ID), then one stream: a 32-byte header, then the JPEG. Cut the stream into 1024-byte chunks. Prefix each chunk with `0x00`.
 - Header: `CRT\0\0` + `DRA` + size (u32 BE, JPEG length + 32) + key byte (`0`) + w, h, x, y (u16 BE each).
-- Geometry: `w=480`, `h=100`, `x=0`, `y=0`. No rotation (keys are rotated, the side screen is not).
-- Keep content inside the visible safe area, x 30..440. Center text there.
+- Geometry: `w=480`, `h=100`, `x=0`, `y=0`. The panel is a vertical column, so the image is rotated 90° counter-clockwise before upload. Keys are rotated too, the side screen is rotated once here.
+- Render portrait, 100 px wide × 480 px tall, top of the image = top of the column. Rotate it with `rotate270()` in the `image` crate (PIL `rotate(90)`). Portrait top-left lands at landscape bottom-left.
+- Visible safe area, portrait coordinates: x 0..100, y 30..440. Content below y 440 is clipped. Keep about 4 px margins.
 - Never send `h > 100`. A 480×272 image spills onto keys 5, 10 and 15.
 - Commit with `STP`.
 
-Rust: `side_header` and `send_side_image` in `src/infrastructure/usb/image.rs`.
+Rust: `side_header`, `side_upload` and `send_side_image` in `src/infrastructure/usb/image.rs`. Portrait render: `side_image` in `src/infrastructure/images/side.rs`.
 
 ### macOS access
 

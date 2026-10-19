@@ -49,6 +49,11 @@ fn draw_wrapped(img: &mut RgbImage, text: &str, fg: Rgb<u8>, max_lines: usize, s
     }
 }
 
+/// Height in pixels of one line of text at `scale`.
+pub const fn text_height(scale: u32) -> u32 {
+    GLYPH_H * scale
+}
+
 /// Draw `text` on one line, centered horizontally, with its top edge at `y`. Pixels past
 /// the image edge are dropped.
 pub fn draw_line(img: &mut RgbImage, y: u32, text: &str, fg: Rgb<u8>, scale: u32) {

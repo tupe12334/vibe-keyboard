@@ -1,18 +1,28 @@
 use std::path::Path;
 
-use image::{imageops, ImageBuffer, Rgb, RgbImage};
+use image::{imageops, DynamicImage, ImageBuffer, Rgb, RgbImage};
 
 use super::profile_key::source_image;
-use super::text::{draw_label, draw_label_scaled, draw_line};
+use super::text::{draw_label, draw_label_scaled, draw_line, text_height};
 use crate::domain::profile::{parse_color, SideConfig, Widget};
 use crate::infrastructure::system_metrics::{Disk, Metrics};
 
-/// Side screen size in pixels. Never send a taller image: it spills onto keys 5, 10 and 15.
-pub const SIDE_WIDTH: u32 = 480;
-pub const SIDE_HEIGHT: u32 = 100;
-/// Visible part of the side screen, as x offset and width. Keep content inside it.
-pub const SAFE_X: u32 = 30;
-pub const SAFE_WIDTH: u32 = 410;
+/// Side screen render size, portrait: the panel is a vertical column. The upload rotates
+/// it 90° counter-clockwise (`usb::side_upload`). Never render taller than this.
+pub const SIDE_WIDTH: u32 = 100;
+pub const SIDE_HEIGHT: u32 = 480;
+/// Visible part of the column, as x and y offset and size. Keep content inside it.
+pub const SAFE_X: u32 = 0;
+pub const SAFE_Y: u32 = 30;
+pub const SAFE_WIDTH: u32 = 100;
+pub const SAFE_HEIGHT: u32 = 410;
+/// Gap between the widget stack and the edges of the safe area.
+const MARGIN: u32 = 4;
+/// Widget stack: the safe area less `MARGIN` on each side.
+const STACK_X: u32 = SAFE_X + MARGIN;
+const STACK_Y: u32 = SAFE_Y + MARGIN;
+const STACK_W: u32 = SAFE_WIDTH - 2 * MARGIN;
+const STACK_H: u32 = SAFE_HEIGHT - 2 * MARGIN;
 
 const FALLBACK_BG: [u8; 3] = [20, 20, 20];
 const FALLBACK_FG: [u8; 3] = [230, 230, 230];
@@ -22,19 +32,18 @@ const GREEN: [u8; 3] = [46, 160, 67];
 const AMBER: [u8; 3] = [230, 160, 30];
 const RED: [u8; 3] = [220, 60, 50];
 
-// Widget layout inside one slot, in pixels from the slot top.
-const CAPTION_Y: u32 = 8;
+// Caption + value block, centered in a widget slot. Scales as `draw_line` takes them.
 const CAPTION_SCALE: u32 = 2;
-const VALUE_Y: u32 = 36;
 const VALUE_SCALE: u32 = 5;
-const BAR_Y: u32 = 36;
-const BAR_H: u32 = 22;
-const BAR_PAD: u32 = 8;
-const BAR_VALUE_Y: u32 = 68;
+const BLOCK_GAP: u32 = 4;
+// Vertical CPU bar: caption on top, bar below, percent text at the bottom.
+const BAR_X: u32 = 30;
+const BAR_W: u32 = 40;
 const BAR_VALUE_SCALE: u32 = 3;
 
-/// The bitmap the side screen shows. The controller sends this image, and the editor
-/// previews this same image. `None` gives a black strip. `metrics` feeds the widgets.
+/// The bitmap the side screen shows, portrait `SIDE_WIDTH` x `SIDE_HEIGHT`. The editor
+/// previews this image as is. The controller rotates it for upload. `None` gives a black
+/// column. `metrics` feeds the widgets.
 pub fn side_image(side: Option<&SideConfig>, root: &Path, metrics: &Metrics) -> RgbImage {
     let Some(side) = side else {
         return ImageBuffer::from_pixel(SIDE_WIDTH, SIDE_HEIGHT, Rgb(BLANK));
@@ -42,31 +51,38 @@ pub fn side_image(side: Option<&SideConfig>, root: &Path, metrics: &Metrics) -> 
     let bg = parse_color(&side.bg).unwrap_or(FALLBACK_BG);
     let fg = parse_color(&side.fg).unwrap_or(FALLBACK_FG);
     let mut canvas = ImageBuffer::from_pixel(SIDE_WIDTH, SIDE_HEIGHT, Rgb(bg));
-    // Content is drawn in the safe box, then placed at its x offset.
-    let mut safe = ImageBuffer::from_pixel(SAFE_WIDTH, SIDE_HEIGHT, Rgb(bg));
     if side.widgets.is_empty() {
         let picture = side
             .image
             .as_deref()
-            .and_then(|image| source_image(image, root, SIDE_HEIGHT));
+            .and_then(|image| source_image(image, root, SAFE_HEIGHT));
         match picture {
             Some(img) => {
-                let left = (SAFE_WIDTH - SIDE_HEIGHT) / 2;
-                imageops::replace(&mut safe, &img, i64::from(left), 0);
+                let fill = DynamicImage::ImageRgb8(img)
+                    .resize_to_fill(
+                        SAFE_WIDTH,
+                        SAFE_HEIGHT,
+                        image::imageops::FilterType::Triangle,
+                    )
+                    .to_rgb8();
+                imageops::replace(&mut canvas, &fill, i64::from(SAFE_X), i64::from(SAFE_Y));
             }
-            None => draw_label(&mut safe, &side.label, Rgb(fg)),
+            None => {
+                let mut safe = ImageBuffer::from_pixel(SAFE_WIDTH, SAFE_HEIGHT, Rgb(bg));
+                draw_label(&mut safe, &side.label, Rgb(fg));
+                imageops::replace(&mut canvas, &safe, i64::from(SAFE_X), i64::from(SAFE_Y));
+            }
         }
     } else {
-        draw_widgets(&mut safe, &side.widgets, metrics, bg, fg);
+        draw_widgets(&mut canvas, &side.widgets, metrics, bg, fg);
     }
-    imageops::replace(&mut canvas, &safe, i64::from(SAFE_X), 0);
     canvas
 }
 
-/// Splits the safe box into equal slots, one per widget, left to right. Each widget draws
-/// into its own slot, so text that is too wide is clipped there.
+/// Stacks the widgets top to bottom in the widget box, one equal slot per widget. Each
+/// widget draws into its own slot, so text that is too tall is clipped there.
 fn draw_widgets(
-    safe: &mut RgbImage,
+    canvas: &mut RgbImage,
     widgets: &[Widget],
     metrics: &Metrics,
     bg: [u8; 3],
@@ -74,54 +90,71 @@ fn draw_widgets(
 ) {
     // `widgets` is never empty here; `max(1)` only keeps the division safe.
     let count = widgets.len().max(1) as u32;
-    let slot_w = SAFE_WIDTH / count;
+    let slot_h = STACK_H / count;
     for (i, widget) in widgets.iter().enumerate() {
-        let mut slot = ImageBuffer::from_pixel(slot_w, SIDE_HEIGHT, Rgb(bg));
+        let mut slot = ImageBuffer::from_pixel(STACK_W, slot_h, Rgb(bg));
         draw_widget(&mut slot, widget, metrics, fg);
-        imageops::replace(safe, &slot, i64::from(i as u32 * slot_w), 0);
+        let y = STACK_Y + i as u32 * slot_h;
+        imageops::replace(canvas, &slot, i64::from(STACK_X), i64::from(y));
     }
 }
 
 fn draw_widget(slot: &mut RgbImage, widget: &Widget, metrics: &Metrics, fg: [u8; 3]) {
     let fg = Rgb(fg);
     match widget {
-        Widget::CpuPercent => {
-            draw_line(
-                slot,
-                VALUE_Y,
-                &percent(metrics.cpu_percent),
-                fg,
-                VALUE_SCALE,
-            );
-        }
+        Widget::CpuPercent => caption_value(slot, "CPU", &percent(metrics.cpu_percent), fg),
         Widget::CpuBar => {
-            draw_line(slot, CAPTION_Y, "CPU", fg, CAPTION_SCALE);
+            draw_line(slot, BAR_PAD, "CPU", fg, CAPTION_SCALE);
             draw_bar(slot, metrics.cpu_percent);
+            let y = slot
+                .height()
+                .saturating_sub(BAR_PAD + text_height(BAR_VALUE_SCALE));
             let text = percent(metrics.cpu_percent);
-            draw_line(slot, BAR_VALUE_Y, &text, fg, BAR_VALUE_SCALE);
+            draw_line(slot, y, &text, fg, BAR_VALUE_SCALE);
         }
         Widget::Temperature => {
-            draw_line(slot, CAPTION_Y, "TEMP", fg, CAPTION_SCALE);
-            let text = temperature_text(metrics.temperature);
-            draw_line(slot, VALUE_Y, &text, fg, VALUE_SCALE);
+            caption_value(slot, "TEMP", &temperature_text(metrics.temperature), fg);
         }
-        Widget::DiskFree => {
-            draw_line(slot, CAPTION_Y, "DISK", fg, CAPTION_SCALE);
-            let text = free_text(metrics.disk);
-            draw_line(slot, VALUE_Y, &text, fg, VALUE_SCALE);
-        }
+        Widget::DiskFree => caption_value(slot, "DISK", &free_text(metrics.disk), fg),
         Widget::Text { value } => draw_label_scaled(slot, value, fg, VALUE_SCALE),
     }
 }
 
-/// Track, then the filled part in the threshold color.
+/// Small caption over a large value, the pair centered in the slot.
+fn caption_value(slot: &mut RgbImage, caption: &str, value: &str, fg: Rgb<u8>) {
+    let caption_h = text_height(CAPTION_SCALE);
+    let block = caption_h + BLOCK_GAP + text_height(VALUE_SCALE);
+    let top = slot.height().saturating_sub(block) / 2;
+    draw_line(slot, top, caption, fg, CAPTION_SCALE);
+    draw_line(slot, top + caption_h + BLOCK_GAP, value, fg, VALUE_SCALE);
+}
+
+/// Gap between the bar and the slot edges, and between the bar and its text.
+const BAR_PAD: u32 = 4;
+
+/// Rows `(top, bottom)` of the CPU bar in a slot of `slot_h`, bottom exclusive. The caption
+/// sits above it and the percent text below it.
+fn bar_span(slot_h: u32) -> (u32, u32) {
+    let top = text_height(CAPTION_SCALE) + 2 * BAR_PAD;
+    let bottom = slot_h.saturating_sub(2 * BAR_PAD + text_height(BAR_VALUE_SCALE));
+    (top, bottom.max(top))
+}
+
+/// Track, then the filled part in the threshold color. The fill rises from the bottom.
 fn draw_bar(slot: &mut RgbImage, percent: u8) {
     let percent = percent.min(100);
-    let x0 = BAR_PAD;
-    let width = slot.width().saturating_sub(2 * BAR_PAD);
-    fill_rect(slot, x0, BAR_Y, width, BAR_H, TRACK);
-    let filled = width * u32::from(percent) / 100;
-    fill_rect(slot, x0, BAR_Y, filled, BAR_H, bar_color(percent));
+    let (top, bottom) = bar_span(slot.height());
+    let height = bottom - top;
+    fill_rect(slot, BAR_X, top, BAR_W, height, TRACK);
+    let filled = height * u32::from(percent) / 100;
+    fill_rect(
+        slot,
+        BAR_X,
+        bottom - filled,
+        BAR_W,
+        filled,
+        bar_color(percent),
+    );
 }
 
 fn fill_rect(img: &mut RgbImage, x: u32, y: u32, width: u32, height: u32, color: [u8; 3]) {
@@ -190,18 +223,27 @@ mod tests {
         }
     }
 
+    fn black_on_white(widgets: Vec<Widget>) -> SideConfig {
+        SideConfig {
+            bg: "#000000".into(),
+            fg: "#FFFFFF".into(),
+            widgets,
+            ..SideConfig::default()
+        }
+    }
+
     #[test]
-    fn side_image_is_480_by_100() {
+    fn side_image_is_portrait_100_by_480() {
         let root = PathBuf::from("/nonexistent");
         let metrics = Metrics::default();
-        assert_eq!(side_image(None, &root, &metrics).dimensions(), (480, 100));
+        assert_eq!(side_image(None, &root, &metrics).dimensions(), (100, 480));
         let side = SideConfig {
             label: "Build ok".into(),
             ..SideConfig::default()
         };
         assert_eq!(
             side_image(Some(&side), &root, &metrics).dimensions(),
-            (480, 100)
+            (100, 480)
         );
     }
 
@@ -210,18 +252,15 @@ mod tests {
         let root = PathBuf::from("/nonexistent");
         let side = SideConfig {
             label: "LONG LABEL THAT WRAPS ACROSS LINES".into(),
-            bg: "#000000".into(),
-            fg: "#FFFFFF".into(),
-            image: None,
-            widgets: Vec::new(),
+            ..black_on_white(Vec::new())
         };
         let img = side_image(Some(&side), &root, &Metrics::default());
-        let inside = |x: u32| (SAFE_X..SAFE_X + SAFE_WIDTH).contains(&x);
-        for (x, _, pixel) in img.enumerate_pixels() {
+        let inside = |y: u32| (SAFE_Y..SAFE_Y + SAFE_HEIGHT).contains(&y);
+        for (_, y, pixel) in img.enumerate_pixels() {
             if pixel.0 == [255, 255, 255] {
                 assert!(
-                    inside(x),
-                    "foreground pixel at x={x} is outside the safe area"
+                    inside(y),
+                    "foreground pixel at y={y} is outside the safe area"
                 );
             }
         }
@@ -231,17 +270,14 @@ mod tests {
     fn widget_layout_fits_the_safe_area_for_any_count() {
         let root = PathBuf::from("/nonexistent");
         for count in 1..=5 {
-            let side = SideConfig {
-                bg: "#000000".into(),
-                fg: "#FFFFFF".into(),
-                widgets: all_widgets().into_iter().cycle().take(count).collect(),
-                ..SideConfig::default()
-            };
+            let side = black_on_white(all_widgets().into_iter().cycle().take(count).collect());
             let img = side_image(Some(&side), &root, &sample());
-            // Everything outside the safe box is background, so nothing spills past it.
-            for (x, _, pixel) in img.enumerate_pixels() {
-                if !(SAFE_X..SAFE_X + SAFE_WIDTH).contains(&x) {
-                    assert_eq!(pixel.0, [0, 0, 0], "x={x} count={count}");
+            // The widget box is the only place that gets color. Everything else stays black.
+            for (x, y, pixel) in img.enumerate_pixels() {
+                let in_box = (STACK_X..STACK_X + STACK_W).contains(&x)
+                    && (STACK_Y..STACK_Y + STACK_H).contains(&y);
+                if !in_box {
+                    assert_eq!(pixel.0, [0, 0, 0], "x={x} y={y} count={count}");
                 }
             }
             assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
@@ -277,27 +313,29 @@ mod tests {
     }
 
     #[test]
-    fn bar_fill_follows_the_percent() {
+    fn bar_fills_from_the_bottom_up() {
         let root = PathBuf::from("/nonexistent");
-        let side = SideConfig {
-            widgets: vec![Widget::CpuBar],
-            ..SideConfig::default()
-        };
-        let empty = side_image(Some(&side), &root, &Metrics::default());
-        let full = side_image(
-            Some(&side),
-            &root,
-            &Metrics {
-                cpu_percent: 100,
+        let side = black_on_white(vec![Widget::CpuBar]);
+        let at = |percent: u8| {
+            let metrics = Metrics {
+                cpu_percent: percent,
                 ..Metrics::default()
-            },
-        );
-        let count = |img: &RgbImage, color: [u8; 3]| img.pixels().filter(|p| p.0 == color).count();
-        assert_eq!(
-            count(&empty, GREEN) + count(&empty, AMBER) + count(&empty, RED),
-            0
-        );
-        assert!(count(&full, RED) > 300, "full bar too small");
+            };
+            side_image(Some(&side), &root, &metrics)
+        };
+        let (top, bottom) = bar_span(STACK_H);
+        let x = BAR_X + BAR_W / 2;
+        let y0 = STACK_Y;
+        // Half full: the lower half is green, the top of the bar is still track.
+        let half = at(50);
+        assert_eq!(half.get_pixel(x, y0 + bottom - 1).0, GREEN);
+        assert_eq!(half.get_pixel(x, y0 + top).0, TRACK);
+        // Full: the top row of the bar is red.
+        let full = at(100);
+        assert_eq!(full.get_pixel(x, y0 + top).0, RED);
+        // Empty: no fill at all.
+        let empty = at(0);
+        assert_eq!(empty.get_pixel(x, y0 + bottom - 1).0, TRACK);
     }
 
     #[test]
