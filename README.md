@@ -13,6 +13,9 @@ A custom management system for the Stream Dock 293S. Control button images, brig
 - [x] Centy project/issue integration (browse projects, open in VS Code/Terminal/Browser)
 - [x] Terminal UI with 3×5 button grid, loading spinner, and log view
 - [x] Keep-alive heartbeat to maintain device connection
+- [x] User-defined pages, key labels/colors/images, and key actions in one TOML file
+- [x] `editor` GUI to build those pages without editing TOML
+- [x] Hot reload: saved changes reach the device within about a second
 
 ## Architecture
 
@@ -81,6 +84,76 @@ so no `brew install hidapi`.
 
 State is persisted to `~/.config/vibe-keyboard/state.toml`.
 Logs are written to `~/.config/vibe-keyboard/app.log`.
+
+## Customize
+
+All main-page keys come from `~/.config/vibe-keyboard/profile.toml` (or `$XDG_CONFIG_HOME/vibe-keyboard/profile.toml`).
+It is created on first run with the default layout.
+
+```bash
+cargo run --bin editor   # GUI editor; saving reloads the controller
+```
+
+```toml
+[[pages]]
+name = "Dev"
+
+[pages.keys.1]
+label = "Terminal"
+bg = "#202020"
+fg = "#FFFFFF"
+action = { type = "builtin", name = "terminal" }
+
+[pages.keys.2]
+label = "Docs"
+image = "images/docs.png"          # relative to the config dir
+action = { type = "open_url", url = "https://example.com" }
+
+[pages.keys.3]
+label = "Shot"
+action = { type = "hotkey", keys = "cmd+shift+4" }
+```
+
+Action types: `none`, `open_url`, `run_command`, `open_app`, `hotkey`, `go_to_page` (0-based index), `builtin`.
+`open_app` takes an app name (`open -a`), or a bundle id (`open -b`) when the value contains a dot and no spaces. Names ending in `.app` are app names.
+`run_command` runs `sh -c` with the text stored in `profile.toml`. Anyone who can write that file can run commands, so track it only in a repo you trust.
+Built-in names: `centy_projects`, `terminal`, `claude`, `centy_web`, `numpad`, `log_file`, `vscode_config`.
+Keys 11, 12 and 13 are navigation and cannot be bound.
+A built-in key shows its icon unless `image` is set.
+A malformed file is logged with its line and column. The controller keeps the last good layout.
+
+Run the controller without a terminal (for example at login) with `listen --headless`. It runs the same device loop and actions, with no TUI. Logs go to `~/.config/vibe-keyboard/app.log`. It exits cleanly on SIGINT or SIGTERM.
+
+### App-aware pages
+
+A page can list bundle ids in `apps`. When one of those apps is in front, the controller shows that page. When no page lists the app, it returns to the page you were on before. Manual paging (keys 11 and 13) stays in effect until the next app change. Sub-screens (Centy lists, numpad) are never interrupted.
+
+```toml
+[[pages]]
+name = "Browser"
+apps = ["com.google.Chrome", "com.apple.Safari"]
+
+[pages.keys.1]
+label = "Terminal"
+action = { type = "open_app", name = "com.googlecode.iterm2" }
+```
+
+`open_app` takes an app name (`open -a`) or a bundle id (`open -b`, when the value contains a dot and no spaces).
+The editor lists running apps for each page's `apps`. You can also type a bundle id.
+
+Track the config directory in git. Keep runtime files out of it:
+
+```gitignore
+# ~/.config/vibe-keyboard/.gitignore
+state.toml
+*.log
+*.toml.tmp
+```
+
+Commit `profile.toml` and `images/`. The controller never writes `profile.toml`. Only the editor (and the first-run default) writes it.
+Runtime state (current page, brightness, auto or manual page) stays out of it: `state.toml` and `app.log` are the ignored files.
+
+The controller runs as your normal user and writes its files as that user, so they stay editable and committable.
 
 ## See also
 

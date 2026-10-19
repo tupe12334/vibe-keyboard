@@ -44,16 +44,7 @@ impl<S: tracing::Subscriber> Layer<S> for TuiLogLayer {
 }
 
 fn log_dir() -> std::path::PathBuf {
-    let mut p = if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
-        std::path::PathBuf::from(config)
-    } else {
-        let mut home =
-            std::path::PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/tmp".into()));
-        home.push(".config");
-        home
-    };
-    p.push("vibe-keyboard");
-    p
+    crate::infrastructure::persistence::config_dir().join("vibe-keyboard")
 }
 
 /// Initialize the global tracing subscriber with a file appender and TUI layer.
@@ -61,8 +52,15 @@ fn log_dir() -> std::path::PathBuf {
 pub fn init(state: Arc<Mutex<AppState>>) -> tracing_appender::non_blocking::WorkerGuard {
     let dir = log_dir();
     let _ = std::fs::create_dir_all(&dir);
-    let file = std::fs::File::create(dir.join("app.log")).expect("failed to create log file");
-    let (non_blocking, guard) = tracing_appender::non_blocking(file);
+    // Fall back to stderr when the log file cannot be created, instead of panicking.
+    let sink: Box<dyn std::io::Write + Send> = match std::fs::File::create(dir.join("app.log")) {
+        Ok(file) => Box::new(file),
+        Err(e) => {
+            eprintln!("cannot create app.log ({e}); logging to stderr");
+            Box::new(std::io::stderr())
+        }
+    };
+    let (non_blocking, guard) = tracing_appender::non_blocking(sink);
 
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 

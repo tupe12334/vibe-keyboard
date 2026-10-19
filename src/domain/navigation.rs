@@ -46,6 +46,32 @@ impl NavigationStack {
         }
     }
 
+    /// Change the number of main pages after a profile reload, clamping pages that no longer exist.
+    pub fn set_main_pages(&mut self, total: usize) {
+        self.total_main_pages = total.max(1);
+        for screen in &mut self.stack {
+            if let Screen::MainPage { page } = screen {
+                *page = (*page).min(self.total_main_pages - 1);
+            }
+        }
+    }
+
+    /// The shown main page, if the top screen is a main page.
+    pub fn main_page(&self) -> Option<usize> {
+        match self.stack.last() {
+            Some(Screen::MainPage { page }) => Some(*page),
+            _ => None,
+        }
+    }
+
+    /// Show main page `page` (0-based) if the top screen is a main page.
+    pub fn go_to_page(&mut self, page: usize) {
+        let last = self.total_main_pages - 1;
+        if let Some(Screen::MainPage { page: current }) = self.stack.last_mut() {
+            *current = page.min(last);
+        }
+    }
+
     pub fn push(&mut self, screen: Screen) {
         self.stack.push(screen);
     }
@@ -770,5 +796,23 @@ mod tests {
         let mut nav = NavigationStack::new(0, 2);
         nav.input_number_append('5'); // no-op
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
+    }
+
+    #[test]
+    fn go_to_page_and_set_main_pages_clamp() {
+        let mut nav = NavigationStack::new(0, 3);
+        nav.go_to_page(2);
+        assert!(matches!(nav.current(), Screen::MainPage { page: 2 }));
+        nav.go_to_page(9);
+        assert!(matches!(nav.current(), Screen::MainPage { page: 2 }));
+        nav.set_main_pages(2);
+        assert!(matches!(nav.current(), Screen::MainPage { page: 1 }));
+        nav.set_main_pages(0);
+        assert!(matches!(nav.current(), Screen::MainPage { page: 0 }));
+        assert_eq!(nav.main_page(), Some(0));
+        nav.push(Screen::InputNumber {
+            value: String::new(),
+        });
+        assert_eq!(nav.main_page(), None);
     }
 }

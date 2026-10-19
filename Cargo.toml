@@ -3,9 +3,17 @@ name = "vibe-keyboard"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "vibe_keyboard"
+path = "src/lib.rs"
+
 [[bin]]
 name = "listen"
 path = "src/main.rs"
+
+[[bin]]
+name = "editor"
+path = "src/bin/editor.rs"
 
 [dependencies]
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
@@ -21,6 +29,8 @@ throbber-widgets-tui = "0.11.0"
 dirs = "5"
 hidapi = "2.6.7"
 signal-hook = "0.3"
+eframe = "0.37.0"
+rfd = "0.17.2"
 
 [lints.clippy]
 # Group at lower priority so the specific lints below (which may set a

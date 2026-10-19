@@ -1,3 +1,13 @@
+/// Keys 11 (back), 12 (out) and 13 (forward) always navigate; profiles cannot bind them.
+pub const fn is_nav_key(key: u8) -> bool {
+    matches!(key, 11..=13)
+}
+
+/// Inverse of `raw_to_logical`: the raw physical key id (0x01–0x0F) for a logical key 1–15.
+pub fn logical_to_raw(logical: u8) -> Option<u8> {
+    (0x01..=0x0F).find(|&raw| raw_to_logical(raw) == Some(logical))
+}
+
 pub const fn raw_to_logical(raw: u8) -> Option<u8> {
     match raw {
         0x0D => Some(1),
@@ -45,6 +55,19 @@ mod tests {
         for (raw, expected) in cases {
             assert_eq!(raw_to_logical(raw), Some(expected), "raw=0x{raw:02X}");
         }
+    }
+
+    #[test]
+    fn logical_to_raw_round_trips_all_fifteen_keys() {
+        for logical in 1..=15u8 {
+            let raw = logical_to_raw(logical);
+            assert!(raw.is_some(), "logical {logical} has no raw id");
+            assert_eq!(raw.and_then(raw_to_logical), Some(logical));
+        }
+        assert_eq!(logical_to_raw(0), None);
+        assert_eq!(logical_to_raw(16), None);
+        assert_eq!(logical_to_raw(1), Some(0x0D));
+        assert_eq!(logical_to_raw(15), Some(0x03));
     }
 
     #[test]
