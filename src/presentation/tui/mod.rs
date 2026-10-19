@@ -16,13 +16,13 @@ use crossterm::{
 };
 use ratatui::{backend::CrosstermBackend, Terminal};
 
-pub fn run(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) {
+pub fn run(state: &Arc<Mutex<AppState>>, shutdown: &Arc<AtomicBool>) {
     if let Err(e) = run_inner(state, shutdown) {
         error!("TUI error: {e}");
     }
 }
 
-fn run_inner(state: Arc<Mutex<AppState>>, shutdown: Arc<AtomicBool>) -> io::Result<()> {
+fn run_inner(state: &Arc<Mutex<AppState>>, shutdown: &Arc<AtomicBool>) -> io::Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
