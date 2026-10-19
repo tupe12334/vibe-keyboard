@@ -25,15 +25,17 @@ fn state_path() -> PathBuf {
     p
 }
 
-fn config_dir() -> PathBuf {
-    // Respect an explicit XDG_CONFIG_HOME override on any platform (keeps
-    // existing Linux/macOS users on `~/.config` instead of silently
-    // relocating saved state to platform-native dirs), otherwise defer to
-    // the `dirs` crate for correct per-OS resolution (including Windows).
+/// `$XDG_CONFIG_HOME`, or `$HOME/.config` on every OS. `dirs::config_dir()` is not used,
+/// because on macOS it returns `~/Library/Application Support`.
+pub fn config_dir() -> PathBuf {
     if let Some(config) = std::env::var_os("XDG_CONFIG_HOME") {
         return PathBuf::from(config);
     }
-    dirs::config_dir().unwrap_or_else(std::env::temp_dir)
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .or_else(dirs::home_dir)
+        .unwrap_or_else(std::env::temp_dir);
+    home.join(".config")
 }
 
 impl DeviceState {
@@ -143,6 +145,25 @@ mod tests {
             assert_eq!(s.current_page, 0);
             assert_eq!(s.brightness, 25);
         });
+    }
+
+    #[test]
+    fn config_dir_is_dot_config_under_home() {
+        let _guard = env_lock()
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let old_home = std::env::var_os("HOME");
+        // SAFETY: guarded by ENV_LOCK, no signal handlers in tests
+        unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
+        unsafe { std::env::set_var("HOME", "/home/tester") };
+        assert_eq!(config_dir(), PathBuf::from("/home/tester/.config"));
+        unsafe { std::env::set_var("XDG_CONFIG_HOME", "/xdg") };
+        assert_eq!(config_dir(), PathBuf::from("/xdg"));
+        unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
+        match old_home {
+            Some(home) => unsafe { std::env::set_var("HOME", home) },
+            None => unsafe { std::env::remove_var("HOME") },
+        }
     }
 
     #[test]

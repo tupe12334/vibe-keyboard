@@ -4,11 +4,8 @@ mod pages;
 pub use pages::render_screen;
 
 use crate::infrastructure::usb::Device;
-use actions::{
-    open_centy_workspace, open_claude_terminal, open_config_in_vscode, open_in_chrome,
-    open_log_file, open_terminal, open_terminal_in_path, open_vscode_in_path,
-};
-use pages::{fetch_centy_issues, fetch_centy_projects};
+use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
+use pages::fetch_centy_issues;
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -59,6 +56,14 @@ pub fn handle_key_event(
     info!("key {:2} {state_str}", key);
 
     let is_input_number = matches!(nav.current(), Screen::InputNumber { .. });
+    if matches!(key, 11 | 13) && nav.main_page().is_some() {
+        // Paging by hand on a main page makes it manual, so app switches stop fighting it.
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .auto_page
+            .on_manual_page();
+    }
 
     match key {
         11 => {
@@ -87,12 +92,6 @@ fn handle_action_key(
 ) {
     // Extract what we need from the current screen before any mutable nav operations.
     enum Action {
-        FetchProjects,
-        OpenTerminal,
-        OpenClaude,
-        OpenCentyWeb,
-        OpenLogFile,
-        OpenConfig,
         SelectProject {
             projects: Vec<crate::domain::actions::CentyProject>,
             idx: usize,
@@ -131,7 +130,6 @@ fn handle_action_key(
             issue_number: u64,
         },
         SortList,
-        OpenInputNumber,
         InputNumberDigit {
             digit: char,
         },
@@ -141,17 +139,23 @@ fn handle_action_key(
         None,
     }
 
+    // Main page keys come from the user's profile, not from code.
+    if let Screen::MainPage { page } = nav.current() {
+        let page = *page;
+        let configured = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .profile
+            .action_at(page, key)
+            .cloned();
+        if let Some(action) = configured {
+            actions::run_action(&action, nav, handle, state, dev_state);
+        }
+        return;
+    }
+
     let action = match nav.current() {
-        Screen::MainPage { page } => match (*page, key) {
-            (0, 1) => Action::FetchProjects,
-            (0, 2) => Action::OpenTerminal,
-            (0, 3) => Action::OpenClaude,
-            (0, 4) => Action::OpenCentyWeb,
-            (1, 1) => Action::OpenInputNumber,
-            (1, 14) => Action::OpenLogFile,
-            (1, 15) => Action::OpenConfig,
-            _ => Action::None,
-        },
+        Screen::MainPage { .. } => Action::None,
         Screen::CentyProjectList { projects, page, .. } => {
             if key == 15 {
                 Action::Search
@@ -252,45 +256,6 @@ fn handle_action_key(
     };
 
     match action {
-        Action::FetchProjects => {
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = true;
-            let projects = fetch_centy_projects();
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = false;
-            if !projects.is_empty() {
-                nav.push(Screen::CentyProjectList {
-                    projects,
-                    page: 0,
-                    filter: None,
-                });
-                render_screen(nav, handle, state, dev_state);
-            }
-        }
-        Action::OpenTerminal => {
-            info!("opening Terminal");
-            open_terminal();
-        }
-        Action::OpenClaude => {
-            info!("opening Claude in Terminal");
-            open_claude_terminal();
-        }
-        Action::OpenCentyWeb => {
-            info!("opening Centy in Chrome");
-            open_in_chrome("https://app.centy.io");
-        }
-        Action::OpenLogFile => {
-            info!("opening log file in VS Code");
-            open_log_file();
-        }
-        Action::OpenConfig => {
-            info!("opening config in VS Code");
-            open_config_in_vscode();
-        }
         Action::SelectProject { projects, idx } => {
             if let Some(project) = projects.into_iter().nth(idx) {
                 info!("centy: selected project {}", project.name);
@@ -370,13 +335,6 @@ fn handle_action_key(
             nav.toggle_sort();
             render_screen(nav, handle, state, dev_state);
         }
-        Action::OpenInputNumber => {
-            info!("opening input number page");
-            nav.push(Screen::InputNumber {
-                value: String::new(),
-            });
-            render_screen(nav, handle, state, dev_state);
-        }
         Action::InputNumberDigit { digit } => {
             nav.input_number_append(digit);
             let value = nav.input_number_value().unwrap_or("").to_string();
@@ -404,6 +362,32 @@ fn handle_action_key(
             s.text_input_confirmed = false;
         }
         Action::None => {}
+    }
+}
+
+/// The app in front changed to `bundle_id`. Show the page that lists it, or return
+/// to the manual page when no page does. Does nothing while a sub-screen is open.
+pub fn handle_frontmost(
+    bundle_id: &str,
+    nav: &mut NavigationStack,
+    handle: &Device,
+    state: &Arc<Mutex<tui::AppState>>,
+    dev_state: &Arc<Mutex<DeviceState>>,
+) {
+    let Some(current) = nav.main_page() else {
+        return;
+    };
+    let decision = {
+        let mut s = state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let target = s.profile.page_for_app(bundle_id);
+        s.auto_page.on_frontmost(true, current, target)
+    };
+    if let Some(page) = decision {
+        info!("app {bundle_id} in front: showing page {}", page + 1);
+        nav.go_to_page(page);
+        render_screen(nav, handle, state, dev_state);
     }
 }
 

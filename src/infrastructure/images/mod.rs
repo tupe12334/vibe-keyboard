@@ -3,10 +3,12 @@ mod claude;
 mod draw;
 mod log_file;
 mod numpad;
+mod profile_key;
 mod project_item;
 mod search;
 mod sort;
 mod terminal;
+mod text;
 mod vscode_config;
 mod web;
 
@@ -17,6 +19,7 @@ pub use numpad::{
     generate_numpad_backspace_image, generate_numpad_clear_image, generate_numpad_digit_image,
     generate_numpad_entry_image,
 };
+pub use profile_key::{key_image, page_images};
 pub use project_item::generate_project_item_image;
 pub use search::generate_search_image;
 pub use sort::generate_sort_image;

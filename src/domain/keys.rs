@@ -1,3 +1,8 @@
+/// Keys 11 (back), 12 (out) and 13 (forward) always navigate; profiles cannot bind them.
+pub const fn is_nav_key(key: u8) -> bool {
+    matches!(key, 11..=13)
+}
+
 pub const fn raw_to_logical(raw: u8) -> Option<u8> {
     match raw {
         0x0D => Some(1),
