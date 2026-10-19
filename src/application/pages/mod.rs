@@ -1,4 +1,5 @@
 mod centy;
+mod claude_sessions;
 mod input_number;
 mod issue_actions;
 mod issue_list;
@@ -72,6 +73,9 @@ pub fn render_screen(
         }
         Screen::InputNumber { value } => {
             input_number::render_input_number(value, handle, state);
+        }
+        Screen::ClaudeSessions { sessions, page } => {
+            claude_sessions::render_claude_sessions(sessions, *page, handle, state);
         }
     }
 }

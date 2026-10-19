@@ -135,6 +135,11 @@ fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {
     img
 }
 
+/// Plain label tile on the default colors. Used for dynamic lists such as Claude sessions.
+pub fn label_image(label: &str) -> RgbImage {
+    label_tile(label, FALLBACK_BG, FALLBACK_FG)
+}
+
 /// Keys 11, 12 and 13 always navigate. Each shows a fixed label.
 fn nav_image(key: u8) -> RgbImage {
     let label = match key {

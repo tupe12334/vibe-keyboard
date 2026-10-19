@@ -1,4 +1,5 @@
 pub mod app_icon;
+pub mod claude_sessions;
 pub mod frontmost;
 pub mod images;
 pub mod persistence;

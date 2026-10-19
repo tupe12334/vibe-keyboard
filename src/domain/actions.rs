@@ -46,4 +46,15 @@ pub enum ScreenView {
     InputNumber {
         value: String,
     },
+    ClaudeSessions {
+        total: usize,
+        page: usize,
+    },
+}
+
+/// A Claude Code process on a terminal. `tty` is the bare name, e.g. `ttys003`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ClaudeSession {
+    pub tty: String,
+    pub label: String,
 }

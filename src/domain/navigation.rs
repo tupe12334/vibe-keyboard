@@ -1,4 +1,4 @@
-use crate::domain::actions::{CentyIssue, CentyProject};
+use crate::domain::actions::{CentyIssue, CentyProject, ClaudeSession};
 
 #[derive(Clone)]
 pub enum Screen {
@@ -27,6 +27,10 @@ pub enum Screen {
     },
     InputNumber {
         value: String,
+    },
+    ClaudeSessions {
+        sessions: Vec<ClaudeSession>,
+        page: usize,
     },
 }
 
@@ -99,7 +103,9 @@ impl NavigationStack {
                 };
                 false
             }
-            Screen::CentyProjectList { page, .. } | Screen::CentyIssueList { page, .. }
+            Screen::CentyProjectList { page, .. }
+            | Screen::CentyIssueList { page, .. }
+            | Screen::ClaudeSessions { page, .. }
                 if *page > 0 =>
             {
                 *page -= 1;
@@ -140,9 +146,19 @@ impl NavigationStack {
             Screen::CentyIssueList { issues, page, .. } => {
                 *page < issues.len().saturating_sub(1) / 10
             }
+            Screen::ClaudeSessions { sessions, page } => {
+                *page < sessions.len().saturating_sub(1) / 10
+            }
             Screen::CentyProjectActions { .. }
             | Screen::CentyIssueActions { .. }
             | Screen::InputNumber { .. } => false,
+        }
+    }
+
+    /// Go to the previous page of a session list. Unlike `back`, it never pops the screen.
+    pub fn previous_page(&mut self) {
+        if let Some(Screen::ClaudeSessions { page, .. }) = self.stack.last_mut() {
+            *page = page.saturating_sub(1);
         }
     }
 
@@ -197,6 +213,12 @@ impl NavigationStack {
                     *page += 1;
                 }
             }
+            Screen::ClaudeSessions { sessions, page } => {
+                let max = sessions.len().saturating_sub(1) / 10;
+                if *page < max {
+                    *page += 1;
+                }
+            }
             Screen::CentyProjectActions { .. }
             | Screen::CentyIssueActions { .. }
             | Screen::InputNumber { .. } => {}
@@ -240,6 +262,43 @@ impl NavigationStack {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn claude_sessions_page_forward_back_and_stop_at_edges() {
+        let sessions: Vec<ClaudeSession> = (0..11)
+            .map(|i| ClaudeSession {
+                tty: format!("ttys{i:03}"),
+                label: format!("s{i}"),
+            })
+            .collect();
+        let mut nav = NavigationStack::new(0, 1);
+        nav.push(Screen::ClaudeSessions { sessions, page: 0 });
+        assert!(nav.can_forward());
+        nav.forward();
+        assert!(!nav.can_forward());
+        nav.forward();
+        assert!(matches!(
+            nav.current(),
+            Screen::ClaudeSessions { page: 1, .. }
+        ));
+        nav.back();
+        assert!(matches!(
+            nav.current(),
+            Screen::ClaudeSessions { page: 0, .. }
+        ));
+        assert!(nav.can_out());
+        nav.previous_page();
+        assert!(matches!(
+            nav.current(),
+            Screen::ClaudeSessions { page: 0, .. }
+        ));
+        nav.forward();
+        nav.previous_page();
+        assert!(matches!(
+            nav.current(),
+            Screen::ClaudeSessions { page: 0, .. }
+        ));
+    }
 
     fn make_project() -> CentyProject {
         CentyProject {

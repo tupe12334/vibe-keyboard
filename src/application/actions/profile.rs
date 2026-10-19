@@ -13,6 +13,7 @@ use crate::domain::actions::CentyProject;
 use crate::domain::hotkey::parse_hotkey;
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::domain::profile::{is_bundle_id, Action};
+use crate::infrastructure::claude_sessions::list_sessions;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
@@ -117,6 +118,20 @@ fn run_builtin(
         "vscode_config" => {
             info!("opening config in VS Code");
             open_config_in_vscode();
+        }
+        "claude_sessions" => {
+            state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .loading = true;
+            let sessions = list_sessions();
+            state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .loading = false;
+            info!("claude sessions: {} found", sessions.len());
+            nav.push(Screen::ClaudeSessions { sessions, page: 0 });
+            render_screen(nav, handle, state, dev_state);
         }
         other => error!("profile: unknown built-in '{other}'"),
     }
