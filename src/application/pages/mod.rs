@@ -8,6 +8,7 @@ mod project_actions;
 mod project_list;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
+pub use claude_sessions::SessionsRefresh;
 
 use crate::infrastructure::usb::Device;
 use std::sync::{Arc, Mutex};
