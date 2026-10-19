@@ -80,6 +80,7 @@ Logs are written to `~/.config/vibe-keyboard/app.log`.
 
 ## See also
 
+- [AKP153E protocol capture and hidapi tools](tools/akp153e/README.md)
 - [moadim](https://moadim.io/) — loop engineering: build, schedule & run agent loops.
 
 ## License

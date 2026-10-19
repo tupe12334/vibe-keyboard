@@ -175,6 +175,69 @@ Layout (logical numbers, as seen from the front):
 11  12  13  14  15
 ```
 
+## Protocol captured from StreamDock.app (2026-10-20)
+
+🔌 **Device** — captured by hooking IOKit HID calls inside StreamDock.app and verified on hardware. Scripts: [`tools/akp153e/`](tools/akp153e/README.md).
+
+Conflicts with 🌐 entries above are marked **Conflict**. This section is the verified one.
+
+### Identity and interfaces
+
+- Firmware string read from device: `V3.AKP153E.02.009`.
+- HID interfaces: boot keyboard (usage page 1, usage 6; sends nothing) and vendor page `0xFFA0` (no report IDs, 512-byte input, 1024-byte output).
+- The vendor interface stays silent until init.
+
+### Framing
+
+Every command is `CRT\0\0` + body, zero-padded to **1024 bytes**. **Conflict:** the Command Packet Format above says 512 bytes.
+
+### Init order
+
+1. `DIS` — wake
+2. `LIG\0\0\x0f` — brightness byte at offset 10
+3. `QUCMD\x11\x11\x00\x11\x00\x11`
+4. `CLE\0\0\0\xff` — clear all
+5. `STP` — refresh and commit
+
+Then send `CONNECT` as a heartbeat about every 10 s.
+
+### Key image
+
+1. Send `BAT`, a 4-byte big-endian JPEG length at offsets 8–11, and the key index at offset 12.
+2. Send the raw JPEG in 1024-byte chunks.
+3. Send `STP`.
+
+- Image size: 85×85 JPEG renders correctly. **Conflict:** the 100×100 note in Key Image Transfer.
+- Rotation: rotate 90° counter-clockwise before sending (PIL `rotate(90)`). Unrotated images show turned 90° clockwise. **Conflict:** the 180° rotation note.
+
+### Key index layout
+
+Column-major, numbered from top-right:
+
+```
+13 10  7  4  1
+14 11  8  5  2
+15 12  9  6  3
+```
+
+**Conflict:** the Key ID Mapping table above. Check both against hardware before you rely on either.
+
+### Key event
+
+- ACK frame: `ACK\0\0OK\0\0`.
+- Key index at byte 9 (1–15).
+- State at byte 10: `01` down, `00` up. **Conflict:** the Input Event Format table (`1` pressed, `2` released).
+
+### macOS access
+
+- hidapi opens devices exclusively by default. The keyboard interface then fails with "open failed", even with Input Monitoring granted.
+- `hid_darwin_set_open_exclusive(0)` fixes this.
+- With non-exclusive hidapi, no root or setuid is needed. **Conflict:** the macOS Access Notes and the `sudo` note above.
+
+### Gap in current Rust init
+
+`device_init` in `src/infrastructure/usb/commands.rs` sends `CONNECT`, `DIS`, and `LIG` only. It does not send `QUCMD` or `STP`. This is a finding. The code is not changed.
+
 ## Reference Implementations
 
 🌐 **Online**
