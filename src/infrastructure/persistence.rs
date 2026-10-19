@@ -74,6 +74,7 @@ impl DeviceState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::PermissionsExt;
     use std::sync::{Mutex, OnceLock};
 
     static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -91,15 +92,14 @@ mod tests {
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.subsec_nanos())
-                .unwrap_or(0)
+                .map_or(0, |d| d.subsec_nanos())
         ));
-        std::fs::remove_dir_all(&dir).ok();
+        let _ = std::fs::remove_dir_all(&dir);
         // SAFETY: guarded by ENV_LOCK, no signal handlers in tests
         unsafe { std::env::set_var("XDG_CONFIG_HOME", &dir) };
         f();
         unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
-        std::fs::remove_dir_all(&dir).ok();
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -137,8 +137,8 @@ mod tests {
         with_temp_config(|| {
             let path = state_path();
             let parent = path.parent().expect("path has parent");
-            std::fs::create_dir_all(parent).unwrap_or_else(|_| ());
-            std::fs::write(&path, b"not valid toml ][").unwrap_or_else(|_| ());
+            let _ = std::fs::create_dir_all(parent);
+            let _ = std::fs::write(&path, b"not valid toml ][");
             let s = DeviceState::load();
             assert_eq!(s.current_page, 0);
             assert_eq!(s.brightness, 25);
@@ -155,10 +155,9 @@ mod tests {
             std::process::id(),
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.subsec_nanos())
-                .unwrap_or(0)
+                .map_or(0, |d| d.subsec_nanos())
         ));
-        std::fs::remove_dir_all(&home_dir).ok();
+        let _ = std::fs::remove_dir_all(&home_dir);
         // SAFETY: guarded by ENV_LOCK, no signal handlers in tests
         unsafe { std::env::remove_var("XDG_CONFIG_HOME") };
         unsafe { std::env::set_var("HOME", &home_dir) };
@@ -166,7 +165,7 @@ mod tests {
         assert_eq!(s.current_page, 0);
         assert_eq!(s.brightness, 25);
         unsafe { std::env::remove_var("HOME") };
-        std::fs::remove_dir_all(&home_dir).ok();
+        let _ = std::fs::remove_dir_all(&home_dir);
     }
 
     #[test]
@@ -178,10 +177,10 @@ mod tests {
                 .parent()
                 .and_then(|p| p.parent())
                 .expect("path has grandparent");
-            std::fs::create_dir_all(config_root).unwrap_or_else(|_| ());
+            let _ = std::fs::create_dir_all(config_root);
             let vibe_dir = path.parent().expect("path has parent");
             // Create a file at vibe_dir's location — create_dir_all will fail
-            std::fs::write(vibe_dir, b"block").unwrap_or_else(|_| ());
+            let _ = std::fs::write(vibe_dir, b"block");
 
             let s = DeviceState {
                 current_page: 0,
@@ -202,7 +201,7 @@ mod tests {
             if let Ok(meta) = std::fs::metadata(&path) {
                 let mut perms = meta.permissions();
                 perms.set_readonly(true);
-                std::fs::set_permissions(&path, perms).unwrap_or_else(|_| ());
+                let _ = std::fs::set_permissions(&path, perms);
             }
 
             DeviceState {
@@ -214,8 +213,8 @@ mod tests {
             // Restore so cleanup can proceed
             if let Ok(meta) = std::fs::metadata(&path) {
                 let mut perms = meta.permissions();
-                perms.set_readonly(false);
-                std::fs::set_permissions(&path, perms).unwrap_or_else(|_| ());
+                perms.set_mode(0o644);
+                let _ = std::fs::set_permissions(&path, perms);
             }
         });
     }
