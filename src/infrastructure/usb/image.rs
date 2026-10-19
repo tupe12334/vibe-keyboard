@@ -4,11 +4,27 @@ use tracing::error;
 
 use super::commands::{refresh, write_cmd};
 use super::{Device, CMD_PACKET, PACKET};
+use crate::domain::keys::logical_to_raw;
 
-/// Encode image as JPEG (rotate 180°, quality 90) and send via `CRT_BAT` + chunks + `CRT_STP`.
-/// `key` is 0-indexed (0–14); the device protocol uses 1-indexed key IDs.
+/// Key image edge in pixels, as verified on the AKP153E.
+pub const DECK_IMAGE_SIZE: u32 = 85;
+
+/// Encode `img` as JPEG and send it to logical key `key` (1–15, same numbering as the
+/// editor grid and input events). The device wants the physical id in `BAT`, and it shows
+/// images turned 90° clockwise, so the image is pre-rotated counter-clockwise.
 pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
-    let rgb = img.rotate180().to_rgb8();
+    let Some(raw) = logical_to_raw(key) else {
+        error!("send_button_image: logical key {key} is out of range 1..=15");
+        return;
+    };
+    let rgb = img
+        .resize_exact(
+            DECK_IMAGE_SIZE,
+            DECK_IMAGE_SIZE,
+            image::imageops::FilterType::Triangle,
+        )
+        .rotate270()
+        .to_rgb8();
     let (w, h) = rgb.dimensions();
     let mut jpeg = Vec::new();
     if let Err(e) = JpegEncoder::new_with_quality(&mut jpeg, 90).encode(
@@ -24,16 +40,7 @@ pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
     let size = jpeg.len();
     write_cmd(
         handle,
-        &[
-            b'B',
-            b'A',
-            b'T',
-            0,
-            0,
-            (size >> 8) as u8,
-            size as u8,
-            key + 1,
-        ],
+        &[b'B', b'A', b'T', 0, 0, (size >> 8) as u8, size as u8, raw],
     );
 
     for chunk in jpeg.chunks(PACKET) {

@@ -34,6 +34,11 @@ pub fn key_image(key: u8, config: Option<&KeyConfig>, root: &Path) -> RgbImage {
     }
 }
 
+/// Calibration tile: the logical key number in big white digits on black.
+pub fn calibration_image(key: u8) -> RgbImage {
+    label_tile(&key.to_string(), [0, 0, 0], [255, 255, 255])
+}
+
 /// Every key 1–15 of one page, in key order. This is exactly what the controller sends.
 pub fn page_images(keys: &BTreeMap<u8, KeyConfig>, root: &Path) -> Vec<(u8, RgbImage)> {
     (1..=KEY_COUNT)
