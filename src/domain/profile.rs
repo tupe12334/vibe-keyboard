@@ -24,11 +24,35 @@ pub const BUILTIN_NAMES: [&str; 8] = [
 const DEFAULT_BG: &str = "#141414";
 const DEFAULT_FG: &str = "#E6E6E6";
 
-/// The whole user layout: an ordered list of main pages.
+/// The whole user layout: an ordered list of main pages, and the prompts a session action sends.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Profile {
     #[serde(default)]
     pub pages: Vec<Page>,
+    /// Text typed into a Claude Code session by its action page. Empty means the built-in pair.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub prompts: Vec<Prompt>,
+}
+
+/// A prompt a session action types into a Claude Code session, followed by Enter.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Prompt {
+    pub label: String,
+    pub text: String,
+}
+
+/// Longest prompt text the profile accepts.
+pub const PROMPT_MAX_CHARS: usize = 2000;
+
+/// Prompts used when the profile has none: Recap and Voice.
+pub fn default_prompts() -> Vec<Prompt> {
+    [("Recap", "/recap"), ("Voice", "/voice")]
+        .into_iter()
+        .map(|(label, text)| Prompt {
+            label: label.into(),
+            text: text.into(),
+        })
+        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -229,6 +253,7 @@ impl Profile {
             ..KeyConfig::default()
         };
         Self {
+            prompts: default_prompts(),
             pages: vec![
                 Page {
                     name: "Main".into(),
@@ -323,8 +348,34 @@ impl Profile {
     }
 
     /// Human-readable problems in the layout. Empty when the profile is valid.
+    /// The prompts a session action can send: the profile's own, else the built-in pair.
+    pub fn session_prompts(&self) -> Vec<Prompt> {
+        if self.prompts.is_empty() {
+            default_prompts()
+        } else {
+            self.prompts.clone()
+        }
+    }
+
     pub fn problems(&self) -> Vec<String> {
         let mut out = Vec::new();
+        for (index, prompt) in self.prompts.iter().enumerate() {
+            let place = format!("prompt {}", index + 1);
+            if prompt.label.trim().is_empty() {
+                out.push(format!("{place}: label is empty"));
+            }
+            if prompt.text.trim().is_empty() {
+                out.push(format!("{place}: text is empty"));
+            }
+            if prompt.text.chars().any(char::is_control) {
+                out.push(format!("{place}: text must be one line"));
+            }
+            if prompt.text.chars().count() > PROMPT_MAX_CHARS {
+                out.push(format!(
+                    "{place}: text is over {PROMPT_MAX_CHARS} characters"
+                ));
+            }
+        }
         for (index, page) in self.pages.iter().enumerate() {
             for (key, config) in &page.keys {
                 let place = format!("page {} '{}' key {key}", index + 1, page.name);
@@ -424,6 +475,55 @@ pub fn format_color(rgb: [u8; 3]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn prompts_round_trip_and_stay_out_of_files_when_empty() {
+        let mut profile = Profile::default_from_legacy();
+        let text = toml::to_string_pretty(&profile).unwrap_or_default();
+        assert!(text.contains("[[prompts]]"));
+        let back: Profile = toml::from_str(&text).unwrap_or_default();
+        assert_eq!(back, profile);
+        assert_eq!(profile.session_prompts(), profile.prompts);
+
+        profile.prompts.clear();
+        let text = toml::to_string_pretty(&profile).unwrap_or_default();
+        assert!(!text.contains("prompts"));
+        let back: Profile = toml::from_str(&text).unwrap_or_default();
+        assert_eq!(back, profile);
+        assert_eq!(profile.session_prompts(), default_prompts());
+    }
+
+    #[test]
+    fn profile_without_prompts_falls_back_to_recap_and_voice() {
+        let old: Profile = toml::from_str("[[pages]]\nname = \"Main\"\n").unwrap_or_default();
+        assert!(old.prompts.is_empty());
+        let labels: Vec<String> = old.session_prompts().into_iter().map(|p| p.label).collect();
+        assert_eq!(labels, ["Recap", "Voice"]);
+    }
+
+    #[test]
+    fn prompt_problems_flag_empty_multiline_and_long_text() {
+        let prompt = |label: &str, text: &str| Prompt {
+            label: label.into(),
+            text: text.into(),
+        };
+        let profile = Profile {
+            pages: Vec::new(),
+            prompts: vec![
+                prompt("", "/a"),
+                prompt("B", "  "),
+                prompt("C", "line\nbreak"),
+                prompt("D", &"x".repeat(PROMPT_MAX_CHARS + 1)),
+                prompt("E", "/ok"),
+            ],
+        };
+        let problems = profile.problems();
+        assert_eq!(problems.len(), 4, "{problems:?}");
+        assert!(problems[0].contains("label is empty"));
+        assert!(problems[1].contains("text is empty"));
+        assert!(problems[2].contains("one line"));
+        assert!(problems[3].contains("over"));
+    }
 
     #[test]
     fn toml_round_trip_keeps_every_action() {

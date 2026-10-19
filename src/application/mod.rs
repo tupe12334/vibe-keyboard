@@ -4,9 +4,8 @@ mod pages;
 pub use pages::{render_screen, SessionsRefresh};
 
 use crate::domain::actions::{NewSessionTerminal, TerminalApp};
-use crate::infrastructure::claude_sessions::{
-    focus_session, open_new_session, send_prompt, SESSION_PROMPTS,
-};
+use crate::domain::navigation::prompt_index;
+use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
 use pages::{fetch_centy_issues, show_focus_only};
@@ -152,10 +151,14 @@ fn handle_action_key(
         SendPrompt {
             pid: u32,
             tty: String,
-            text: &'static str,
+            text: String,
         },
         PromptUnsupported {
             key: u8,
+        },
+        TurnActionPage {
+            forward: bool,
+            count: usize,
         },
 
         NewSession {
@@ -287,24 +290,34 @@ fn handle_action_key(
             15 => Action::TurnSessionsPage { forward: true },
             _ => Action::None,
         },
-        Screen::SessionActions { session } => match key {
-            1 => Action::FocusSession {
-                tty: session.tty.clone(),
-            },
-            2 | 3 => {
-                if session.app == TerminalApp::Other {
-                    Action::PromptUnsupported { key }
-                } else {
-                    let (_, text) = SESSION_PROMPTS[usize::from(key) - 2];
-                    Action::SendPrompt {
-                        pid: session.pid,
-                        tty: session.tty.clone(),
-                        text,
+        Screen::SessionActions { session, page } => {
+            let prompts = state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .profile
+                .session_prompts();
+            match key {
+                1 => Action::FocusSession {
+                    tty: session.tty.clone(),
+                },
+                2..=10 => prompt_index(*page, key, prompts.len()).map_or(Action::None, |index| {
+                    if session.app == TerminalApp::Other {
+                        Action::PromptUnsupported { key }
+                    } else {
+                        Action::SendPrompt {
+                            pid: session.pid,
+                            tty: session.tty.clone(),
+                            text: prompts[index].text.clone(),
+                        }
                     }
-                }
+                }),
+                14 | 15 => Action::TurnActionPage {
+                    forward: key == 15,
+                    count: prompts.len(),
+                },
+                _ => Action::None,
             }
-            _ => Action::None,
-        },
+        }
         Screen::NewSessionChoice => match key {
             1 => Action::NewSession {
                 terminal: NewSessionTerminal::ITerm,
@@ -417,13 +430,17 @@ fn handle_action_key(
         }
         Action::OpenSessionActions { session } => {
             info!("claude sessions: actions for {}", session.tty);
-            nav.push(Screen::SessionActions { session });
+            nav.push(Screen::SessionActions { session, page: 0 });
             render_screen(nav, handle, state, dev_state);
         }
         Action::SendPrompt { pid, tty, text } => {
-            info!("claude sessions: send {text} to {tty}");
+            info!("claude sessions: send prompt to {tty}");
             // Off the device loop: osascript can take a while to answer.
-            std::thread::spawn(move || send_prompt(pid, &tty, text));
+            std::thread::spawn(move || send_prompt(pid, &tty, &text));
+        }
+        Action::TurnActionPage { forward, count } => {
+            nav.turn_action_page(forward, count);
+            render_screen(nav, handle, state, dev_state);
         }
         Action::PromptUnsupported { key } => {
             info!("claude sessions: key {key} needs iTerm2 or Terminal; focus only");

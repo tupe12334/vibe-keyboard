@@ -272,9 +272,6 @@ pub const fn new_session_script(app: NewSessionTerminal) -> &'static str {
     }
 }
 
-/// Prompts that a session action sends, as `(label, text)`. Fixed text, never user input.
-pub const SESSION_PROMPTS: [(&str, &str); 2] = [("Recap", "/recap"), ("Voice", "/voice")];
-
 /// `AppleScript` expression for `text`. Escapes backslash and double quote. `\n`, `\r` and `\t`
 /// become `linefeed`, `return` and `tab` joined by `&`. Any other control character gives None.
 pub fn applescript_string(text: &str) -> Option<String> {
@@ -762,11 +759,6 @@ mod tests {
         assert!(terminal.contains(r#"tty of t is "/dev/ttys007""#));
         assert!(terminal.contains(r#"do script "a\"b" in t"#));
         assert_eq!(send_text_scripts("ttys007\"; quit", "/recap"), None);
-    }
-
-    #[test]
-    fn session_prompts_are_the_fixed_recap_and_voice() {
-        assert_eq!(SESSION_PROMPTS, [("Recap", "/recap"), ("Voice", "/voice")]);
     }
 
     #[test]
