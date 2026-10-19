@@ -16,9 +16,16 @@ fi
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
+shopt -s nullglob
+svgs=("$svg_dir"/*.svg)
+if [ "${#svgs[@]}" -eq 0 ]; then
+    echo "render.sh: no .svg files in $svg_dir" >&2
+    exit 1
+fi
+
 mkdir -p "$png_dir"
 count=0
-for svg in "$svg_dir"/*.svg; do
+for svg in "${svgs[@]}"; do
     name="$(basename "$svg" .svg)"
     # Bind the single foreground colour: rsvg defaults currentColor to black.
     sed "s/currentColor/$fg/g" "$svg" > "$tmp/$name.svg"

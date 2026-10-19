@@ -21,8 +21,9 @@ done
 iconutil -c icns "$SET" -o "$A/AppIcon.icns"
 ```
 
-The bundle script copies `AppIcon.icns` into `Contents/Resources/` and sets
-`CFBundleIconFile` to `AppIcon`.
+`packaging/macos/build-app.sh` (PR #78) is meant to consume `AppIcon.icns`:
+copy it into `Contents/Resources/` and set `CFBundleIconFile` to `AppIcon`.
+That wiring is not on this branch yet; it lands with PR #78.
 
 ## License
 
