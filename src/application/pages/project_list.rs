@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::infrastructure::usb::Device;
 use image::DynamicImage;
-use rusb::{Context, DeviceHandle};
 
 use crate::domain::actions::{ButtonAction, CentyProject, ScreenView};
 use crate::infrastructure::images::{
@@ -15,7 +15,7 @@ pub fn render_project_list(
     projects: &[CentyProject],
     page: usize,
     filter: Option<&str>,
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
     const PER_PAGE: usize = 10;

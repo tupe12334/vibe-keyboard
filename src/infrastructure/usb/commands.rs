@@ -1,32 +1,27 @@
-use rusb::{Context, DeviceHandle};
 use std::time::Duration;
 use tracing::{error, warn};
 
-use super::{CMD_PACKET, EP_IN, EP_OUT, PACKET, TIMEOUT};
+use super::{Device, CMD_PACKET};
 
+/// Input report size. No report ID.
+const IN_PACKET: usize = 512;
+
+/// Output report: `0x00` (no report ID), then `CRT\0\0` + body, zero-padded.
 fn make_cmd(body: &[u8]) -> [u8; CMD_PACKET] {
     let mut pkt = [0u8; CMD_PACKET];
-    pkt[..5].copy_from_slice(b"CRT\0\0");
-    pkt[5..5 + body.len()].copy_from_slice(body);
+    pkt[1..6].copy_from_slice(b"CRT\0\0");
+    pkt[6..6 + body.len()].copy_from_slice(body);
     pkt
 }
 
-pub fn write_cmd(handle: &DeviceHandle<Context>, body: &[u8]) {
-    if let Err(e) = handle.write_interrupt(EP_OUT, &make_cmd(body), TIMEOUT) {
+pub fn write_cmd(handle: &Device, body: &[u8]) {
+    if let Err(e) = handle.write(&make_cmd(body)) {
         error!("write_cmd failed: {e}");
     }
 }
 
-/// Reset endpoint data toggles and clear any stalls left over from dext eviction.
-/// Must be called after `claim_interface` and before the first write.
-pub fn reset_endpoints(handle: &DeviceHandle<Context>) {
-    let _ = handle.set_alternate_setting(0, 0);
-    let _ = handle.clear_halt(EP_IN);
-    let _ = handle.clear_halt(EP_OUT);
-}
-
 /// Init order the official `StreamDock` app sends (`device.md`, captured 2026-10-20).
-pub fn device_init(handle: &DeviceHandle<Context>, brightness: u8) {
+pub fn device_init(handle: &Device, brightness: u8) {
     write_cmd(handle, b"DIS");
     set_brightness(handle, brightness);
     write_cmd(handle, b"QUCMD\x11\x11\x00\x11\x00\x11");
@@ -35,16 +30,16 @@ pub fn device_init(handle: &DeviceHandle<Context>, brightness: u8) {
     write_cmd(handle, b"CONNECT");
 }
 
-pub fn set_brightness(handle: &DeviceHandle<Context>, percent: u8) {
+pub fn set_brightness(handle: &Device, percent: u8) {
     write_cmd(handle, &lig_body(percent));
 }
 
-pub fn clear_all(handle: &DeviceHandle<Context>) {
+pub fn clear_all(handle: &Device) {
     write_cmd(handle, &CLE_BODY);
 }
 
 /// Commit pending screen changes (`STP`).
-pub fn refresh(handle: &DeviceHandle<Context>) {
+pub fn refresh(handle: &Device) {
     write_cmd(handle, b"STP");
 }
 
@@ -54,15 +49,19 @@ const fn lig_body(percent: u8) -> [u8; 6] {
 
 const CLE_BODY: [u8; 7] = [b'C', b'L', b'E', 0, 0, 0, 0xff];
 
-pub fn keep_alive(handle: &DeviceHandle<Context>) {
+pub fn keep_alive(handle: &Device) {
     write_cmd(handle, b"CONNECT");
 }
 
-pub fn read_event(handle: &DeviceHandle<Context>, timeout: Duration) -> Option<Vec<u8>> {
-    let mut buf = vec![0u8; PACKET];
-    match handle.read_interrupt(EP_IN, &mut buf, timeout) {
-        Ok(_) => Some(buf),
-        Err(rusb::Error::Timeout) => None,
+pub fn read_event(handle: &Device, timeout: Duration) -> Option<Vec<u8>> {
+    let mut buf = vec![0u8; IN_PACKET];
+    let timeout_ms = i32::try_from(timeout.as_millis()).unwrap_or(i32::MAX);
+    match handle.read_timeout(&mut buf, timeout_ms) {
+        Ok(0) => None,
+        Ok(n) => {
+            buf.truncate(n);
+            Some(buf)
+        }
         Err(e) => {
             warn!("USB read error: {e}");
             None
@@ -74,9 +73,10 @@ pub fn read_event(handle: &DeviceHandle<Context>, timeout: Duration) -> Option<V
 mod tests {
     use super::*;
 
-    /// Expected full packet: `CRT\0\0` + body, zero-padded to `CMD_PACKET`.
+    /// Expected output report: `0x00` + `CRT\0\0` + body, zero-padded to `CMD_PACKET`.
     fn expected(body: &[u8]) -> Vec<u8> {
-        let mut v = b"CRT\0\0".to_vec();
+        let mut v = vec![0x00];
+        v.extend_from_slice(b"CRT\0\0");
         v.extend_from_slice(body);
         v.resize(CMD_PACKET, 0);
         v
@@ -98,13 +98,16 @@ mod tests {
 
     #[test]
     fn stp_bytes() {
-        assert_eq!(make_cmd(b"STP").as_slice(), expected(b"STP").as_slice());
+        let pkt = make_cmd(b"STP");
+        assert_eq!(pkt.len(), 1025);
+        assert_eq!(pkt.as_slice(), expected(b"STP").as_slice());
     }
 
     #[test]
     fn lig_brightness_15_at_offset_10() {
         let pkt = make_cmd(&lig_body(15));
         assert_eq!(pkt.as_slice(), expected(b"LIG\0\0\x0f").as_slice());
-        assert_eq!(pkt[10], 0x0f);
+        // Device frame offset 10 = packet index 11 (report ID byte is not sent).
+        assert_eq!(pkt[11], 0x0f);
     }
 }

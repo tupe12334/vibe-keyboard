@@ -72,8 +72,12 @@ cargo build --release
 cargo run --release
 ```
 
-USB access requires `sudo` (see `device.md`). To run without `sudo` each time, use
-`make install` to build and mark the binary setuid-root, then `make run`.
+The app runs as a normal user. No `sudo` or setuid is needed: it opens the
+device's HID vendor interface in non-exclusive mode. To install the binary to
+`~/.cargo/bin`, run `make install`.
+
+The `hidapi` crate builds its bundled C backend. No system library is needed,
+so no `brew install hidapi`.
 
 State is persisted to `~/.config/vibe-keyboard/state.toml`.
 Logs are written to `~/.config/vibe-keyboard/app.log`.

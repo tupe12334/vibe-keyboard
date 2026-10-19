@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+use crate::infrastructure::usb::Device;
 use image::DynamicImage;
-use rusb::{Context, DeviceHandle};
 
 use crate::domain::actions::{ButtonAction, CentyIssue, ScreenView};
 use crate::infrastructure::images::{
@@ -16,7 +16,7 @@ pub fn render_issue_list(
     page: usize,
     project_name: &str,
     filter: Option<&str>,
-    handle: &DeviceHandle<Context>,
+    handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
     const PER_PAGE: usize = 10;
