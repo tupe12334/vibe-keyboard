@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
-use vibe_keyboard::{domain, infrastructure};
 use vibe_keyboard::domain::navigation::NavigationStack;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::frontmost;
@@ -17,6 +16,7 @@ use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::usb::{
     clear_all, device_init, keep_alive, read_event, wait_for_device, Device,
 };
+use vibe_keyboard::{domain, infrastructure};
 
 const PROFILE_POLL: Duration = Duration::from_secs(1);
 const FRONTMOST_POLL: Duration = Duration::from_millis(500);

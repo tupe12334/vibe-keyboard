@@ -4578,7 +4578,6 @@ dependencies = [
  "eframe",
  "hidapi",
  "image",
- "libc",
  "ratatui",
  "rfd",
  "serde",
