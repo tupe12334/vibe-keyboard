@@ -3,11 +3,13 @@ mod pages;
 
 pub use pages::{render_screen, SessionsRefresh};
 
-use crate::domain::actions::NewSessionTerminal;
-use crate::infrastructure::claude_sessions::{focus_session, open_new_session};
+use crate::domain::actions::{NewSessionTerminal, TerminalApp};
+use crate::infrastructure::claude_sessions::{
+    focus_session, open_new_session, send_prompt, SESSION_PROMPTS,
+};
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
-use pages::fetch_centy_issues;
+use pages::{fetch_centy_issues, show_focus_only};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -76,7 +78,12 @@ pub fn handle_key_event(
             render_screen(nav, handle, state, dev_state);
         }
         12 => {
-            nav.out();
+            // On an action page, key 12 goes back to the session list. Elsewhere it goes out.
+            if matches!(nav.current(), Screen::SessionActions { .. }) {
+                nav.back();
+            } else {
+                nav.out();
+            }
             render_screen(nav, handle, state, dev_state);
         }
         // On the InputNumber screen key 13 maps to digit 7, not "forward".
@@ -139,6 +146,18 @@ fn handle_action_key(
             tty: String,
         },
         OpenNewSessionChoice,
+        OpenSessionActions {
+            session: crate::domain::actions::ClaudeSession,
+        },
+        SendPrompt {
+            pid: u32,
+            tty: String,
+            text: &'static str,
+        },
+        PromptUnsupported {
+            key: u8,
+        },
+
         NewSession {
             terminal: NewSessionTerminal,
         },
@@ -259,13 +278,31 @@ fn handle_action_key(
                 let idx = page * 10 + (key as usize - 1);
                 sessions
                     .get(idx)
-                    .map_or(Action::None, |session| Action::FocusSession {
-                        tty: session.tty.clone(),
+                    .map_or(Action::None, |session| Action::OpenSessionActions {
+                        session: session.clone(),
                     })
             }
             13 => Action::OpenNewSessionChoice,
             14 => Action::TurnSessionsPage { forward: false },
             15 => Action::TurnSessionsPage { forward: true },
+            _ => Action::None,
+        },
+        Screen::SessionActions { session } => match key {
+            1 => Action::FocusSession {
+                tty: session.tty.clone(),
+            },
+            2 | 3 => {
+                if session.app == TerminalApp::Other {
+                    Action::PromptUnsupported { key }
+                } else {
+                    let (_, text) = SESSION_PROMPTS[usize::from(key) - 2];
+                    Action::SendPrompt {
+                        pid: session.pid,
+                        tty: session.tty.clone(),
+                        text,
+                    }
+                }
+            }
             _ => Action::None,
         },
         Screen::NewSessionChoice => match key {
@@ -377,6 +414,20 @@ fn handle_action_key(
             info!("claude sessions: focus {tty}");
             // Off the device loop: osascript can take a while to answer.
             std::thread::spawn(move || focus_session(&tty));
+        }
+        Action::OpenSessionActions { session } => {
+            info!("claude sessions: actions for {}", session.tty);
+            nav.push(Screen::SessionActions { session });
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::SendPrompt { pid, tty, text } => {
+            info!("claude sessions: send {text} to {tty}");
+            // Off the device loop: osascript can take a while to answer.
+            std::thread::spawn(move || send_prompt(pid, &tty, text));
+        }
+        Action::PromptUnsupported { key } => {
+            info!("claude sessions: key {key} needs iTerm2 or Terminal; focus only");
+            show_focus_only(handle, key);
         }
         Action::OpenNewSessionChoice => {
             info!("claude sessions: choose a terminal for a new session");

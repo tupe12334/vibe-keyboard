@@ -142,6 +142,11 @@ pub fn label_image(label: &str) -> RgbImage {
     label_tile(label, FALLBACK_BG, FALLBACK_FG)
 }
 
+/// A dimmed label tile for an action that does not work here, such as a text prompt in VS Code.
+pub fn muted_image(label: &str) -> RgbImage {
+    label_tile(label, [25, 25, 25], [90, 90, 90])
+}
+
 /// A Claude session tile: a status bar on top (green active, orange stale), the age in the bar's
 /// right corner, and the title below, wrapped to three lines.
 pub fn session_image(title: &str, status: SessionStatus, age: &str) -> RgbImage {
