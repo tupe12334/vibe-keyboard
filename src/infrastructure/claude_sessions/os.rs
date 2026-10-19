@@ -9,8 +9,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use super::{
     build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_valid_tty,
-    new_session_script,
-    parse_tab_titles, summary_from_jsonl,
+    new_session_script, parse_tab_titles, summary_from_jsonl,
 };
 use crate::domain::actions::{ClaudeSession, NewSessionTerminal};
 
