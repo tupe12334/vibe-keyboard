@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::mpsc;
+use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
@@ -105,10 +106,87 @@ struct Preview {
     texture: egui::TextureHandle,
 }
 
+/// How long the Undo for a discard stays available.
+const UNDO_WINDOW: Duration = Duration::from_secs(10);
+
+/// Edits in memory and the last file state. Pure, so its transitions are unit tested.
+#[derive(Default)]
+struct Session {
+    profile: Profile,
+    /// The profile as last read from or written to disk.
+    saved: Profile,
+    /// The edits dropped by the last discard, and when they were dropped.
+    dropped: Option<(Profile, Instant)>,
+}
+
+impl Session {
+    fn new(profile: Profile) -> Self {
+        Self {
+            saved: profile.clone(),
+            profile,
+            dropped: None,
+        }
+    }
+
+    fn dirty(&self) -> bool {
+        self.profile != self.saved
+    }
+
+    /// A save wrote `profile` to disk. Earlier discards can no longer be undone.
+    fn mark_saved(&mut self) {
+        self.saved = self.profile.clone();
+        self.dropped = None;
+    }
+
+    /// Drop unsaved edits and adopt `disk`, the file as it is now. False when nothing is dirty.
+    fn discard(&mut self, disk: Profile, now: Instant) -> bool {
+        if !self.dirty() {
+            return false;
+        }
+        let dropped = std::mem::replace(&mut self.profile, disk.clone());
+        self.dropped = Some((dropped, now));
+        self.saved = disk;
+        true
+    }
+
+    fn undo_available(&self, now: Instant) -> bool {
+        self.dropped
+            .as_ref()
+            .is_some_and(|(_, at)| now.duration_since(*at) <= UNDO_WINDOW)
+    }
+
+    /// Restore the edits dropped by the last discard, if still in the undo window.
+    fn undo(&mut self, now: Instant) -> bool {
+        if !self.undo_available(now) {
+            self.dropped = None;
+            return false;
+        }
+        if let Some((profile, _)) = self.dropped.take() {
+            self.profile = profile;
+        }
+        true
+    }
+
+    fn expire(&mut self, now: Instant) {
+        if !self.undo_available(now) {
+            self.dropped = None;
+        }
+    }
+}
+
+/// Read the profile the way startup does. Returns the layout and the read error, if any.
+fn load_from_disk() -> (Profile, Option<String>) {
+    match profile_store::ensure_default(&profile_store::profile_path()) {
+        Ok(profile) => (profile, None),
+        Err(e) => (Profile::default_from_legacy(), Some(e)),
+    }
+}
+
 struct Editor {
     root: PathBuf,
-    profile: Profile,
-    saved: Profile,
+    session: Session,
+    /// The unsaved-changes dialog is open (window close was requested while dirty).
+    close_prompt: bool,
     page: usize,
     key: Option<u8>,
     status: String,
@@ -130,15 +208,11 @@ struct Editor {
 impl Editor {
     fn new() -> Self {
         let root = profile_store::root_dir();
-        let (profile, load_error) =
-            match profile_store::ensure_default(&profile_store::profile_path()) {
-                Ok(profile) => (profile, None),
-                Err(e) => (Profile::default_from_legacy(), Some(e)),
-            };
+        let (profile, load_error) = load_from_disk();
         let mut editor = Self {
             root,
-            saved: profile.clone(),
-            profile,
+            session: Session::new(profile),
+            close_prompt: false,
             page: 0,
             key: None,
             status: "Loaded profile.".to_string(),
@@ -173,27 +247,50 @@ impl Editor {
     }
 
     fn dirty(&self) -> bool {
-        self.profile != self.saved
+        self.session.profile != self.session.saved
     }
 
-    fn save(&mut self) {
+    /// Write the layout to disk. Returns true when the file was written.
+    fn save(&mut self) -> bool {
         if let Some(error) = &self.load_error {
             self.status =
                 format!("Cannot save: {error}. Fix the file by hand, then reopen the editor.");
-            return;
+            return false;
         }
-        match profile_store::save(&profile_store::profile_path(), &self.profile) {
+        match profile_store::save(&profile_store::profile_path(), &self.session.profile) {
             Ok(()) => {
-                self.saved = self.profile.clone();
+                self.session.mark_saved();
                 self.status = "Saved. The controller reloads within a second.".into();
+                true
             }
-            Err(e) => self.status = format!("Save failed: {e}"),
+            Err(e) => {
+                self.status = format!("Save failed: {e}");
+                false
+            }
+        }
+    }
+
+    /// Drop unsaved edits and reload the file, the same way startup does.
+    fn discard(&mut self) {
+        let (disk, error) = load_from_disk();
+        if self.session.discard(disk, Instant::now()) {
+            self.load_error = error;
+            self.key = None;
+            self.previews.clear();
+            self.status = "Changes discarded".into();
+        }
+    }
+
+    fn undo(&mut self) {
+        if self.session.undo(Instant::now()) {
+            self.previews.clear();
+            self.status = "Discard undone".into();
         }
     }
 
     /// Texture of the deck image for `key`. Re-rendered only when that key's config changes.
     fn preview(&mut self, ctx: &egui::Context, key: u8) -> egui::TextureHandle {
-        let config = self.profile.key_at(self.page, key).cloned();
+        let config = self.session.profile.key_at(self.page, key).cloned();
         if let Some(cached) = self.previews.get(&key) {
             if cached.config == config {
                 return cached.texture.clone();
@@ -231,14 +328,51 @@ impl Editor {
             {
                 self.save();
             }
+            if ui
+                .add_enabled(dirty, egui::Button::new("Discard changes"))
+                .clicked()
+            {
+                self.discard();
+            }
             ui.weak(profile_store::profile_path().display().to_string());
         });
+    }
+
+    /// Modal shown when the window closes with unsaved edits. Cancel is the default.
+    fn close_dialog(&mut self, ctx: &egui::Context) {
+        let (escape, enter) = ctx.input(|i| {
+            (
+                i.key_pressed(egui::Key::Escape),
+                i.key_pressed(egui::Key::Enter),
+            )
+        });
+        let (mut save, mut discard, mut cancel) = (false, false, escape || enter);
+        egui::Window::new("Unsaved changes")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
+            .show(ctx, |ui| {
+                ui.label("Save changes to profile.toml before closing?");
+                ui.horizontal(|ui| {
+                    save |= ui
+                        .add_enabled(self.load_error.is_none(), egui::Button::new("Save"))
+                        .clicked();
+                    discard |= ui.button("Discard").clicked();
+                    cancel |= ui.button("Cancel").clicked();
+                });
+            });
+        if cancel {
+            self.close_prompt = false;
+        } else if discard || (save && self.save()) {
+            self.close_prompt = false;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        }
     }
 
     fn page_list(&mut self, ui: &mut egui::Ui) -> Option<PageOp> {
         let mut op = None;
         ui.heading("Pages");
-        let count = self.profile.pages.len();
+        let count = self.session.profile.pages.len();
         for index in 0..count {
             let selected = index == self.page;
             ui.horizontal(|ui| {
@@ -249,7 +383,7 @@ impl Editor {
                     op = Some(PageOp::Select(index));
                 }
                 if selected {
-                    ui.text_edit_singleline(&mut self.profile.pages[index].name);
+                    ui.text_edit_singleline(&mut self.session.profile.pages[index].name);
                     if ui.add_enabled(index > 0, egui::Button::new("Up")).clicked() {
                         op = Some(PageOp::Up(index));
                     }
@@ -266,7 +400,7 @@ impl Editor {
                         op = Some(PageOp::Delete(index));
                     }
                 } else {
-                    ui.label(self.profile.pages[index].name.as_str());
+                    ui.label(self.session.profile.pages[index].name.as_str());
                 }
             });
             if selected {
@@ -406,7 +540,7 @@ impl Editor {
     fn app_rules(&mut self, ui: &mut egui::Ui, index: usize) {
         ui.label("Show this page when these apps are in front:");
         let mut remove = None;
-        for (i, app) in self.profile.pages[index].apps.iter().enumerate() {
+        for (i, app) in self.session.profile.pages[index].apps.iter().enumerate() {
             ui.horizontal(|ui| {
                 ui.monospace(app);
                 if ui.small_button("remove").clicked() {
@@ -415,7 +549,7 @@ impl Editor {
             });
         }
         if let Some(i) = remove {
-            self.profile.pages[index].apps.remove(i);
+            self.session.profile.pages[index].apps.remove(i);
         }
         let mut add = None;
         ui.horizontal(|ui| {
@@ -440,7 +574,7 @@ impl Editor {
             self.start_running_refresh();
         }
         if let Some(id) = add {
-            let apps = &mut self.profile.pages[index].apps;
+            let apps = &mut self.session.profile.pages[index].apps;
             if !id.is_empty() && !apps.contains(&id) {
                 apps.push(id);
             }
@@ -455,23 +589,27 @@ impl Editor {
                 self.key = None;
             }
             PageOp::Add => {
-                let name = format!("Page {}", self.profile.pages.len() + 1);
-                self.page = self.profile.add_page(&name);
+                let name = format!("Page {}", self.session.profile.pages.len() + 1);
+                self.page = self.session.profile.add_page(&name);
                 self.key = None;
             }
             PageOp::Up(index) => {
-                if self.profile.move_page(index, index.saturating_sub(1)) {
+                if self
+                    .session
+                    .profile
+                    .move_page(index, index.saturating_sub(1))
+                {
                     self.page = index - 1;
                 }
             }
             PageOp::Down(index) => {
-                if self.profile.move_page(index, index + 1) {
+                if self.session.profile.move_page(index, index + 1) {
                     self.page = index + 1;
                 }
             }
             PageOp::Delete(index) => {
-                if self.profile.delete_page(index) {
-                    self.page = self.page.min(self.profile.pages.len() - 1);
+                if self.session.profile.delete_page(index) {
+                    self.page = self.page.min(self.session.profile.pages.len() - 1);
                     self.key = None;
                 } else {
                     self.status = "A layout needs at least one page.".into();
@@ -537,8 +675,9 @@ impl Editor {
             ui.label("Click a key to edit it.");
             return;
         };
-        let page_count = self.profile.pages.len();
+        let page_count = self.session.profile.pages.len();
         let original = self
+            .session
             .profile
             .key_at(self.page, key)
             .cloned()
@@ -589,9 +728,9 @@ impl Editor {
 
         // Write only real changes, so an untouched panel never dirties the profile.
         if clear {
-            self.profile.clear_key(self.page, key);
+            self.session.profile.clear_key(self.page, key);
         } else if edited != original {
-            self.profile.set_key(self.page, key, edited);
+            self.session.profile.set_key(self.page, key, edited);
         }
     }
 }
@@ -684,13 +823,48 @@ impl eframe::App for Editor {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
         self.poll_running();
+        let now = Instant::now();
+        self.session.expire(now);
+        let (save_key, undo_key, close) = ctx.input(|i| {
+            (
+                i.modifiers.command && i.key_pressed(egui::Key::S),
+                i.modifiers.command && i.key_pressed(egui::Key::Z),
+                i.viewport().close_requested(),
+            )
+        });
+        if save_key && self.session.dirty() {
+            self.save();
+        }
+        // Cmd+Z undoes only the last discard. Text fields keep their own undo.
+        if undo_key && !ctx.egui_wants_keyboard_input() && self.session.undo_available(now) {
+            self.undo();
+        }
+        if close && self.session.dirty() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            self.close_prompt = true;
+        }
+        if self.close_prompt {
+            self.close_dialog(&ctx);
+        }
+        if self.session.undo_available(now) {
+            ctx.request_repaint_after(Duration::from_millis(500));
+        }
         egui::Panel::top("top").show(ui, |ui| self.top_bar(ui));
         egui::Panel::bottom("status").show(ui, |ui| {
             if let Some(error) = &self.load_error {
                 ui.colored_label(RED, format!("profile.toml: {error}"));
             }
-            ui.label(self.status.as_str());
-            let problems = self.profile.problems();
+            if self.session.undo_available(now) {
+                ui.horizontal(|ui| {
+                    ui.label("Changes discarded —");
+                    if ui.button("Undo").clicked() {
+                        self.undo();
+                    }
+                });
+            } else {
+                ui.label(self.status.as_str());
+            }
+            let problems = self.session.profile.problems();
             if !problems.is_empty() {
                 ui.collapsing(
                     format!("{} problem(s) in the layout", problems.len()),
@@ -727,8 +901,87 @@ impl eframe::App for Editor {
 
 #[cfg(test)]
 mod tests {
-    use super::{cell_size, parse_lsappinfo, GAP, GRID_MARGIN, KEY_PANEL_WIDTH, PAGES_WIDTH};
+    use super::{
+        cell_size, parse_lsappinfo, Session, GAP, GRID_MARGIN, KEY_PANEL_WIDTH, PAGES_WIDTH,
+        UNDO_WINDOW,
+    };
     use eframe::egui::Vec2;
+    use std::time::{Duration, Instant};
+    use vibe_keyboard::domain::profile::{KeyConfig, Profile};
+
+    /// A layout with one extra page, so it differs from the default.
+    fn edited_layout() -> Profile {
+        let mut profile = Profile::default_from_legacy();
+        profile.add_page("Extra");
+        profile
+    }
+
+    #[test]
+    fn discard_is_refused_when_clean() {
+        let mut session = Session::new(Profile::default_from_legacy());
+        let now = Instant::now();
+        assert!(!session.dirty());
+        assert!(!session.discard(Profile::default_from_legacy(), now));
+        assert!(!session.undo_available(now));
+    }
+
+    #[test]
+    fn dirty_then_discard_then_undo_returns_to_dirty() {
+        let disk = Profile::default_from_legacy();
+        let mut session = Session::new(disk.clone());
+        session.profile = edited_layout();
+        let now = Instant::now();
+        assert!(session.dirty());
+
+        assert!(session.discard(disk.clone(), now));
+        assert!(!session.dirty());
+        assert_eq!(session.profile, disk);
+        assert!(session.undo_available(now));
+
+        assert!(session.undo(now));
+        assert!(session.dirty());
+        assert_eq!(session.profile, edited_layout());
+        assert!(!session.undo_available(now));
+    }
+
+    #[test]
+    fn undo_expires_after_the_window() {
+        let disk = Profile::default_from_legacy();
+        let mut session = Session::new(disk.clone());
+        session.profile = edited_layout();
+        let start = Instant::now();
+        assert!(session.discard(disk.clone(), start));
+        let later = start + UNDO_WINDOW + Duration::from_millis(1);
+        assert!(!session.undo_available(later));
+        session.expire(later);
+        assert!(!session.undo(later));
+        assert_eq!(session.profile, disk);
+    }
+
+    #[test]
+    fn save_clears_the_undo() {
+        let disk = Profile::default_from_legacy();
+        let mut session = Session::new(disk.clone());
+        session.profile = edited_layout();
+        let now = Instant::now();
+        assert!(session.discard(disk, now));
+        session.mark_saved();
+        assert!(!session.undo_available(now));
+    }
+
+    #[test]
+    fn a_single_key_edit_makes_the_session_dirty() {
+        let mut session = Session::new(Profile::default_from_legacy());
+        session.profile.set_key(
+            0,
+            7,
+            KeyConfig {
+                label: "x".into(),
+                ..KeyConfig::default()
+            },
+        );
+        assert!(session.dirty());
+    }
 
     #[test]
     fn grid_fits_the_default_and_minimum_window() {
