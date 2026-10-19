@@ -3,7 +3,8 @@ mod pages;
 
 pub use pages::{render_screen, SessionsRefresh};
 
-use crate::infrastructure::claude_sessions::focus_session;
+use crate::domain::actions::NewSessionTerminal;
+use crate::infrastructure::claude_sessions::{focus_session, open_new_session};
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
 use pages::fetch_centy_issues;
@@ -76,7 +77,7 @@ pub fn handle_key_event(
             render_screen(nav, handle, state, dev_state);
         }
         // On the InputNumber screen key 13 maps to digit 7, not "forward".
-        13 if !is_input_number => {
+        13 if !is_input_number && !matches!(nav.current(), Screen::ClaudeSessions { .. }) => {
             nav.forward();
             render_screen(nav, handle, state, dev_state);
         }
@@ -133,6 +134,10 @@ fn handle_action_key(
         SortList,
         FocusSession {
             tty: String,
+        },
+        OpenNewSessionChoice,
+        NewSession {
+            terminal: NewSessionTerminal,
         },
         TurnSessionsPage {
             forward: bool,
@@ -255,8 +260,18 @@ fn handle_action_key(
                         tty: session.tty.clone(),
                     })
             }
+            13 => Action::OpenNewSessionChoice,
             14 => Action::TurnSessionsPage { forward: false },
             15 => Action::TurnSessionsPage { forward: true },
+            _ => Action::None,
+        },
+        Screen::NewSessionChoice => match key {
+            1 => Action::NewSession {
+                terminal: NewSessionTerminal::ITerm,
+            },
+            2 => Action::NewSession {
+                terminal: NewSessionTerminal::Terminal,
+            },
             _ => Action::None,
         },
         Screen::InputNumber { .. } => match key {
@@ -359,6 +374,19 @@ fn handle_action_key(
             info!("claude sessions: focus {tty}");
             // Off the device loop: osascript can take a while to answer.
             std::thread::spawn(move || focus_session(&tty));
+        }
+        Action::OpenNewSessionChoice => {
+            info!("claude sessions: choose a terminal for a new session");
+            nav.push(Screen::NewSessionChoice);
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::NewSession { terminal } => {
+            info!("claude sessions: new session in {terminal:?}");
+            // Off the device loop: osascript can take a while to answer.
+            std::thread::spawn(move || open_new_session(terminal));
+            // Back to the list. The new session shows on the next refresh.
+            nav.back();
+            render_screen(nav, handle, state, dev_state);
         }
         Action::TurnSessionsPage { forward } => {
             if forward {

@@ -117,6 +117,15 @@ pub fn render_claude_sessions(
         );
         tiles.push((14, label_image("BACK")));
     }
+    actions.insert(
+        13,
+        ButtonAction {
+            name: "New".into(),
+            title: "New Session".into(),
+            description: "Open a new Claude Code window".into(),
+        },
+    );
+    tiles.push((13, label_image("NEW +")));
     if pages > 1 {
         actions.insert(
             15,

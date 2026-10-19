@@ -4,6 +4,7 @@ mod input_number;
 mod issue_actions;
 mod issue_list;
 mod main_page;
+mod new_session;
 mod project_actions;
 mod project_list;
 
@@ -78,5 +79,6 @@ pub fn render_screen(
         Screen::ClaudeSessions { sessions, page } => {
             claude_sessions::render_claude_sessions(sessions, *page, handle, state);
         }
+        Screen::NewSessionChoice => new_session::render_new_session_choice(handle, state),
     }
 }

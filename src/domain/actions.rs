@@ -52,6 +52,14 @@ pub enum ScreenView {
         total: usize,
         page: usize,
     },
+    NewSessionChoice,
+}
+
+/// The terminal app that opens a new Claude Code window.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NewSessionTerminal {
+    ITerm,
+    Terminal,
 }
 
 /// Activity of a Claude Code session. Green is `Active`, orange is `Stale`. Declared in sort order.
