@@ -9,7 +9,7 @@ use std::time::{Duration, Instant, SystemTime};
 
 use super::{
     build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_valid_tty,
-    new_session_script, parse_tab_titles, summary_from_jsonl,
+    new_session_script, parse_tab_titles, send_text_scripts, summary_from_jsonl,
 };
 use crate::domain::actions::{ClaudeSession, NewSessionTerminal};
 
@@ -145,6 +145,20 @@ pub fn focus_session(tty: &str) {
     });
     if !found {
         run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
+    }
+}
+
+/// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Logs when
+/// neither app has the tab, such as VS Code. Blocks until done, so call it from a thread.
+pub fn send_prompt(tty: &str, text: &str) {
+    let Some(scripts) = send_text_scripts(tty, text) else {
+        return;
+    };
+    let sent = scripts.iter().any(|script| {
+        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
+    });
+    if !sent {
+        tracing::warn!("claude sessions: no iTerm2 or Terminal tab on {tty}; prompt not sent");
     }
 }
 

@@ -53,6 +53,9 @@ pub enum ScreenView {
         page: usize,
     },
     NewSessionChoice,
+    SessionActions {
+        label: String,
+    },
 }
 
 /// The terminal app that opens a new Claude Code window.

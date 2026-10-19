@@ -7,6 +7,7 @@ mod main_page;
 mod new_session;
 mod project_actions;
 mod project_list;
+mod session_actions;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
@@ -80,6 +81,9 @@ pub fn render_screen(
             claude_sessions::render_claude_sessions(sessions, *page, handle, state);
         }
         Screen::NewSessionChoice => new_session::render_new_session_choice(handle, state),
+        Screen::SessionActions { session } => {
+            session_actions::render_session_actions(&session.label, handle, state);
+        }
     }
     // Every sub-screen shows OUT on key 11. Drawn last, so a page cannot cover it.
     if back_key_on(screen) == BackKey::Out {

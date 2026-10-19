@@ -33,6 +33,9 @@ pub enum Screen {
         page: usize,
     },
     NewSessionChoice,
+    SessionActions {
+        session: ClaudeSession,
+    },
 }
 
 /// What key 11 does on a screen. `Back` steps within the main pages. `Out` leaves a sub-screen,
@@ -174,7 +177,8 @@ impl NavigationStack {
             Screen::CentyProjectActions { .. }
             | Screen::CentyIssueActions { .. }
             | Screen::InputNumber { .. }
-            | Screen::NewSessionChoice => false,
+            | Screen::NewSessionChoice
+            | Screen::SessionActions { .. } => false,
         }
     }
 
@@ -254,7 +258,8 @@ impl NavigationStack {
             Screen::CentyProjectActions { .. }
             | Screen::CentyIssueActions { .. }
             | Screen::InputNumber { .. }
-            | Screen::NewSessionChoice => {}
+            | Screen::NewSessionChoice
+            | Screen::SessionActions { .. } => {}
         }
     }
 

@@ -4,7 +4,7 @@
 
 mod os;
 
-pub use os::{focus_session, list_sessions, open_new_session};
+pub use os::{focus_session, list_sessions, open_new_session, send_prompt};
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -255,6 +255,57 @@ pub const fn new_session_script(app: NewSessionTerminal) -> &'static str {
         NewSessionTerminal::ITerm => ITERM_NEW_SESSION,
         NewSessionTerminal::Terminal => TERMINAL_NEW_SESSION,
     }
+}
+
+/// Prompts that a session action sends, as `(label, text)`. Fixed text, never user input.
+pub const SESSION_PROMPTS: [(&str, &str); 2] = [("Recap", "/recap"), ("Voice", "/voice")];
+
+/// `AppleScript` string literal for `text`. Escapes backslash and double quote.
+pub fn applescript_string(text: &str) -> String {
+    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// Two `AppleScript`s that type `text` and Enter into the tab on `/dev/<tty>`: `[iTerm2,
+/// Terminal.app]`. Each prints `found` on success and `missing` otherwise. None for an invalid tty.
+pub fn send_text_scripts(tty: &str, text: &str) -> Option<[String; 2]> {
+    if !is_valid_tty(tty) {
+        return None;
+    }
+    let device = format!("/dev/{tty}");
+    let text = applescript_string(text);
+    let iterm = format!(
+        r#"if application "iTerm2" is running then
+  tell application "iTerm2"
+    repeat with w in windows
+      repeat with t in tabs of w
+        repeat with s in sessions of t
+          if tty of s is "{device}" then
+            tell s to write text {text}
+            return "found"
+          end if
+        end repeat
+      end repeat
+    end repeat
+  end tell
+end if
+return "missing""#
+    );
+    let terminal = format!(
+        r#"if application "Terminal" is running then
+  tell application "Terminal"
+    repeat with w in windows
+      repeat with t in tabs of w
+        if tty of t is "{device}" then
+          do script {text} in t
+          return "found"
+        end if
+      end repeat
+    end repeat
+  end tell
+end if
+return "missing""#
+    );
+    Some([iterm, terminal])
 }
 
 /// Two `AppleScript`s that select the tab on `/dev/<tty>`: `[iTerm2, Terminal.app]`.
@@ -586,6 +637,29 @@ mod tests {
         assert!(terminal.contains(r#"tell application "Terminal""#));
         assert!(terminal.contains(r#"do script "claude""#));
         assert!(!terminal.contains("iTerm2"));
+    }
+
+    #[test]
+    fn applescript_string_escapes_quotes_and_backslashes() {
+        assert_eq!(applescript_string("/recap"), r#""/recap""#);
+        assert_eq!(applescript_string(r#"say "hi""#), r#""say \"hi\"""#);
+        assert_eq!(applescript_string(r"a\b"), r#""a\\b""#);
+        assert_eq!(applescript_string("héllo ✳"), "\"héllo ✳\"");
+    }
+
+    #[test]
+    fn send_text_scripts_embed_escaped_text_and_device() {
+        let [iterm, terminal] = send_text_scripts("ttys007", r#"a"b"#).unwrap_or_default();
+        assert!(iterm.contains(r#"tty of s is "/dev/ttys007""#));
+        assert!(iterm.contains(r#"write text "a\"b""#));
+        assert!(terminal.contains(r#"tty of t is "/dev/ttys007""#));
+        assert!(terminal.contains(r#"do script "a\"b" in t"#));
+        assert_eq!(send_text_scripts("ttys007\"; quit", "/recap"), None);
+    }
+
+    #[test]
+    fn session_prompts_are_the_fixed_recap_and_voice() {
+        assert_eq!(SESSION_PROMPTS, [("Recap", "/recap"), ("Voice", "/voice")]);
     }
 
     #[test]
