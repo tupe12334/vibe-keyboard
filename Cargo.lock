@@ -1875,6 +1875,7 @@ dependencies = [
  "ratatui",
  "serde",
  "serde_json",
+ "signal-hook",
  "throbber-widgets-tui",
  "toml",
  "tracing",

@@ -1,10 +1,13 @@
 mod commands;
 mod image;
+mod reconnect;
 
 pub use commands::{clear_all, device_init, keep_alive, read_event};
 pub use image::send_button_image;
+pub use reconnect::wait_for_device;
 
 use hidapi::{HidApi, HidDevice, HidResult};
+use std::cell::Cell;
 
 pub const VID: u16 = 0x0300;
 pub const PID: u16 = 0x3010;
@@ -20,6 +23,8 @@ pub const CMD_PACKET: usize = PACKET + 1;
 /// Open HID handle to the Stream Dock vendor interface.
 pub struct Device {
     hid: HidDevice,
+    /// Set on the first failed write or read. Writers swallow errors, so the loop checks this.
+    failed: Cell<bool>,
 }
 
 impl Device {
@@ -40,16 +45,32 @@ impl Device {
         let hid = info
             .open_device(&api)
             .map_err(|e| format!("Failed to open HID device: {e}"))?;
-        Ok(Self { hid })
+        Ok(Self {
+            hid,
+            failed: Cell::new(false),
+        })
     }
 
     /// Write one output report. `packet[0]` must be `0x00` (no report ID).
     pub fn write(&self, packet: &[u8]) -> HidResult<usize> {
-        self.hid.write(packet)
+        let res = self.hid.write(packet);
+        if res.is_err() {
+            self.failed.set(true);
+        }
+        res
     }
 
     /// Read one input report. Returns `Ok(0)` on timeout.
     pub fn read_timeout(&self, buf: &mut [u8], timeout_ms: i32) -> HidResult<usize> {
-        self.hid.read_timeout(buf, timeout_ms)
+        let res = self.hid.read_timeout(buf, timeout_ms);
+        if res.is_err() {
+            self.failed.set(true);
+        }
+        res
+    }
+
+    /// True once any write or read on this handle has failed. Stays true for this handle.
+    pub const fn has_failed(&self) -> bool {
+        self.failed.get()
     }
 }
