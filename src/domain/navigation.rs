@@ -427,6 +427,8 @@ mod tests {
     #[test]
     fn open_action_page_clamps_when_prompts_shrink() {
         let session = ClaudeSession {
+            pid: 1,
+            app: TerminalApp::ITerm,
             tty: "ttys001".into(),
             label: "s".into(),
             status: SessionStatus::Active,
