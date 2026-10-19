@@ -19,6 +19,16 @@ pub fn draw_title(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
     draw_wrapped(img, text, fg, 3);
 }
 
+/// One line of small text (scale 1, 5 px tall) in the top-right corner of `img`. Fits a 12 px bar.
+pub fn draw_tag(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
+    let width = text.chars().count() as u32 * (GLYPH_W + 1);
+    let mut x = img.width().saturating_sub(width + 2);
+    for c in text.chars() {
+        draw_glyph_at(img, x, 3, glyph(c), fg, 1);
+        x += GLYPH_W + 1;
+    }
+}
+
 fn draw_wrapped(img: &mut RgbImage, text: &str, fg: Rgb<u8>, max_lines: usize) {
     let per_line = (img.width() / ADVANCE) as usize;
     let lines = wrap(text, per_line, max_lines);
@@ -65,15 +75,19 @@ fn wrap(text: &str, per_line: usize, max_lines: usize) -> Vec<String> {
 }
 
 fn draw_glyph(img: &mut RgbImage, x: u32, y: u32, rows: [u8; 5], fg: Rgb<u8>) {
+    draw_glyph_at(img, x, y, rows, fg, SCALE);
+}
+
+fn draw_glyph_at(img: &mut RgbImage, x: u32, y: u32, rows: [u8; 5], fg: Rgb<u8>, scale: u32) {
     for (ry, bits) in rows.iter().enumerate() {
         for rx in 0..GLYPH_W {
             if bits & (1 << (GLYPH_W - 1 - rx)) == 0 {
                 continue;
             }
-            for dy in 0..SCALE {
-                for dx in 0..SCALE {
-                    let px = x + rx * SCALE + dx;
-                    let py = y + ry as u32 * SCALE + dy;
+            for dy in 0..scale {
+                for dx in 0..scale {
+                    let px = x + rx * scale + dx;
+                    let py = y + ry as u32 * scale + dy;
                     if px < img.width() && py < img.height() {
                         img.put_pixel(px, py, fg);
                     }

@@ -155,6 +155,15 @@ impl NavigationStack {
         }
     }
 
+    /// Replace the sessions on the open session list, keeping the page inside the new range.
+    pub fn set_sessions(&mut self, new: Vec<ClaudeSession>) {
+        if let Some(Screen::ClaudeSessions { sessions, page }) = self.stack.last_mut() {
+            let max = new.len().saturating_sub(1) / 10;
+            *page = (*page).min(max);
+            *sessions = new;
+        }
+    }
+
     /// Go to the previous page of a session list. Unlike `back`, it never pops the screen.
     pub fn previous_page(&mut self) {
         if let Some(Screen::ClaudeSessions { page, .. }) = self.stack.last_mut() {
@@ -265,10 +274,31 @@ mod tests {
     use crate::domain::actions::SessionStatus;
 
     #[test]
+    fn set_sessions_replaces_the_list_and_keeps_the_page_in_range() {
+        let session = |i: usize| ClaudeSession {
+            tty: format!("ttys{i:03}"),
+            label: format!("s{i}"),
+            status: SessionStatus::Active,
+            age: None,
+        };
+        let mut nav = NavigationStack::new(0, 1);
+        nav.push(Screen::ClaudeSessions {
+            sessions: (0..25).map(session).collect(),
+            page: 2,
+        });
+        nav.set_sessions((0..3).map(session).collect());
+        assert!(matches!(
+            nav.current(),
+            Screen::ClaudeSessions { sessions, page: 0 } if sessions.len() == 3
+        ));
+    }
+
+    #[test]
     fn claude_sessions_page_forward_back_and_stop_at_edges() {
         let sessions: Vec<ClaudeSession> = (0..11)
             .map(|i| ClaudeSession {
-                status: SessionStatus::Unknown,
+                status: SessionStatus::Stale,
+                age: None,
                 tty: format!("ttys{i:03}"),
                 label: format!("s{i}"),
             })

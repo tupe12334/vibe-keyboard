@@ -7,8 +7,17 @@ mod os;
 pub use os::{focus_session, list_sessions};
 
 use std::collections::HashMap;
+use std::time::Duration;
 
-use crate::domain::actions::{ClaudeSession, SessionStatus};
+use crate::domain::actions::{ClaudeSession, Glyph, SessionStatus};
+
+/// A tty that printed within this long is `Active`. Older is `Stale`. Claude Code redraws while it
+/// works, so a session that is quiet for a minute is waiting or idle.
+pub const ACTIVE_WITHIN: Duration = Duration::from_secs(60);
+
+/// A spinner keeps a session `Active` only this long after its tty last printed. Past this, a tab
+/// left with a spinner (Claude exited mid-task) reads as `Stale`.
+pub const SPINNER_ACTIVE_WITHIN: Duration = Duration::from_mins(10);
 
 const CLAUDE_SUFFIX: &str = " (claude)";
 /// Longest session name shown on a key. The key font fits about three short lines.
@@ -65,18 +74,44 @@ const fn is_spinner(c: char) -> bool {
     matches!(c, '\u{25D0}'..='\u{25D3}' | '\u{2800}'..='\u{28FF}')
 }
 
-/// Status and title from a terminal tab title such as `✳ Centy availability (claude)`.
-/// The leading glyph gives the status. The title keeps no glyph and no ` (claude)` suffix.
-pub fn parse_title(raw: &str) -> (SessionStatus, String) {
+/// Activity status from the tty age and the title glyph. A spinner means Claude is mid-task, so it
+/// is `Active` while the tty is at most `SPINNER_ACTIVE_WITHIN` old. Otherwise the age decides
+/// against `ACTIVE_WITHIN`. `✳` does not change the result.
+pub fn status_for(age: Duration, title_glyph: Option<Glyph>) -> SessionStatus {
+    let spinning = title_glyph == Some(Glyph::Spinner) && age <= SPINNER_ACTIVE_WITHIN;
+    if spinning || age <= ACTIVE_WITHIN {
+        SessionStatus::Active
+    } else {
+        SessionStatus::Stale
+    }
+}
+
+/// Short age for a key corner: `NOW` under a minute, then `2M`, `1H`, `3D`. Empty when unknown.
+pub fn age_label(age: Option<Duration>) -> String {
+    let Some(age) = age else {
+        return String::new();
+    };
+    let secs = age.as_secs();
+    match secs {
+        0..=59 => "NOW".into(),
+        60..=3599 => format!("{}M", secs / 60),
+        3600..=86_399 => format!("{}H", secs / 3600),
+        _ => format!("{}D", secs / 86_400),
+    }
+}
+
+/// Glyph and title from a terminal tab title such as `✳ Centy availability (claude)`.
+/// The title keeps no glyph and no ` (claude)` suffix.
+pub fn parse_title(raw: &str) -> (Option<Glyph>, String) {
     let raw = raw.trim();
-    let (status, rest) = match raw.chars().next() {
-        Some('✳') => (SessionStatus::Waiting, &raw['✳'.len_utf8()..]),
-        Some(c) if is_spinner(c) => (SessionStatus::Working, &raw[c.len_utf8()..]),
-        _ => (SessionStatus::Unknown, raw),
+    let (glyph, rest) = match raw.chars().next() {
+        Some('✳') => (Some(Glyph::Waiting), &raw['✳'.len_utf8()..]),
+        Some(c) if is_spinner(c) => (Some(Glyph::Spinner), &raw[c.len_utf8()..]),
+        _ => (None, raw),
     };
     let rest = rest.trim();
     let title = rest.strip_suffix(CLAUDE_SUFFIX).unwrap_or(rest).trim_end();
-    (status, title.to_string())
+    (glyph, title.to_string())
 }
 
 /// Tab titles keyed by bare tty, from `<device>\t<title>` lines. Lines with a bad tty are dropped.
@@ -137,39 +172,60 @@ fn user_text(value: &serde_json::Value) -> Option<String> {
     }
 }
 
-/// Build the session list from `(tty, cwd)` pairs.
+/// Build the session list from `(tty, cwd)` pairs. `ages` holds the tty age per tty.
 ///
 /// Title source, first match wins: the terminal tab title, then the transcript summary for the
-/// working directory (`summary_for`), then the directory label, then the tty. The list is sorted
-/// by status (waiting, working, unknown), then label, then tty.
+/// working directory (`summary_for`), then the directory label, then the tty. The status comes
+/// from `status_for`. The list is sorted: active first by label, then stale by most recent.
 pub fn build_sessions(
     procs: Vec<(String, Option<String>)>,
     tab_titles: &HashMap<String, String>,
+    ages: &HashMap<String, Duration>,
     home: &str,
     summary_for: impl Fn(&str) -> Option<String>,
 ) -> Vec<ClaudeSession> {
     let mut sessions: Vec<ClaudeSession> = procs
         .into_iter()
         .map(|(tty, cwd)| {
+            let age = ages.get(&tty).copied();
             let titled = tab_titles
                 .get(&tty)
                 .map(|raw| parse_title(raw))
                 .filter(|(_, title)| !title.is_empty());
-            let (status, label) = match titled {
+            let (glyph, label) = match titled {
                 Some(found) => found,
                 None => (
-                    SessionStatus::Unknown,
+                    None,
                     match cwd.as_deref() {
                         Some(path) => summary_for(path).unwrap_or_else(|| label_for(path, home)),
                         None => tty.clone(),
                     },
                 ),
             };
-            ClaudeSession { tty, label, status }
+            let status = status_for(age.unwrap_or(Duration::MAX), glyph);
+            ClaudeSession {
+                tty,
+                label,
+                status,
+                age,
+            }
         })
         .collect();
-    sessions.sort_by(|a, b| (a.status, &a.label, &a.tty).cmp(&(b.status, &b.label, &b.tty)));
+    sessions.sort_by(|a, b| {
+        order_key(a)
+            .cmp(&order_key(b))
+            .then_with(|| (&a.label, &a.tty).cmp(&(&b.label, &b.tty)))
+    });
     sessions
+}
+
+/// Active sessions compare equal, so they sort by label and do not jump on each refresh. Stale
+/// sessions sort by age, the most recent first.
+fn order_key(session: &ClaudeSession) -> (SessionStatus, Duration) {
+    match session.status {
+        SessionStatus::Active => (SessionStatus::Active, Duration::ZERO),
+        SessionStatus::Stale => (SessionStatus::Stale, session.age.unwrap_or(Duration::MAX)),
+    }
 }
 
 /// True for `ttysNNN` only. The tty goes into an `AppleScript` string, so anything else is refused.
@@ -277,27 +333,66 @@ mod tests {
     }
 
     #[test]
-    fn glyph_sets_the_status_and_is_removed_with_the_suffix() {
+    fn glyph_is_read_and_removed_with_the_suffix() {
         assert_eq!(
             parse_title("✳ Centy availability (claude)"),
-            (SessionStatus::Waiting, "Centy availability".to_string())
+            (Some(Glyph::Waiting), "Centy availability".to_string())
         );
         assert_eq!(
             parse_title("◐ USB devices overview (claude)"),
-            (SessionStatus::Working, "USB devices overview".to_string())
-        );
-        assert_eq!(
-            parse_title("◑ Daemon PR 1629 (claude)"),
-            (SessionStatus::Working, "Daemon PR 1629".to_string())
+            (Some(Glyph::Spinner), "USB devices overview".to_string())
         );
         assert_eq!(
             parse_title("⠋ Spinning"),
-            (SessionStatus::Working, "Spinning".to_string())
+            (Some(Glyph::Spinner), "Spinning".to_string())
+        );
+        assert_eq!(parse_title("  zsh  "), (None, "zsh".to_string()));
+    }
+
+    #[test]
+    fn status_is_active_within_a_minute_or_when_spinning() {
+        let quiet = Duration::from_secs(61);
+        assert_eq!(status_for(Duration::ZERO, None), SessionStatus::Active);
+        assert_eq!(
+            status_for(Duration::from_secs(60), None),
+            SessionStatus::Active
+        );
+        assert_eq!(status_for(quiet, None), SessionStatus::Stale);
+        assert_eq!(
+            status_for(quiet, Some(Glyph::Waiting)),
+            SessionStatus::Stale
         );
         assert_eq!(
-            parse_title("  zsh  "),
-            (SessionStatus::Unknown, "zsh".to_string())
+            status_for(quiet, Some(Glyph::Spinner)),
+            SessionStatus::Active
         );
+    }
+
+    #[test]
+    fn spinner_keeps_active_only_within_ten_minutes() {
+        let nine_min = Duration::from_mins(9);
+        let eleven_min = Duration::from_mins(11);
+        assert_eq!(
+            status_for(nine_min, Some(Glyph::Spinner)),
+            SessionStatus::Active
+        );
+        assert_eq!(
+            status_for(eleven_min, Some(Glyph::Spinner)),
+            SessionStatus::Stale
+        );
+        assert_eq!(
+            status_for(Duration::MAX, Some(Glyph::Spinner)),
+            SessionStatus::Stale
+        );
+    }
+
+    #[test]
+    fn age_label_units() {
+        assert_eq!(age_label(None), "");
+        assert_eq!(age_label(Some(Duration::from_secs(5))), "NOW");
+        assert_eq!(age_label(Some(Duration::from_secs(120))), "2M");
+        assert_eq!(age_label(Some(Duration::from_secs(3600))), "1H");
+        assert_eq!(age_label(Some(Duration::from_hours(72))), "3D");
     }
 
     #[test]
@@ -388,7 +483,8 @@ mod tests {
             ("ttys004".to_string(), None),
         ];
         let summary = |cwd: &str| (cwd == "/a/two").then(|| "From summary".to_string());
-        let got = build_sessions(procs, &titles, "/Users/me", summary);
+        let ages = HashMap::from([("ttys001".to_string(), Duration::ZERO)]);
+        let got = build_sessions(procs, &titles, &ages, "/Users/me", summary);
         let got: Vec<(&str, &str, SessionStatus)> = got
             .iter()
             .map(|s| (s.tty.as_str(), s.label.as_str(), s.status))
@@ -396,31 +492,44 @@ mod tests {
         assert_eq!(
             got,
             vec![
-                ("ttys001", "Titled", SessionStatus::Working),
-                ("ttys002", "From summary", SessionStatus::Unknown),
-                ("ttys003", "three", SessionStatus::Unknown),
-                ("ttys004", "ttys004", SessionStatus::Unknown),
+                ("ttys001", "Titled", SessionStatus::Active),
+                ("ttys002", "From summary", SessionStatus::Stale),
+                ("ttys003", "three", SessionStatus::Stale),
+                ("ttys004", "ttys004", SessionStatus::Stale),
             ]
         );
     }
 
     #[test]
-    fn sessions_sort_waiting_then_working_then_unknown() {
+    fn sessions_sort_active_by_label_then_stale_by_recency() {
         let mut titles = HashMap::new();
         titles.insert("ttys001".to_string(), "◐ Zed (claude)".to_string());
         titles.insert("ttys002".to_string(), "✳ Beta (claude)".to_string());
         titles.insert("ttys003".to_string(), "✳ Alpha (claude)".to_string());
+        titles.insert("ttys005".to_string(), "✳ Gamma (claude)".to_string());
+        let ages: HashMap<String, Duration> = [
+            ("ttys001", 0),
+            ("ttys002", 500),
+            ("ttys003", 100),
+            ("ttys004", 900),
+            ("ttys005", 10),
+        ]
+        .into_iter()
+        .map(|(tty, secs)| (tty.to_string(), Duration::from_secs(secs)))
+        .collect();
         let procs = vec![
             ("ttys001".to_string(), None),
             ("ttys002".to_string(), None),
             ("ttys003".to_string(), None),
             ("ttys004".to_string(), None),
+            ("ttys005".to_string(), None),
         ];
-        let order: Vec<String> = build_sessions(procs, &titles, "/", |_| None)
+        let order: Vec<String> = build_sessions(procs, &titles, &ages, "/", |_| None)
             .into_iter()
             .map(|s| s.label)
             .collect();
-        assert_eq!(order, ["Alpha", "Beta", "Zed", "ttys004"]);
+        // Active (Zed spinning, Gamma at 10 s) by label, then stale 100 s, 500 s, 900 s.
+        assert_eq!(order, ["Gamma", "Zed", "Alpha", "Beta", "ttys004"]);
     }
 
     #[test]

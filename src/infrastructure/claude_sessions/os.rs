@@ -1,14 +1,15 @@
 //! Process spawns for `ps`, `lsof`, `osascript` and `open`. Excluded from the coverage gate; the
 //! logic that decides what to do with the output lives in `claude_sessions.rs`.
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use super::{
-    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, parse_tab_titles,
-    summary_from_jsonl,
+    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_valid_tty,
+    parse_tab_titles, summary_from_jsonl,
 };
 use crate::domain::actions::ClaudeSession;
 
@@ -89,11 +90,32 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
     );
 
     let home = std::env::var("HOME").unwrap_or_default();
+    let ages = procs
+        .iter()
+        .filter(|(_, tty)| is_valid_tty(tty))
+        .filter_map(|(_, tty)| tty_age(tty).map(|age| (tty.clone(), age)))
+        .collect::<HashMap<_, _>>();
     let entries = procs
         .into_iter()
         .map(|(pid, tty)| (tty, cwds.get(&pid).cloned()))
         .collect();
-    build_sessions(entries, &tab_titles, &home, |cwd| summary_for(cwd, &home))
+    build_sessions(entries, &tab_titles, &ages, &home, |cwd| {
+        summary_for(cwd, &home)
+    })
+}
+
+/// Time since the tty last printed. The device's modification time moves on every write to the
+/// terminal. `None` when the device cannot be read.
+fn tty_age(tty: &str) -> Option<Duration> {
+    let modified = std::fs::metadata(format!("/dev/{tty}"))
+        .ok()?
+        .modified()
+        .ok()?;
+    Some(
+        SystemTime::now()
+            .duration_since(modified)
+            .unwrap_or_default(),
+    )
 }
 
 /// The session name from the newest transcript for `cwd` under `~/.claude/projects`. Claude Code

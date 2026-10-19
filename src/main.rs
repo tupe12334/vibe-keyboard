@@ -2,7 +2,9 @@ mod application;
 mod logging;
 mod presentation;
 
-use application::{handle_filter_query, handle_frontmost, handle_key_event, render_screen};
+use application::{
+    handle_filter_query, handle_frontmost, handle_key_event, render_screen, SessionsRefresh,
+};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -117,6 +119,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let frontmost_rx = frontmost::watch(FRONTMOST_POLL);
     let mut was_on_main_page = nav.main_page().is_some();
     let mut icon_generation = app_icon_generation();
+    let mut sessions_refresh = SessionsRefresh::default();
 
     loop {
         if shutdown.load(Ordering::Relaxed) {
@@ -189,6 +192,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         }
         was_on_main_page = on_main_page;
+
+        sessions_refresh.tick(&mut nav, &handle, &app_state, &dev_state);
 
         if read_lost || handle.has_failed() {
             warn!("device disconnected");

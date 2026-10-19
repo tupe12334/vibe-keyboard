@@ -1,7 +1,7 @@
 mod actions;
 mod pages;
 
-pub use pages::render_screen;
+pub use pages::{render_screen, SessionsRefresh};
 
 use crate::infrastructure::claude_sessions::focus_session;
 use crate::infrastructure::usb::Device;
