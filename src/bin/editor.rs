@@ -1195,9 +1195,10 @@ fn apply_prompt_op(prompts: &mut Vec<Prompt>, op: PromptOp) {
         PromptOp::Delete(index) if index < prompts.len() => {
             prompts.remove(index);
         }
+        // Empty text fails `problems()`, so the save gate stops until the user fills it in.
         PromptOp::Add => prompts.push(Prompt {
             label: "New".into(),
-            text: "/".into(),
+            text: String::new(),
         }),
         _ => {}
     }
@@ -1230,7 +1231,7 @@ mod tests {
         apply_prompt_op(&mut prompts, PromptOp::Delete(9));
         apply_prompt_op(&mut prompts, PromptOp::Add);
         assert_eq!(prompts.len(), 3);
-        assert_eq!(prompts[2].text, "/");
+        assert_eq!(prompts[2].text, "");
     }
 
     use super::{

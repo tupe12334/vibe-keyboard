@@ -44,6 +44,9 @@ pub struct Prompt {
 /// Longest prompt text the profile accepts.
 pub const PROMPT_MAX_CHARS: usize = 2000;
 
+/// Longest prompt label the profile accepts. Labels print on a key image.
+pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
+
 /// Prompts used when the profile has none: Recap and Voice.
 pub fn default_prompts() -> Vec<Prompt> {
     [("Recap", "/recap"), ("Voice", "/voice")]
@@ -253,7 +256,7 @@ impl Profile {
             ..KeyConfig::default()
         };
         Self {
-            prompts: default_prompts(),
+            prompts: Vec::new(),
             pages: vec![
                 Page {
                     name: "Main".into(),
@@ -347,7 +350,6 @@ impl Profile {
         }
     }
 
-    /// Human-readable problems in the layout. Empty when the profile is valid.
     /// The prompts a session action can send: the profile's own, else the built-in pair.
     pub fn session_prompts(&self) -> Vec<Prompt> {
         if self.prompts.is_empty() {
@@ -357,12 +359,21 @@ impl Profile {
         }
     }
 
+    /// Human-readable problems in the layout. Empty when the profile is valid.
     pub fn problems(&self) -> Vec<String> {
         let mut out = Vec::new();
         for (index, prompt) in self.prompts.iter().enumerate() {
             let place = format!("prompt {}", index + 1);
             if prompt.label.trim().is_empty() {
                 out.push(format!("{place}: label is empty"));
+            }
+            if prompt.label.chars().any(char::is_control) {
+                out.push(format!("{place}: label must be one line"));
+            }
+            if prompt.label.chars().count() > PROMPT_LABEL_MAX_CHARS {
+                out.push(format!(
+                    "{place}: label is over {PROMPT_LABEL_MAX_CHARS} characters"
+                ));
             }
             if prompt.text.trim().is_empty() {
                 out.push(format!("{place}: text is empty"));
@@ -479,6 +490,8 @@ mod tests {
     #[test]
     fn prompts_round_trip_and_stay_out_of_files_when_empty() {
         let mut profile = Profile::default_from_legacy();
+        assert!(profile.prompts.is_empty(), "first run writes no prompts");
+        profile.prompts = default_prompts();
         let text = toml::to_string_pretty(&profile).unwrap_or_default();
         assert!(text.contains("[[prompts]]"));
         let back: Profile = toml::from_str(&text).unwrap_or_default();
@@ -515,14 +528,18 @@ mod tests {
                 prompt("C", "line\nbreak"),
                 prompt("D", &"x".repeat(PROMPT_MAX_CHARS + 1)),
                 prompt("E", "/ok"),
+                prompt("F\nG", "/f"),
+                prompt(&"L".repeat(PROMPT_LABEL_MAX_CHARS + 1), "/l"),
             ],
         };
         let problems = profile.problems();
-        assert_eq!(problems.len(), 4, "{problems:?}");
+        assert_eq!(problems.len(), 6, "{problems:?}");
         assert!(problems[0].contains("label is empty"));
         assert!(problems[1].contains("text is empty"));
         assert!(problems[2].contains("one line"));
         assert!(problems[3].contains("over"));
+        assert!(problems[4].contains("label must be one line"));
+        assert!(problems[5].contains("label is over"));
     }
 
     #[test]

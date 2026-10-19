@@ -228,6 +228,15 @@ impl NavigationStack {
         }
     }
 
+    /// Keep open session action pages inside the range after the prompt list changes.
+    pub fn set_action_prompts(&mut self, count: usize) {
+        for screen in &mut self.stack {
+            if let Screen::SessionActions { page, .. } = screen {
+                *page = (*page).min(action_pages(count) - 1);
+            }
+        }
+    }
+
     /// Go to the previous page of a session list. Unlike `back`, it never pops the screen.
     pub fn previous_page(&mut self) {
         if let Some(Screen::ClaudeSessions { page, .. }) = self.stack.last_mut() {
@@ -413,6 +422,33 @@ mod tests {
         let mut main = NavigationStack::new(0, 2);
         main.turn_action_page(true, 12);
         assert!(matches!(main.current(), Screen::MainPage { page: 0 }));
+    }
+
+    #[test]
+    fn open_action_page_clamps_when_prompts_shrink() {
+        let session = ClaudeSession {
+            tty: "ttys001".into(),
+            label: "s".into(),
+            status: SessionStatus::Active,
+            age: None,
+        };
+        let mut nav = NavigationStack::new(0, 1);
+        nav.push(Screen::SessionActions { session, page: 1 });
+        nav.set_action_prompts(10);
+        assert!(matches!(
+            nav.current(),
+            Screen::SessionActions { page: 1, .. }
+        ));
+        nav.set_action_prompts(9);
+        assert!(matches!(
+            nav.current(),
+            Screen::SessionActions { page: 0, .. }
+        ));
+        nav.set_action_prompts(0);
+        assert!(matches!(
+            nav.current(),
+            Screen::SessionActions { page: 0, .. }
+        ));
     }
 
     #[test]

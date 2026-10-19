@@ -247,6 +247,7 @@ fn reload_profile(
     match profile_store::read(&profile_store::profile_path()) {
         Ok(Some(profile)) => {
             let count = profile.pages.len();
+            let prompt_count = profile.session_prompts().len();
             log_problems(&profile);
             {
                 let mut s = app_state
@@ -257,6 +258,7 @@ fn reload_profile(
                 s.auto_page.clamp(count);
             }
             nav.set_main_pages(count);
+            nav.set_action_prompts(prompt_count);
             info!("profile reloaded: {count} page(s)");
             render_screen(nav, handle, app_state, dev_state);
         }
