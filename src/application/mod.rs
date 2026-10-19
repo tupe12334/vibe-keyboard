@@ -71,7 +71,7 @@ pub fn handle_key_event(
         11 => {
             match back_key_on(nav.current()) {
                 BackKey::Back => nav.back(),
-                BackKey::Out => nav.out(),
+                BackKey::Out => nav.out_to_main(),
             }
             render_screen(nav, handle, state, dev_state);
         }

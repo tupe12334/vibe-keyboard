@@ -142,6 +142,11 @@ impl NavigationStack {
         }
     }
 
+    /// Drop every screen above the bottom main page. No-op when already there.
+    pub fn out_to_main(&mut self) {
+        self.stack.truncate(1);
+    }
+
     pub const fn can_back() -> bool {
         true // back always navigates (prev page or pops to parent)
     }
@@ -343,6 +348,14 @@ mod tests {
                     project_name: "p".into(),
                     org: "o".into(),
                     filter: None,
+                },
+                BackKey::Out,
+            ),
+            (
+                Screen::CentyIssueActions {
+                    issue: make_numbered_issue(1),
+                    project_name: "p".into(),
+                    org: "o".into(),
                 },
                 BackKey::Out,
             ),
@@ -676,6 +689,34 @@ mod tests {
         });
         nav.out();
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
+    }
+
+    #[test]
+    fn out_to_main_from_deep_stack_returns_to_main_page() {
+        let mut nav = NavigationStack::new(1, 3);
+        nav.push(Screen::CentyProjectList {
+            projects: make_projects(1),
+            page: 0,
+            filter: None,
+        });
+        nav.push(Screen::CentyProjectActions {
+            project: make_project(),
+        });
+        nav.push(Screen::CentyIssueList {
+            issues: vec![],
+            page: 0,
+            project_name: "proj".into(),
+            org: "org".into(),
+            filter: None,
+        });
+        nav.push(Screen::CentyIssueActions {
+            issue: make_numbered_issue(1),
+            project_name: "proj".into(),
+            org: "org".into(),
+        });
+        nav.out_to_main();
+        assert_eq!(nav.main_page(), Some(1));
+        assert!(!nav.can_out());
     }
 
     // --- forward ---
