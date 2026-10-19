@@ -262,11 +262,13 @@ impl NavigationStack {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::actions::SessionStatus;
 
     #[test]
     fn claude_sessions_page_forward_back_and_stop_at_edges() {
         let sessions: Vec<ClaudeSession> = (0..11)
             .map(|i| ClaudeSession {
+                status: SessionStatus::Unknown,
                 tty: format!("ttys{i:03}"),
                 label: format!("s{i}"),
             })

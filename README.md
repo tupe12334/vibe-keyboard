@@ -122,7 +122,7 @@ Action types: `none`, `open_url`, `run_command`, `open_app`, `hotkey`, `go_to_pa
 `open_app` takes an app name (`open -a`), or a bundle id (`open -b`) when the value contains a dot and no spaces. Names ending in `.app` are app names.
 `run_command` runs `sh -c` with the text stored in `profile.toml`. Anyone who can write that file can run commands, so track it only in a repo you trust.
 Built-in names: `centy_projects`, `terminal`, `claude`, `centy_web`, `numpad`, `log_file`, `vscode_config`, `claude_sessions`.
-`claude_sessions` lists open Claude Code sessions (`claude` processes on a terminal), labelled by working directory. Press a session to focus its iTerm2 tab, or its Terminal.app tab if iTerm2 has none. Keys 14 and 15 page when there are more than 10.
+`claude_sessions` lists open Claude Code sessions (`claude` processes on a terminal). Each key shows the session's tab title, with a status bar: amber when Claude waits for you, green while it works. Press a session to focus its iTerm2 or Terminal.app tab. Other terminals (VS Code) activate VS Code. Key 15 pages when there are more than 10.
 Keys 11, 12 and 13 are navigation and cannot be bound.
 A built-in key shows its icon unless `image` is set.
 A malformed file is logged with its line and column. The controller keeps the last good layout.

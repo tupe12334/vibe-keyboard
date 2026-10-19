@@ -7,12 +7,13 @@ use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb, RgbImage};
 
 use super::icon_image;
-use super::text::draw_label;
+use super::text::{draw_label, draw_title};
 use super::{
     generate_centy_image, generate_claude_image, generate_log_file_image,
     generate_numpad_entry_image, generate_terminal_image, generate_vscode_config_image,
     generate_web_image,
 };
+use crate::domain::actions::SessionStatus;
 use crate::domain::keys::is_nav_key;
 use crate::domain::profile::KEY_COUNT;
 use crate::domain::profile::{parse_color, Action, KeyConfig};
@@ -138,6 +139,22 @@ fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {
 /// Plain label tile on the default colors. Used for dynamic lists such as Claude sessions.
 pub fn label_image(label: &str) -> RgbImage {
     label_tile(label, FALLBACK_BG, FALLBACK_FG)
+}
+
+/// A Claude session tile: a status bar on top (amber waiting, green working, grey unknown) and
+/// the title below, wrapped to three lines.
+pub fn session_image(title: &str, status: SessionStatus) -> RgbImage {
+    const BAR_H: u32 = 12;
+    let bar = match status {
+        SessionStatus::Waiting => [230, 160, 0],
+        SessionStatus::Working => [40, 180, 90],
+        SessionStatus::Unknown => [90, 90, 90],
+    };
+    let mut body = ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE - BAR_H, Rgb(FALLBACK_BG));
+    draw_title(&mut body, &title.to_uppercase(), Rgb(FALLBACK_FG));
+    let mut img = ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE, Rgb(bar));
+    image::imageops::replace(&mut img, &body, 0, i64::from(BAR_H));
+    img
 }
 
 /// Keys 11, 12 and 13 always navigate. Each shows a fixed label.
