@@ -10,6 +10,7 @@ use std::time::{Duration, Instant};
 use tracing::{error, info, warn};
 use vibe_keyboard::domain::navigation::NavigationStack;
 use vibe_keyboard::domain::profile::Profile;
+use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::frontmost;
 use vibe_keyboard::infrastructure::images::{app_icon_generation, calibration_image};
 use vibe_keyboard::infrastructure::persistence::DeviceState;
@@ -23,6 +24,27 @@ const PROFILE_POLL: Duration = Duration::from_secs(1);
 const FRONTMOST_POLL: Duration = Duration::from_millis(500);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // One controller per deck. Taken before logging (which truncates app.log) and before any
+    // device access. The guard lives until exit, so the lock stays held for the whole run.
+    let lock_path = controller_lock::default_lock_path();
+    let _controller_lock = match controller_lock::acquire(&lock_path) {
+        Ok(lock) => lock,
+        Err(AcquireError::Held) => {
+            let msg = format!(
+                "another vibe-keyboard controller is already running (lock {})",
+                lock_path.display()
+            );
+            eprintln!("{msg}");
+            // Login item (launchd KeepAlive SuccessfulExit=false) restarts only on non-zero
+            // exit. A duplicate start is not a crash, so exit 0 and stop the restart loop.
+            // Interactive runs exit 1 so the caller sees the failure.
+            if std::env::args().any(|arg| arg == "--headless") {
+                return Ok(());
+            }
+            std::process::exit(1);
+        }
+        Err(AcquireError::Io(e)) => return Err(format!("controller lock: {e}").into()),
+    };
     // Hidden: draw each logical key number on its key, then exit. Checks key positions.
     if std::env::args().any(|arg| arg == "--calibrate") {
         return calibrate();

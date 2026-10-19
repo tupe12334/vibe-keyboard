@@ -82,6 +82,10 @@ device's HID vendor interface in non-exclusive mode. To install the binary to
 The `hidapi` crate builds its bundled C backend. No system library is needed,
 so no `brew install hidapi`.
 
+### Troubleshooting
+
+- `another vibe-keyboard controller is already running (lock <path>)`: a controller already drives the deck. Stop it first. Only one controller may run per deck; the lock file lives in the runtime dir (or the temp dir on macOS).
+
 State is persisted to `~/.config/vibe-keyboard/state.toml`.
 Logs are written to `~/.config/vibe-keyboard/app.log`.
 
