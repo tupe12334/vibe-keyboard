@@ -35,14 +35,14 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                     .map(|f| format!("  [filter: \"{f}\"]"))
                     .unwrap_or_default();
                 format!(
-                " Centy    Projects{filter_str} ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
+                " Centy    Projects{filter_str} ({}-{} of {})    [11] out  [12] out  [13] next    [q] quit ",
                 page * 10 + 1,
                 (page * 10 + 10).min(*total),
                 total,
             )
             }
             ScreenView::CentyProjectActions { project_name } => format!(
-                " Centy    {project_name}    [11] back  [12] out    [q] quit ",
+                " Centy    {project_name}    [11] out  [12] out    [q] quit ",
             ),
             ScreenView::CentyIssueList {
                 total,
@@ -55,7 +55,7 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                     .map(|f| format!("  [filter: \"{f}\"]"))
                     .unwrap_or_default();
                 format!(
-                " Centy    {} — Issues{filter_str} ({}-{} of {})    [11] back  [12] out  [13] next    [q] quit ",
+                " Centy    {} — Issues{filter_str} ({}-{} of {})    [11] out  [12] out  [13] next    [q] quit ",
                 project_name,
                 page * 10 + 1,
                 (page * 10 + 10).min(*total),
@@ -71,17 +71,17 @@ fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                 issue_number,
                 project_name,
             } => format!(
-                " Centy    {project_name} — Issue #{issue_number}    [11] back  [12] out    [q] quit ",
+                " Centy    {project_name} — Issue #{issue_number}    [11] out  [12] out    [q] quit ",
             ),
             ScreenView::InputNumber { value } => format!(
-                " Input Number    {}    [11] back  [12] out    [q] quit ",
+                " Input Number    {}    [11] out  [12] out    [q] quit ",
                 if value.is_empty() { "_" } else { value },
             ),
             ScreenView::NewSessionChoice => {
-                " New Claude session    [1] iTerm  [2] Terminal    [11] back  [q] quit ".into()
+                " New Claude session    [1] iTerm  [2] Terminal    [11] out  [q] quit ".into()
             }
             ScreenView::ClaudeSessions { total, page } => format!(
-                " Claude Sessions    ({}-{} of {})    [11] back  [12] out  [14/15] page  [q] quit ",
+                " Claude Sessions    ({}-{} of {})    [11] out  [12] out  [14/15] page  [q] quit ",
                 page * 10 + 1,
                 (page * 10 + 10).min(*total),
                 total,

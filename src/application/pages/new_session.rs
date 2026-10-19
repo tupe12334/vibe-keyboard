@@ -12,7 +12,7 @@ use crate::presentation::tui;
 
 const KEY_SIZE: u32 = 100;
 
-/// The terminal choice for a new Claude session: key 1 iTerm2, key 2 Terminal.app, key 11 BACK.
+/// The terminal choice for a new Claude session: key 1 iTerm2, key 2 Terminal.app, key 11 OUT (drawn by the page renderer).
 /// Each app shows its icon, or its name when the icon is missing.
 pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppState>>) {
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
@@ -32,14 +32,6 @@ pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppStat
             description: "Open Claude Code in a new Terminal window".into(),
         },
     );
-    actions.insert(
-        11,
-        ButtonAction {
-            name: "Back".into(),
-            title: "Back".into(),
-            description: "Back to the sessions list".into(),
-        },
-    );
     {
         let mut s = state
             .lock()
@@ -50,7 +42,6 @@ pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppStat
     let tiles = [
         (1, app_tile("com.googlecode.iterm2", "iTerm")),
         (2, app_tile("com.apple.Terminal", "Terminal")),
-        (11, label_image("BACK")),
     ];
     for (key, img) in tiles {
         send_button_image(handle, key, DynamicImage::ImageRgb8(img));

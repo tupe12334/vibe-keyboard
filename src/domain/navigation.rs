@@ -35,6 +35,22 @@ pub enum Screen {
     NewSessionChoice,
 }
 
+/// What key 11 does on a screen. `Back` steps within the main pages. `Out` leaves a sub-screen,
+/// the same as key 12.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BackKey {
+    Back,
+    Out,
+}
+
+/// The key 11 decision for `screen`. Main pages keep back. Every built-in sub-screen uses out.
+pub const fn back_key_on(screen: &Screen) -> BackKey {
+    match screen {
+        Screen::MainPage { .. } => BackKey::Back,
+        _ => BackKey::Out,
+    }
+}
+
 pub struct NavigationStack {
     stack: Vec<Screen>,
     total_main_pages: usize,
@@ -124,6 +140,11 @@ impl NavigationStack {
         if self.stack.len() > 1 {
             self.stack.pop();
         }
+    }
+
+    /// Drop every screen above the bottom main page. No-op when already there.
+    pub fn out_to_main(&mut self) {
+        self.stack.truncate(1);
     }
 
     pub const fn can_back() -> bool {
@@ -294,6 +315,68 @@ mod tests {
             nav.current(),
             Screen::ClaudeSessions { sessions, page: 0 } if sessions.len() == 3
         ));
+    }
+
+    #[test]
+    fn key_11_is_back_on_main_pages_and_out_on_sub_screens() {
+        let project = CentyProject {
+            name: "p".into(),
+            org: "o".into(),
+            path: None,
+            url: String::new(),
+        };
+        let screens = [
+            (Screen::MainPage { page: 0 }, BackKey::Back),
+            (
+                Screen::CentyProjectList {
+                    projects: vec![],
+                    page: 0,
+                    filter: None,
+                },
+                BackKey::Out,
+            ),
+            (
+                Screen::CentyProjectActions {
+                    project: project.clone(),
+                },
+                BackKey::Out,
+            ),
+            (
+                Screen::CentyIssueList {
+                    issues: vec![],
+                    page: 0,
+                    project_name: "p".into(),
+                    org: "o".into(),
+                    filter: None,
+                },
+                BackKey::Out,
+            ),
+            (
+                Screen::CentyIssueActions {
+                    issue: make_numbered_issue(1),
+                    project_name: "p".into(),
+                    org: "o".into(),
+                },
+                BackKey::Out,
+            ),
+            (
+                Screen::InputNumber {
+                    value: String::new(),
+                },
+                BackKey::Out,
+            ),
+            (
+                Screen::ClaudeSessions {
+                    sessions: vec![],
+                    page: 0,
+                },
+                BackKey::Out,
+            ),
+            (Screen::NewSessionChoice, BackKey::Out),
+        ];
+        for (screen, expected) in screens {
+            assert_eq!(back_key_on(&screen), expected);
+        }
     }
 
     #[test]
@@ -606,6 +689,34 @@ mod tests {
         });
         nav.out();
         assert!(matches!(nav.current(), Screen::MainPage { .. }));
+    }
+
+    #[test]
+    fn out_to_main_from_deep_stack_returns_to_main_page() {
+        let mut nav = NavigationStack::new(1, 3);
+        nav.push(Screen::CentyProjectList {
+            projects: make_projects(1),
+            page: 0,
+            filter: None,
+        });
+        nav.push(Screen::CentyProjectActions {
+            project: make_project(),
+        });
+        nav.push(Screen::CentyIssueList {
+            issues: vec![],
+            page: 0,
+            project_name: "proj".into(),
+            org: "org".into(),
+            filter: None,
+        });
+        nav.push(Screen::CentyIssueActions {
+            issue: make_numbered_issue(1),
+            project_name: "proj".into(),
+            org: "org".into(),
+        });
+        nav.out_to_main();
+        assert_eq!(nav.main_page(), Some(1));
+        assert!(!nav.can_out());
     }
 
     // --- forward ---
