@@ -7,7 +7,7 @@ use tracing::info;
 
 use crate::domain::actions::{ButtonAction, ScreenView};
 use crate::domain::navigation::NavigationStack;
-use crate::domain::profile::SideConfig;
+use crate::domain::profile::{SideConfig, SideInset};
 use crate::domain::side::{resolve_side, SideContent};
 use crate::infrastructure::images::{page_images, side_image};
 use crate::infrastructure::persistence::DeviceState;
@@ -93,15 +93,17 @@ pub fn render_main_page(
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
-    let keys = {
+    let (keys, key_inset) = {
         let s = state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        s.profile
+        let keys = s
+            .profile
             .pages
             .get(page)
             .map(|p| p.keys.clone())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        (keys, s.profile.display.key_inset)
     };
     let actions: HashMap<u8, ButtonAction> = keys
         .iter()
@@ -132,7 +134,7 @@ pub fn render_main_page(
     }
     // The same images the editor previews. Keys 11–13 are the navigation art.
     let root = profile_store::root_dir();
-    for (key, img) in page_images(&keys, &root) {
+    for (key, img) in page_images(&keys, &root, &key_inset) {
         send_button_image(handle, key, DynamicImage::ImageRgb8(img));
     }
     info!("page {}: {} key(s)", page + 1, keys.len());
@@ -143,7 +145,7 @@ pub fn render_main_page(
 fn side_to_show(
     state: &Arc<Mutex<tui::AppState>>,
     nav: &NavigationStack,
-) -> Option<(SideConfig, Metrics)> {
+) -> Option<(SideConfig, Metrics, SideInset)> {
     let s = state
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner);
@@ -153,7 +155,7 @@ fn side_to_show(
         .get(nav.home_page())
         .and_then(|p| p.side.clone());
     match resolve_side(page_side, nav.current().side()) {
-        SideContent::Show(side) => Some((side, s.metrics.clone())),
+        SideContent::Show(side) => Some((side, s.metrics.clone(), s.profile.display.side_inset)),
         SideContent::Keep => None,
     }
 }
@@ -175,10 +177,10 @@ fn send_side_frame(handle: &Device, state: &Arc<Mutex<tui::AppState>>, frame: &R
 
 /// Draws the side screen `nav` shows. Called after every full redraw.
 pub fn render_side(handle: &Device, state: &Arc<Mutex<tui::AppState>>, nav: &NavigationStack) {
-    let Some((side, metrics)) = side_to_show(state, nav) else {
+    let Some((side, metrics, inset)) = side_to_show(state, nav) else {
         return;
     };
-    let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics);
+    let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics, &inset);
     send_side_frame(handle, state, &frame);
 }
 
@@ -189,12 +191,12 @@ pub fn refresh_side_widgets(
     state: &Arc<Mutex<tui::AppState>>,
     nav: &NavigationStack,
 ) {
-    let Some((side, metrics)) =
-        side_to_show(state, nav).filter(|(side, _)| !side.widgets.is_empty())
+    let Some((side, metrics, inset)) =
+        side_to_show(state, nav).filter(|(side, _, _)| !side.widgets.is_empty())
     else {
         return;
     };
-    let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics);
+    let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics, &inset);
     send_side_frame(handle, state, &frame);
 }
 

@@ -9,15 +9,16 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, Prompt, SideConfig, Widget,
-    BUILTIN_NAMES,
+    format_color, inner_rect, parse_color, Action, ActionKind, KeyConfig, KeyInset, PixelRect,
+    Profile, Prompt, SideConfig, SideInset, Widget, BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
-    app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_HEIGHT, SAFE_WIDTH,
-    SAFE_X, SAFE_Y, SIDE_HEIGHT, SIDE_WIDTH,
+    app_icon_generation, icon_image, key_image, safe_rect, side_image, ICON_NAMES, SIDE_HEIGHT,
+    SIDE_WIDTH,
 };
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::system_metrics::{self, Metrics, Shared};
+use vibe_keyboard::infrastructure::usb::DECK_IMAGE_SIZE;
 
 /// Physical layout as seen from the front. Matches `device.md`.
 const GRID: [[u8; 5]; 3] = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]];
@@ -110,16 +111,45 @@ fn texture_from(ctx: &egui::Context, name: &str, img: &image::RgbImage) -> egui:
 /// A rendered key preview.
 struct Preview {
     config: Option<KeyConfig>,
+    inset: KeyInset,
     /// `app_icon_generation()` when rendered, so finished app lookups show up.
     generation: u64,
     texture: egui::TextureHandle,
 }
 
-/// Rendered side preview, with the config it was rendered from.
+/// Rendered side preview, with the config and insets it was rendered from.
 struct SidePreview {
     config: Option<SideConfig>,
+    inset: SideInset,
     metrics: Metrics,
     texture: egui::TextureHandle,
+}
+
+/// Shades the bands the bezel hides. `area` shows a canvas of `canvas` pixels, and `visible`
+/// is the part left after the insets, in the same pixels.
+fn shade_hidden(painter: &egui::Painter, area: Rect, canvas: (u32, u32), visible: PixelRect) {
+    let (width, height) = canvas;
+    let scale = Vec2::new(area.width() / width as f32, area.height() / height as f32);
+    let bottom = visible.y + visible.h;
+    let right = visible.x + visible.w;
+    let bands = [
+        (0, 0, width, visible.y),
+        (0, bottom, width, height.saturating_sub(bottom)),
+        (0, visible.y, visible.x, visible.h),
+        (right, visible.y, width.saturating_sub(right), visible.h),
+    ];
+    for (x, y, band_w, band_h) in bands {
+        if band_w == 0 || band_h == 0 {
+            continue;
+        }
+        let min = area.min + Vec2::new(x as f32 * scale.x, y as f32 * scale.y);
+        let size = Vec2::new(band_w as f32 * scale.x, band_h as f32 * scale.y);
+        painter.rect_filled(
+            Rect::from_min_size(min, size),
+            0.0,
+            Color32::from_rgba_unmultiplied(230, 60, 60, 110),
+        );
+    }
 }
 
 /// How long the Undo for a discard stays available.
@@ -407,13 +437,14 @@ impl Editor {
     /// Texture of the deck image for `key`. Re-rendered only when that key's config changes.
     fn preview(&mut self, ctx: &egui::Context, key: u8) -> egui::TextureHandle {
         let config = self.session.profile.key_at(self.page, key).cloned();
+        let inset = self.session.profile.display.key_inset;
         let generation = app_icon_generation();
         if let Some(cached) = self.previews.get(&key) {
-            if cached.config == config && cached.generation == generation {
+            if cached.config == config && cached.generation == generation && cached.inset == inset {
                 return cached.texture.clone();
             }
         }
-        let img = key_image(key, config.as_ref(), &self.root);
+        let img = key_image(key, config.as_ref(), &self.root, &inset);
         let size = [img.width() as usize, img.height() as usize];
         let rgba: Vec<u8> = img
             .pixels()
@@ -425,6 +456,7 @@ impl Editor {
             key,
             Preview {
                 config,
+                inset,
                 generation,
                 texture: texture.clone(),
             },
@@ -442,26 +474,28 @@ impl Editor {
             .pages
             .get(self.page)
             .and_then(|p| p.side.clone());
+        let inset = self.session.profile.display.side_inset;
         let metrics = system_metrics::snapshot(&self.metrics);
         if config.as_ref().is_some_and(|c| !c.widgets.is_empty()) {
             ctx.request_repaint_after(system_metrics::SAMPLE_INTERVAL);
         }
         if let Some(cached) = &self.side_preview {
-            if cached.config == config && cached.metrics == metrics {
+            if cached.config == config && cached.metrics == metrics && cached.inset == inset {
                 return cached.texture.clone();
             }
         }
-        let img = side_image(config.as_ref(), &self.root, &metrics);
+        let img = side_image(config.as_ref(), &self.root, &metrics, &inset);
         let texture = texture_from(ctx, "side", &img);
         self.side_preview = Some(SidePreview {
             config,
+            inset,
             metrics,
             texture: texture.clone(),
         });
         texture
     }
 
-    /// Tall side preview beside the keys, with the safe area drawn faintly. True when clicked.
+    /// Tall side preview beside the keys, with the hidden bezel band shaded. True when clicked.
     fn side_strip(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> bool {
         let size = side_strip_size(ui.available_height());
         let (rect, response) = ui.allocate_exact_size(size, Sense::click());
@@ -469,17 +503,9 @@ impl Editor {
         let painter = ui.painter_at(rect);
         let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
         painter.image(texture.id(), rect, uv, Color32::WHITE);
-        let scale = size.y / SIDE_HEIGHT as f32;
-        let safe = Rect::from_min_size(
-            rect.min + Vec2::new(SAFE_X as f32 * scale, SAFE_Y as f32 * scale),
-            Vec2::new(SAFE_WIDTH as f32 * scale, SAFE_HEIGHT as f32 * scale),
-        );
-        painter.rect_stroke(
-            safe,
-            0.0,
-            Stroke::new(1.0, Color32::from_white_alpha(70)),
-            StrokeKind::Inside,
-        );
+        let inset = self.session.profile.display.side_inset;
+        let visible = safe_rect(&inset);
+        shade_hidden(&painter, rect, (SIDE_WIDTH, SIDE_HEIGHT), visible);
         if self.side_open {
             painter.rect_stroke(
                 rect,
@@ -539,6 +565,17 @@ impl Editor {
         } else if edited != original {
             self.session.profile.set_side(page, Some(edited));
         }
+    }
+
+    /// Margins for the band the bezel hides, on keys and on the side screen. Shaded in previews.
+    fn display_section(&mut self, ui: &mut egui::Ui) {
+        ui.heading("Display");
+        ui.label("Hidden bezel band, in px. Shaded in the previews.");
+        let display = &mut self.session.profile.display;
+        ui.add(egui::Slider::new(&mut display.key_inset.top, 0..=40).text("Key top"));
+        ui.add(egui::Slider::new(&mut display.key_inset.bottom, 0..=40).text("Key bottom"));
+        ui.add(egui::Slider::new(&mut display.side_inset.top, 0..=200).text("Side top"));
+        ui.add(egui::Slider::new(&mut display.side_inset.bottom, 0..=200).text("Side bottom"));
     }
 
     fn top_bar(&mut self, ui: &mut egui::Ui) {
@@ -915,6 +952,16 @@ impl Editor {
         let painter = ui.painter_at(rect);
         let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
         painter.image(texture.id(), rect, uv, Color32::WHITE);
+        let inset = self.session.profile.display.key_inset;
+        let visible = inner_rect(
+            DECK_IMAGE_SIZE,
+            DECK_IMAGE_SIZE,
+            inset.top,
+            inset.bottom,
+            inset.left,
+            inset.right,
+        );
+        shade_hidden(&painter, rect, (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE), visible);
         // Key number in a small dark box, so it reads over any image.
         let number =
             egui::Rect::from_min_size(rect.left_top() + Vec2::new(2.0, 2.0), Vec2::new(18.0, 14.0));
@@ -1226,6 +1273,8 @@ impl eframe::App for Editor {
             .show(ui, |ui| {
                 let op = self.page_list(ui);
                 self.prompts_section(ui);
+                ui.separator();
+                self.display_section(ui);
                 op
             })
             .inner;

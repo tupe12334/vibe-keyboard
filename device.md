@@ -257,3 +257,16 @@ Rust: `side_header`, `side_upload` and `send_side_image` in `src/infrastructure/
 🌐 **Online**
 
 - Node.js (VID 0x5500): https://github.com/rigor789/mirabox-streamdock-node
+
+## Display Insets: Bezel and Viewing Angle
+
+🌐 **Online** — research for the hidden band at the top of keys and the side column. Not verified on this unit. Sources conflict on sizes and none gives a bezel overlap figure.
+
+- Key image size: 96×96 for the AKP153 in the AKP153-DOCK notes ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)); 85 for the v1 protocol in Deck Commander and in the python-elgato-streamdeck community PR ([ohotnik PR #148](https://ohotnik.duckdns.org/abcminiuser/python-elgato-streamdeck/pull/148), search snippet only, fetch failed).
+- Side column: 80×80 display-only slots in column 5 for the AKP153 ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)). Not the 100×480 strip used here. Verified 🔌 geometry stays in the section above.
+- Rotation: the AKP153 panel is turned 90° relative to image coordinates, so the image is rotated before send ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)). Matches the 🔌 side-screen note.
+- Bezel: the AKP153-DOCK notes say long text wraps and shrinks so it is not hidden by the acrylic keycap edge. No pixel margin is given ([xpxp23/AKP153-DOCK](https://github.com/xpxp23/AKP153-DOCK)).
+- Protocol packet sizes differ by version: 512 bytes for v1 (AKP153), 1024 bytes for v2/v3 ([4ndv/mirajazz](https://github.com/4ndv/mirajazz)). Matches the 🔌 1024-byte note.
+- Vendor SDK (sdk.key123.vip) and the MiraBox product page gave no icon size or safe-area figure in search results ([MiraBox 293S](https://mirabox.net/products/mirabox-293s)).
+
+**Decision:** no credible bezel margin found. Defaults use the fallback: key top = 8 px, side top = 30 px (existing safe area), side bottom = 40 px. Tune on the device.

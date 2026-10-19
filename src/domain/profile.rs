@@ -32,6 +32,9 @@ pub struct Profile {
     /// Text typed into a Claude Code session by its action page. Empty means the built-in pair.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub prompts: Vec<Prompt>,
+    /// Device-wide display settings: the band the bezel hides, in pixels.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub display: DisplaySettings,
 }
 
 /// A prompt a session action types into a Claude Code session, followed by Enter.
@@ -56,6 +59,161 @@ pub fn default_prompts() -> Vec<Prompt> {
             text: text.into(),
         })
         .collect()
+}
+
+/// Bands the bezel hides. Content goes inside them; the background fills them.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DisplaySettings {
+    /// Per-key margins, in px of the 85x85 key canvas.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub key_inset: KeyInset,
+    /// Side screen margins, in px of the 100x480 portrait canvas.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub side_inset: SideInset,
+}
+
+/// Key margins. The default hides the top 8 px of each key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct KeyInset {
+    pub top: u32,
+    pub bottom: u32,
+    pub left: u32,
+    pub right: u32,
+}
+
+impl Default for KeyInset {
+    fn default() -> Self {
+        Self {
+            top: 8,
+            bottom: 0,
+            left: 0,
+            right: 0,
+        }
+    }
+}
+
+/// Side screen margins. The defaults keep the old safe area, y 30..440.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SideInset {
+    pub top: u32,
+    pub bottom: u32,
+}
+
+impl Default for SideInset {
+    fn default() -> Self {
+        Self {
+            top: 30,
+            bottom: 40,
+        }
+    }
+}
+
+/// Skips a field in TOML when it holds the default value, so old files stay byte-stable.
+pub fn is_default<T: Default + PartialEq>(value: &T) -> bool {
+    *value == T::default()
+}
+
+/// A pixel rectangle inside a canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PixelRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+/// The part of a `width` x `height` canvas that the insets leave visible. Insets larger than
+/// the canvas leave an empty rect, never a panic.
+pub fn inner_rect(
+    width: u32,
+    height: u32,
+    top: u32,
+    bottom: u32,
+    left: u32,
+    right: u32,
+) -> PixelRect {
+    PixelRect {
+        x: left.min(width),
+        y: top.min(height),
+        w: width.saturating_sub(left).saturating_sub(right),
+        h: height.saturating_sub(top).saturating_sub(bottom),
+    }
+}
+
+#[cfg(test)]
+mod display_tests {
+    use super::*;
+
+    #[test]
+    fn default_display_is_not_written() {
+        let text = toml::to_string_pretty(&Profile::default()).expect("serializes");
+        assert!(!text.contains("display"), "{text}");
+    }
+
+    #[test]
+    fn non_default_display_round_trips() {
+        let mut profile = Profile::default();
+        profile.display.key_inset.top = 12;
+        profile.display.side_inset.bottom = 0;
+        let text = toml::to_string_pretty(&profile).expect("serializes");
+        let back: Profile = toml::from_str(&text).expect("parses");
+        assert_eq!(back, profile);
+    }
+
+    #[test]
+    fn missing_display_table_means_defaults() {
+        let back: Profile = toml::from_str("").expect("parses");
+        assert_eq!(back.display, DisplaySettings::default());
+        assert_eq!(back.display.key_inset.top, 8);
+        assert_eq!(
+            back.display.side_inset,
+            SideInset {
+                top: 30,
+                bottom: 40
+            }
+        );
+    }
+
+    #[test]
+    fn inner_rect_removes_each_inset() {
+        assert_eq!(
+            inner_rect(85, 85, 8, 0, 0, 0),
+            PixelRect {
+                x: 0,
+                y: 8,
+                w: 85,
+                h: 77
+            }
+        );
+        assert_eq!(
+            inner_rect(100, 480, 30, 40, 0, 0),
+            PixelRect {
+                x: 0,
+                y: 30,
+                w: 100,
+                h: 410
+            }
+        );
+        assert_eq!(
+            inner_rect(85, 85, 10, 10, 5, 5),
+            PixelRect {
+                x: 5,
+                y: 10,
+                w: 75,
+                h: 65
+            }
+        );
+    }
+
+    #[test]
+    fn oversized_insets_leave_nothing_without_panicking() {
+        let rect = inner_rect(85, 85, 90, 90, 90, 90);
+        assert_eq!(rect.w, 0);
+        assert_eq!(rect.h, 0);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -304,6 +462,7 @@ impl Profile {
                     ]),
                 },
             ],
+            display: DisplaySettings::default(),
         }
     }
 
@@ -555,6 +714,7 @@ mod tests {
                 prompt("F\nG", "/f"),
                 prompt(&"L".repeat(PROMPT_LABEL_MAX_CHARS + 1), "/l"),
             ],
+            display: DisplaySettings::default(),
         };
         let problems = profile.problems();
         assert_eq!(problems.len(), 6, "{problems:?}");

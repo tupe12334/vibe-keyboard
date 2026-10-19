@@ -3,7 +3,7 @@ mod image;
 mod reconnect;
 
 pub use commands::{clear_all, device_init, keep_alive, read_event};
-pub use image::{send_button_image, send_side_image};
+pub use image::{send_button_image, send_side_image, DECK_IMAGE_SIZE};
 pub use reconnect::wait_for_device;
 
 use hidapi::{HidApi, HidDevice, HidResult};

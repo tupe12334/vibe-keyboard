@@ -4,25 +4,30 @@ use image::{imageops, DynamicImage, ImageBuffer, Rgb, RgbImage};
 
 use super::profile_key::source_image;
 use super::text::{draw_label, draw_label_scaled, draw_line, text_height};
-use crate::domain::profile::{parse_color, SideConfig, Widget};
+use crate::domain::profile::{inner_rect, parse_color, PixelRect, SideConfig, SideInset, Widget};
 use crate::infrastructure::system_metrics::{Disk, Metrics};
 
 /// Side screen render size, portrait: the panel is a vertical column. The upload rotates
 /// it 90° counter-clockwise (`usb::side_upload`). Never render taller than this.
 pub const SIDE_WIDTH: u32 = 100;
 pub const SIDE_HEIGHT: u32 = 480;
-/// Visible part of the column, as x and y offset and size. Keep content inside it.
-pub const SAFE_X: u32 = 0;
-pub const SAFE_Y: u32 = 30;
-pub const SAFE_WIDTH: u32 = 100;
-pub const SAFE_HEIGHT: u32 = 410;
-/// Gap between the widget stack and the edges of the safe area.
+/// Gap between the widget stack and the edges of the visible rect.
 const MARGIN: u32 = 4;
-/// Widget stack: the safe area less `MARGIN` on each side.
-const STACK_X: u32 = SAFE_X + MARGIN;
-const STACK_Y: u32 = SAFE_Y + MARGIN;
-const STACK_W: u32 = SAFE_WIDTH - 2 * MARGIN;
-const STACK_H: u32 = SAFE_HEIGHT - 2 * MARGIN;
+
+/// The visible part of the column after the side insets. Content goes inside it.
+pub fn safe_rect(inset: &SideInset) -> PixelRect {
+    inner_rect(SIDE_WIDTH, SIDE_HEIGHT, inset.top, inset.bottom, 0, 0)
+}
+
+/// Widget stack: the visible rect less `MARGIN` on each side.
+const fn stack_rect(safe: PixelRect) -> PixelRect {
+    PixelRect {
+        x: safe.x + MARGIN,
+        y: safe.y + MARGIN,
+        w: safe.w.saturating_sub(2 * MARGIN),
+        h: safe.h.saturating_sub(2 * MARGIN),
+    }
+}
 
 const FALLBACK_BG: [u8; 3] = [20, 20, 20];
 const FALLBACK_FG: [u8; 3] = [230, 230, 230];
@@ -44,39 +49,57 @@ const BAR_VALUE_SCALE: u32 = 3;
 /// The bitmap the side screen shows, portrait `SIDE_WIDTH` x `SIDE_HEIGHT`. The editor
 /// previews this image as is. The controller rotates it for upload. `None` gives a black
 /// column. `metrics` feeds the widgets.
-pub fn side_image(side: Option<&SideConfig>, root: &Path, metrics: &Metrics) -> RgbImage {
+/// The bitmap the side screen shows, portrait `SIDE_WIDTH` x `SIDE_HEIGHT`. The editor
+/// previews this image as is. The controller rotates it for upload. `None` gives a black
+/// column. `metrics` feeds the widgets. The inset band keeps the background color.
+pub fn side_image(
+    side: Option<&SideConfig>,
+    root: &Path,
+    metrics: &Metrics,
+    inset: &SideInset,
+) -> RgbImage {
     let Some(side) = side else {
         return ImageBuffer::from_pixel(SIDE_WIDTH, SIDE_HEIGHT, Rgb(BLANK));
     };
     let bg = parse_color(&side.bg).unwrap_or(FALLBACK_BG);
     let fg = parse_color(&side.fg).unwrap_or(FALLBACK_FG);
     let mut canvas = ImageBuffer::from_pixel(SIDE_WIDTH, SIDE_HEIGHT, Rgb(bg));
+    let safe = safe_rect(inset);
+    if safe.w == 0 || safe.h == 0 {
+        return canvas;
+    }
     if side.widgets.is_empty() {
         let picture = side
             .image
             .as_deref()
-            .and_then(|image| source_image(image, root, SAFE_HEIGHT));
-        if let Some(img) = picture {
-            let fill = DynamicImage::ImageRgb8(img)
-                .resize_to_fill(
-                    SAFE_WIDTH,
-                    SAFE_HEIGHT,
-                    image::imageops::FilterType::Triangle,
-                )
-                .to_rgb8();
-            imageops::replace(&mut canvas, &fill, i64::from(SAFE_X), i64::from(SAFE_Y));
-        } else {
-            let mut safe = ImageBuffer::from_pixel(SAFE_WIDTH, SAFE_HEIGHT, Rgb(bg));
-            draw_label(&mut safe, &side.label, Rgb(fg));
-            imageops::replace(&mut canvas, &safe, i64::from(SAFE_X), i64::from(SAFE_Y));
+            .and_then(|image| source_image(image, root, safe.h));
+        match picture {
+            Some(img) => {
+                let fill = DynamicImage::ImageRgb8(img)
+                    .resize_to_fill(safe.w, safe.h, image::imageops::FilterType::Triangle)
+                    .to_rgb8();
+                imageops::replace(&mut canvas, &fill, i64::from(safe.x), i64::from(safe.y));
+            }
+            None => {
+                let mut area = ImageBuffer::from_pixel(safe.w, safe.h, Rgb(bg));
+                draw_label(&mut area, &side.label, Rgb(fg));
+                imageops::replace(&mut canvas, &area, i64::from(safe.x), i64::from(safe.y));
+            }
         }
     } else {
-        draw_widgets(&mut canvas, &side.widgets, metrics, bg, fg);
+        draw_widgets(
+            &mut canvas,
+            &side.widgets,
+            metrics,
+            bg,
+            fg,
+            stack_rect(safe),
+        );
     }
     canvas
 }
 
-/// Stacks the widgets top to bottom in the widget box, one equal slot per widget. Each
+/// Stacks the widgets top to bottom in the `stack` box, one equal slot per widget. Each
 /// widget draws into its own slot, so text that is too tall is clipped there.
 fn draw_widgets(
     canvas: &mut RgbImage,
@@ -84,15 +107,16 @@ fn draw_widgets(
     metrics: &Metrics,
     bg: [u8; 3],
     fg: [u8; 3],
+    stack: PixelRect,
 ) {
     // `widgets` is never empty here; `max(1)` only keeps the division safe.
     let count = widgets.len().max(1) as u32;
-    let slot_h = STACK_H / count;
+    let slot_h = stack.h / count;
     for (i, widget) in widgets.iter().enumerate() {
-        let mut slot = ImageBuffer::from_pixel(STACK_W, slot_h, Rgb(bg));
+        let mut slot = ImageBuffer::from_pixel(stack.w, slot_h, Rgb(bg));
         draw_widget(&mut slot, widget, metrics, fg);
-        let y = STACK_Y + i as u32 * slot_h;
-        imageops::replace(canvas, &slot, i64::from(STACK_X), i64::from(y));
+        let y = stack.y + i as u32 * slot_h;
+        imageops::replace(canvas, &slot, i64::from(stack.x), i64::from(y));
     }
 }
 
@@ -233,13 +257,17 @@ mod tests {
     fn side_image_is_portrait_100_by_480() {
         let root = PathBuf::from("/nonexistent");
         let metrics = Metrics::default();
-        assert_eq!(side_image(None, &root, &metrics).dimensions(), (100, 480));
+        let inset = SideInset::default();
+        assert_eq!(
+            side_image(None, &root, &metrics, &inset).dimensions(),
+            (100, 480)
+        );
         let side = SideConfig {
             label: "Build ok".into(),
             ..SideConfig::default()
         };
         assert_eq!(
-            side_image(Some(&side), &root, &metrics).dimensions(),
+            side_image(Some(&side), &root, &metrics, &inset).dimensions(),
             (100, 480)
         );
     }
@@ -251,8 +279,10 @@ mod tests {
             label: "LONG LABEL THAT WRAPS ACROSS LINES".into(),
             ..black_on_white(Vec::new())
         };
-        let img = side_image(Some(&side), &root, &Metrics::default());
-        let inside = |y: u32| (SAFE_Y..SAFE_Y + SAFE_HEIGHT).contains(&y);
+        let inset = SideInset::default();
+        let img = side_image(Some(&side), &root, &Metrics::default(), &inset);
+        let safe = safe_rect(&inset);
+        let inside = |y: u32| (safe.y..safe.y + safe.h).contains(&y);
         for (_, y, pixel) in img.enumerate_pixels() {
             if pixel.0 == [255, 255, 255] {
                 assert!(
@@ -264,15 +294,40 @@ mod tests {
     }
 
     #[test]
+    fn side_inset_moves_the_label_into_its_visible_rect() {
+        let root = PathBuf::from("/nonexistent");
+        let side = SideConfig {
+            label: "HI".into(),
+            ..black_on_white(Vec::new())
+        };
+        let inset = SideInset {
+            top: 60,
+            bottom: 100,
+        };
+        let img = side_image(Some(&side), &root, &Metrics::default(), &inset);
+        let visible = safe_rect(&inset);
+        assert_eq!((visible.y, visible.h), (60, 320));
+        // Nothing in the hidden top or bottom band, only background.
+        for (x, y, pixel) in img.enumerate_pixels() {
+            if !(visible.y..visible.y + visible.h).contains(&y) {
+                assert_eq!(pixel.0, [0, 0, 0], "x={x} y={y} is in a hidden band");
+            }
+        }
+        assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
+    }
+
+    #[test]
     fn widget_layout_fits_the_safe_area_for_any_count() {
         let root = PathBuf::from("/nonexistent");
+        let inset = SideInset::default();
+        let stack = stack_rect(safe_rect(&inset));
         for count in 1..=5 {
             let side = black_on_white(all_widgets().into_iter().cycle().take(count).collect());
-            let img = side_image(Some(&side), &root, &sample());
+            let img = side_image(Some(&side), &root, &sample(), &inset);
             // The widget box is the only place that gets color. Everything else stays black.
             for (x, y, pixel) in img.enumerate_pixels() {
-                let in_box = (STACK_X..STACK_X + STACK_W).contains(&x)
-                    && (STACK_Y..STACK_Y + STACK_H).contains(&y);
+                let in_box = (stack.x..stack.x + stack.w).contains(&x)
+                    && (stack.y..stack.y + stack.h).contains(&y);
                 if !in_box {
                     assert_eq!(pixel.0, [0, 0, 0], "x={x} y={y} count={count}");
                 }
@@ -293,9 +348,10 @@ mod tests {
             widgets: vec![Widget::CpuPercent],
             ..plain.clone()
         };
+        let inset = SideInset::default();
         assert_ne!(
-            side_image(Some(&plain), &root, &metrics),
-            side_image(Some(&with_widgets), &root, &metrics)
+            side_image(Some(&plain), &root, &metrics, &inset),
+            side_image(Some(&with_widgets), &root, &metrics, &inset)
         );
     }
 
@@ -318,11 +374,12 @@ mod tests {
                 cpu_percent: percent,
                 ..Metrics::default()
             };
-            side_image(Some(&side), &root, &metrics)
+            side_image(Some(&side), &root, &metrics, &SideInset::default())
         };
-        let (top, bottom) = bar_span(STACK_H);
+        let stack = stack_rect(safe_rect(&SideInset::default()));
+        let (top, bottom) = bar_span(stack.h);
         let x = BAR_X + BAR_W / 2;
-        let y0 = STACK_Y;
+        let y0 = stack.y;
         // Half full: the lower half is green, the top of the bar is still track.
         let half = at(50);
         assert_eq!(half.get_pixel(x, y0 + bottom - 1).0, GREEN);

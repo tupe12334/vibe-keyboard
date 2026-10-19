@@ -3,7 +3,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Mutex, OnceLock};
 
-use image::imageops::FilterType;
+use image::imageops::{self, FilterType};
 use image::{ImageBuffer, Rgb, RgbImage};
 
 use super::icon_image;
@@ -16,25 +16,49 @@ use super::{
 use crate::domain::actions::SessionStatus;
 use crate::domain::keys::is_nav_key;
 use crate::domain::profile::KEY_COUNT;
-use crate::domain::profile::{parse_color, Action, KeyConfig};
+use crate::domain::profile::{inner_rect, parse_color, Action, KeyConfig, KeyInset};
 use crate::infrastructure::app_icon::app_icon;
 use crate::infrastructure::profile_store::resolve_image;
+use crate::infrastructure::usb::DECK_IMAGE_SIZE;
 
+/// Render size before the inset step. Icons and labels are drawn at this size.
 const KEY_SIZE: u32 = 100;
 const FALLBACK_BG: [u8; 3] = [20, 20, 20];
 const FALLBACK_FG: [u8; 3] = [230, 230, 230];
 const BLANK: [u8; 3] = [0, 0, 0];
+const NAV_BG: [u8; 3] = [40, 40, 40];
 
-/// The bitmap the deck shows for `key`. The controller sends this image, and the editor
-/// previews this same image. Rotation is not applied here: it is a device transport detail.
-pub fn key_image(key: u8, config: Option<&KeyConfig>, root: &Path) -> RgbImage {
+/// The bitmap the deck shows for `key`, `DECK_IMAGE_SIZE` square. The controller sends this
+/// image, and the editor previews this same image. Rotation is not applied here: it is a
+/// device transport detail.
+pub fn key_image(key: u8, config: Option<&KeyConfig>, root: &Path, inset: &KeyInset) -> RgbImage {
     if is_nav_key(key) {
-        return nav_image(key);
+        return inset_key(&nav_image(key), inset, NAV_BG);
     }
     match config {
-        Some(config) => render_key(config, root),
-        None => ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE, Rgb(BLANK)),
+        Some(config) => {
+            let bg = parse_color(&config.bg).unwrap_or(FALLBACK_BG);
+            inset_key(&render_key(config, root), inset, bg)
+        }
+        None => ImageBuffer::from_pixel(DECK_IMAGE_SIZE, DECK_IMAGE_SIZE, Rgb(BLANK)),
     }
+}
+
+/// The one place key insets apply. `picture` is the full key render. It shrinks to a square
+/// that fits the visible rect and sits centered in it. The hidden band keeps the key color `bg`.
+fn inset_key(picture: &RgbImage, inset: &KeyInset, bg: [u8; 3]) -> RgbImage {
+    let size = DECK_IMAGE_SIZE;
+    let mut canvas = ImageBuffer::from_pixel(size, size, Rgb(bg));
+    let rect = inner_rect(size, size, inset.top, inset.bottom, inset.left, inset.right);
+    let side = rect.w.min(rect.h);
+    if side == 0 {
+        return canvas;
+    }
+    let fitted = imageops::resize(picture, side, side, FilterType::Triangle);
+    let x = rect.x + (rect.w - side) / 2;
+    let y = rect.y + (rect.h - side) / 2;
+    imageops::replace(&mut canvas, &fitted, i64::from(x), i64::from(y));
+    canvas
 }
 
 /// Calibration tile: the logical key number in big white digits on black.
@@ -43,9 +67,13 @@ pub fn calibration_image(key: u8) -> RgbImage {
 }
 
 /// Every key 1–15 of one page, in key order. This is exactly what the controller sends.
-pub fn page_images(keys: &BTreeMap<u8, KeyConfig>, root: &Path) -> Vec<(u8, RgbImage)> {
+pub fn page_images(
+    keys: &BTreeMap<u8, KeyConfig>,
+    root: &Path,
+    inset: &KeyInset,
+) -> Vec<(u8, RgbImage)> {
     (1..=KEY_COUNT)
-        .map(|key| (key, key_image(key, keys.get(&key), root)))
+        .map(|key| (key, key_image(key, keys.get(&key), root, inset)))
         .collect()
 }
 
@@ -170,7 +198,7 @@ fn nav_image(key: u8) -> RgbImage {
         12 => "OUT",
         _ => "FWD",
     };
-    label_tile(label, [40, 40, 40], [200, 200, 200])
+    label_tile(label, NAV_BG, [200, 200, 200])
 }
 
 fn load_image(path: &Path, size: u32) -> Option<RgbImage> {
@@ -205,8 +233,12 @@ mod tests {
         let root = PathBuf::from("/nonexistent");
         for key in 1..=15u8 {
             let config = profile.key_at(0, key);
-            let img = key_image(key, config, &root);
-            assert_eq!(img.dimensions(), (KEY_SIZE, KEY_SIZE), "key {key}");
+            let img = key_image(key, config, &root, &KeyInset::default());
+            assert_eq!(
+                img.dimensions(),
+                (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE),
+                "key {key}"
+            );
         }
     }
 
@@ -215,42 +247,68 @@ mod tests {
         let profile = Profile::default_from_legacy();
         let root = PathBuf::from("/nonexistent");
         let keys = &profile.pages[0].keys;
-        let images = page_images(keys, &root);
+        let inset = KeyInset::default();
+        let images = page_images(keys, &root, &inset);
         let numbers: Vec<u8> = images.iter().map(|(key, _)| *key).collect();
         assert_eq!(numbers, (1..=15).collect::<Vec<u8>>());
         for (key, img) in images {
-            assert_eq!(img, key_image(key, keys.get(&key), &root), "key {key}");
+            assert_eq!(
+                img,
+                key_image(key, keys.get(&key), &root, &inset),
+                "key {key}"
+            );
         }
     }
 
     #[test]
     fn nav_keys_do_not_depend_on_the_profile() {
         let root = PathBuf::from("/nonexistent");
+        let inset = KeyInset::default();
         let config = KeyConfig {
             label: "x".into(),
             ..KeyConfig::default()
         };
         assert_eq!(
-            key_image(11, Some(&config), &root),
-            key_image(11, None, &root)
+            key_image(11, Some(&config), &root, &inset),
+            key_image(11, None, &root, &inset)
         );
-        assert_ne!(key_image(12, None, &root), key_image(13, None, &root));
+        assert_ne!(
+            key_image(12, None, &root, &inset),
+            key_image(13, None, &root, &inset)
+        );
     }
 
     #[test]
-    fn empty_key_is_black_and_icon_sources_fall_back() {
+    fn key_content_stays_below_the_top_inset() {
         let root = PathBuf::from("/nonexistent");
-        let blank = key_image(5, None, &root);
-        assert!(blank.pixels().all(|p| p.0 == BLANK));
-        let icon = KeyConfig {
-            image: Some(PathBuf::from("icon:back")),
-            label: "Hi".into(),
+        let config = KeyConfig {
+            label: "HI".into(),
+            bg: "#000000".into(),
+            fg: "#FFFFFF".into(),
             ..KeyConfig::default()
         };
-        assert_eq!(
-            key_image(5, Some(&icon), &root),
-            icon_image("back", KEY_SIZE).unwrap_or_default()
-        );
+        let inset = KeyInset {
+            top: 20,
+            bottom: 0,
+            left: 0,
+            right: 0,
+        };
+        let img = key_image(5, Some(&config), &root, &inset);
+        // The hidden band keeps the key color. No text pixel may land in it.
+        for y in 0..20 {
+            for x in 0..DECK_IMAGE_SIZE {
+                assert_eq!(img.get_pixel(x, y).0, [0, 0, 0], "x={x} y={y}");
+            }
+        }
+        assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
+    }
+
+    #[test]
+    fn empty_key_is_black_and_app_sources_fall_back() {
+        let root = PathBuf::from("/nonexistent");
+        let inset = KeyInset::default();
+        let blank = key_image(5, None, &root, &inset);
+        assert!(blank.pixels().all(|p| p.0 == BLANK));
         // An app that is not installed falls back to the label.
         let app = KeyConfig {
             image: Some(PathBuf::from("app:com.example.NotInstalled")),
@@ -258,8 +316,12 @@ mod tests {
             ..KeyConfig::default()
         };
         assert_eq!(
-            key_image(5, Some(&app), &root),
-            label_tile("Hi", FALLBACK_BG, FALLBACK_FG)
+            key_image(5, Some(&app), &root, &inset),
+            inset_key(
+                &label_tile("Hi", FALLBACK_BG, FALLBACK_FG),
+                &inset,
+                FALLBACK_BG
+            )
         );
     }
 }
