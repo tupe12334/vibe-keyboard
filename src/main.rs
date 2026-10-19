@@ -7,9 +7,7 @@ mod presentation;
 use application::{handle_filter_query, handle_key_event, render_screen};
 use domain::navigation::NavigationStack;
 use infrastructure::persistence::DeviceState;
-use infrastructure::usb::{
-    clear_all, device_init, keep_alive, read_event, reset_endpoints, set_brightness, PID, VID,
-};
+use infrastructure::usb::{device_init, keep_alive, read_event, reset_endpoints, PID, VID};
 use rusb::{Context, UsbContext as _};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -33,9 +31,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let dev_state_val = DeviceState::load();
 
-    device_init(&handle);
-    clear_all(&handle);
-    set_brightness(&handle, dev_state_val.brightness);
+    device_init(&handle, dev_state_val.brightness);
     info!("device ready");
 
     let shutdown = Arc::new(AtomicBool::new(false));

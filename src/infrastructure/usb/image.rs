@@ -3,7 +3,7 @@ use image::{ColorType, DynamicImage};
 use rusb::{Context, DeviceHandle};
 use tracing::error;
 
-use super::commands::write_cmd;
+use super::commands::{refresh, write_cmd};
 use super::{PACKET, TIMEOUT};
 
 /// Encode image as JPEG (rotate 180°, quality 90) and send via `CRT_BAT` + chunks + `CRT_STP`.
@@ -46,5 +46,5 @@ pub fn send_button_image(handle: &DeviceHandle<Context>, key: u8, img: DynamicIm
         }
     }
 
-    write_cmd(handle, b"STP");
+    refresh(handle);
 }
