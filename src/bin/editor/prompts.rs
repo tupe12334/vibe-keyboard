@@ -1,6 +1,7 @@
 use eframe::egui;
 
 use vibe_keyboard::domain::profile::Prompt;
+use vibe_keyboard::domain::prompt_rules;
 
 impl super::Editor {
     /// Edit the session prompts: label and text, reorder, delete, add. Changes are saved with the
@@ -63,19 +64,12 @@ pub(super) enum PromptOp {
     Add,
 }
 
-/// Apply `op` to the prompt list. Out-of-range rows do nothing.
+/// Apply `op` to the prompt list. The row rules live in the core crate.
 pub(super) fn apply_prompt_op(prompts: &mut Vec<Prompt>, op: PromptOp) {
     match op {
-        PromptOp::Up(index) if index > 0 && index < prompts.len() => prompts.swap(index - 1, index),
-        PromptOp::Down(index) if index + 1 < prompts.len() => prompts.swap(index, index + 1),
-        PromptOp::Delete(index) if index < prompts.len() => {
-            prompts.remove(index);
-        }
-        // Empty text fails `problems()`, so the save gate stops until the user fills it in.
-        PromptOp::Add => prompts.push(Prompt {
-            label: "New".into(),
-            text: String::new(),
-        }),
-        _ => {}
+        PromptOp::Up(index) => prompt_rules::move_prompt(prompts, index, false),
+        PromptOp::Down(index) => prompt_rules::move_prompt(prompts, index, true),
+        PromptOp::Delete(index) => prompt_rules::delete_prompt(prompts, index),
+        PromptOp::Add => prompt_rules::add_prompt(prompts),
     }
 }

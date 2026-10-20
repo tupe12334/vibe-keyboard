@@ -45,7 +45,6 @@ pub struct Profile {
     pub input: InputConfig,
 }
 
-/// A prompt a session action types into a Claude Code session, followed by Enter.
 /// True for macOS bundle ids such as `com.apple.Terminal`: dotted, no spaces.
 /// Names ending in `.app` are app names (`Google Chrome.app`), not bundle ids.
 pub fn is_bundle_id(text: &str) -> bool {

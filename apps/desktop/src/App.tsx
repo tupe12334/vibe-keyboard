@@ -3,6 +3,7 @@ import { commands, type EditorRules } from "./bindings";
 import { KeyGrid } from "./KeyGrid";
 import { KeyPanel } from "./KeyPanel";
 import { PageList } from "./PageList";
+import { PromptsPanel } from "./PromptsPanel";
 import { Toolbar } from "./Toolbar";
 import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
@@ -74,6 +75,8 @@ export function App() {
         {notice && <div className="error">{notice}</div>}
 
         <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={setSelected} />
+
+        <PromptsPanel profile={draft} limits={rules} onChange={setDraft} />
 
         {selected !== null && (
           <KeyPanel

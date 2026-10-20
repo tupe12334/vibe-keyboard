@@ -14,6 +14,7 @@ mod layout_commands;
 mod lifecycle;
 mod login_item;
 mod profile_io;
+mod prompt_commands;
 mod status;
 mod supervise;
 mod thread;
@@ -41,6 +42,9 @@ fn specta_builder() -> Builder<Wry> {
             layout_commands::editor_rules,
             layout_commands::add_page,
             layout_commands::delete_page,
+            prompt_commands::add_prompt,
+            prompt_commands::move_prompt,
+            prompt_commands::delete_prompt,
         ])
         .events(collect_events![
             events::DeviceConnected,
