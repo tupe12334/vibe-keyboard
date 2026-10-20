@@ -2,6 +2,7 @@ use super::content_box::content_bbox;
 use super::*;
 
 #[test]
+#[allow(clippy::print_stderr)]
 fn key_content_fills_the_visible_rect() {
     use crate::domain::profile::BUILTIN_NAMES;
     use crate::infrastructure::images::ICON_NAMES;
