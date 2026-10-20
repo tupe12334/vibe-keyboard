@@ -3,6 +3,7 @@ use super::ctx::Ctx;
 use super::reload::log_problems;
 use crate::application::render_screen;
 use crate::domain::profile::Profile;
+use crate::infrastructure::mouse_release::clear_stuck_left_button;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::profile_store;
 use crate::infrastructure::usb::{device_init, wait_for_device, Device};
@@ -53,6 +54,7 @@ pub fn open_device(shutdown: &AtomicBool) -> Option<(Device, DeviceState)> {
             wait_for_device(shutdown, brightness)?
         }
     };
+    clear_stuck_left_button();
     Some((dev, state))
 }
 
@@ -69,6 +71,7 @@ pub fn reconnect(handle: Device, c: &Ctx) -> Option<Device> {
     // Re-render the current screen from the same page images the editor previews.
     render_screen(&c.nav, &new_handle, &c.app_state, &c.dev_state);
     info!("device reconnected");
+    clear_stuck_left_button();
     Some(new_handle)
 }
 
