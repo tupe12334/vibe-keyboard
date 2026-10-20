@@ -9,8 +9,7 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, inner_rect, parse_color, Action, ActionKind, Prompt, SideConfig, Widget,
-    BUILTIN_NAMES,
+    format_color, inner_rect, parse_color, Action, ActionKind, Prompt, SideConfig,
 };
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, icon_image, key_image, safe_rect, side_image, ICON_NAMES, SIDE_HEIGHT,
@@ -926,68 +925,12 @@ impl Editor {
     }
 }
 
-/// List of side widgets: reorder, remove, edit text, and add one of each kind.
-/// Widgets replace the side label and image when the list is not empty.
-fn widget_editor(ui: &mut egui::Ui, widgets: &mut Vec<Widget>) {
-    ui.separator();
-    ui.strong("Widgets");
-    let last = widgets.len().saturating_sub(1);
-    let (mut remove, mut swap) = (None, None);
-    for (i, widget) in widgets.iter_mut().enumerate() {
-        ui.horizontal(|ui| {
-            ui.label(widget_name(widget));
-            if let Widget::Text { value } = widget {
-                ui.text_edit_singleline(value);
-            }
-            if ui.add_enabled(i > 0, egui::Button::new("Up")).clicked() {
-                swap = Some((i, i - 1));
-            }
-            if ui
-                .add_enabled(i < last, egui::Button::new("Down"))
-                .clicked()
-            {
-                swap = Some((i, i + 1));
-            }
-            if ui.button("Remove").clicked() {
-                remove = Some(i);
-            }
-        });
-    }
-    if let Some(i) = remove {
-        widgets.remove(i);
-    }
-    if let Some((a, b)) = swap {
-        widgets.swap(a, b);
-    }
-    ui.horizontal_wrapped(|ui| {
-        for (label, widget) in [
-            ("+ CPU %", Widget::CpuPercent),
-            ("+ CPU bar", Widget::CpuBar),
-            ("+ Temp", Widget::Temperature),
-            ("+ Disk", Widget::DiskFree),
-            (
-                "+ Text",
-                Widget::Text {
-                    value: String::new(),
-                },
-            ),
-        ] {
-            if ui.button(label).clicked() {
-                widgets.push(widget);
-            }
-        }
-    });
-}
-
-const fn widget_name(widget: &Widget) -> &'static str {
-    match widget {
-        Widget::CpuPercent => "CPU %",
-        Widget::CpuBar => "CPU bar",
-        Widget::Temperature => "Temperature",
-        Widget::DiskFree => "Disk free",
-        Widget::Text { .. } => "Text",
-    }
-}
+#[path = "editor/action_form.rs"]
+mod action_form;
+#[path = "editor/widgets.rs"]
+mod widgets;
+use action_form::action_fields;
+use widgets::widget_editor;
 
 /// Size of the side strip for `avail_height`: at most the device render height, 100:480 ratio.
 fn side_strip_size(avail_height: f32) -> Vec2 {
@@ -1030,62 +973,6 @@ fn parse_lsappinfo(text: &str) -> Vec<(String, String)> {
         }
     }
     apps
-}
-
-/// Inputs for the fields of one action type.
-fn action_fields(ui: &mut egui::Ui, action: &mut Action, page_count: usize) {
-    match action {
-        Action::None => {}
-        Action::OpenUrl { url } => {
-            ui.horizontal(|ui| {
-                ui.label("URL");
-                ui.text_edit_singleline(url);
-            });
-        }
-        Action::RunCommand { command } => {
-            ui.horizontal(|ui| {
-                ui.label("Command");
-                ui.text_edit_singleline(command);
-            });
-        }
-        Action::OpenApp { name } => {
-            ui.horizontal(|ui| {
-                ui.label("App name");
-                ui.text_edit_singleline(name);
-            });
-        }
-        Action::Hotkey { keys } => {
-            ui.horizontal(|ui| {
-                ui.label("Keys");
-                ui.text_edit_singleline(keys);
-            });
-            ui.weak("e.g. cmd+shift+4");
-        }
-        Action::GoToPage { page } => {
-            ui.horizontal(|ui| {
-                ui.label("Page (0-based)");
-                ui.add(egui::DragValue::new(page).range(0..=page_count.saturating_sub(1)));
-            });
-        }
-        Action::Builtin { name } => {
-            egui::ComboBox::from_label("Built-in")
-                .selected_text(name.as_str())
-                .show_ui(ui, |ui| {
-                    for option in BUILTIN_NAMES {
-                        ui.selectable_value(name, option.to_string(), option);
-                    }
-                });
-        }
-        Action::PushToTalk { key } => {
-            let mut text = key.clone().unwrap_or_default();
-            ui.horizontal(|ui| {
-                ui.label("Key");
-                ui.text_edit_singleline(&mut text);
-            });
-            ui.weak("Empty means Space, the Claude Code dictation key.");
-            *key = (!text.trim().is_empty()).then_some(text);
-        }
-    }
 }
 
 impl eframe::App for Editor {
