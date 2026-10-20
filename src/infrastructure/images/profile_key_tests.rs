@@ -8,17 +8,15 @@ use crate::domain::profile::Profile;
 
 use std::path::PathBuf;
 
-#[path = "profile_key_tests/part1.rs"]
-mod part1;
-
-#[path = "profile_key_tests/part2.rs"]
-mod part2;
-
-#[path = "profile_key_tests/part3.rs"]
-mod part3;
-
 #[path = "profile_key_tests/content_box.rs"]
 mod content_box;
 
 #[path = "profile_key_tests/fill_visible_rect.rs"]
 mod fill_visible_rect;
+
+#[path = "profile_key_tests/calibration_tiles.rs"]
+mod calibration_tiles;
+#[path = "profile_key_tests/key_bitmaps.rs"]
+mod key_bitmaps;
+#[path = "profile_key_tests/key_inset.rs"]
+mod key_inset;

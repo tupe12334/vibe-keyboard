@@ -1,27 +1,6 @@
 use super::*;
 
 #[test]
-fn page_for_app_picks_first_match() {
-    let mut profile = Profile::default_from_legacy();
-    profile.pages[1].apps = vec!["com.google.Chrome".into()];
-    profile.pages[0].apps = vec!["com.google.Chrome".into()];
-    assert_eq!(profile.page_for_app("com.google.Chrome"), Some(0));
-    assert_eq!(profile.page_for_app("com.apple.Notes"), None);
-}
-
-#[test]
-fn apps_field_is_omitted_when_empty() {
-    let text = toml::to_string_pretty(&Profile::default_from_legacy()).unwrap_or_default();
-    assert!(!text.contains("apps"));
-    let mut profile = Profile::default_from_legacy();
-    profile.pages[0].apps = vec!["com.google.Chrome".into()];
-    let with = toml::to_string_pretty(&profile).unwrap_or_default();
-    assert!(with.contains("apps = [\"com.google.Chrome\"]"));
-    let back: Profile = toml::from_str(&with).unwrap_or_default();
-    assert_eq!(back, profile);
-}
-
-#[test]
 fn side_round_trip_and_absent_side_is_byte_stable() {
     let plain = Profile::default_from_legacy();
     let plain_text = toml::to_string_pretty(&plain).unwrap_or_default();
@@ -78,9 +57,13 @@ fn widgets_round_trip_and_empty_list_is_omitted() {
 }
 
 #[test]
-fn bundle_id_detection() {
-    assert!(is_bundle_id("com.apple.Terminal"));
-    assert!(!is_bundle_id("Terminal"));
-    assert!(!is_bundle_id("My App.app"));
-    assert!(!is_bundle_id("Chrome.app"));
+fn apps_field_is_omitted_when_empty() {
+    let text = toml::to_string_pretty(&Profile::default_from_legacy()).unwrap_or_default();
+    assert!(!text.contains("apps"));
+    let mut profile = Profile::default_from_legacy();
+    profile.pages[0].apps = vec!["com.google.Chrome".into()];
+    let with = toml::to_string_pretty(&profile).unwrap_or_default();
+    assert!(with.contains("apps = [\"com.google.Chrome\"]"));
+    let back: Profile = toml::from_str(&with).unwrap_or_default();
+    assert_eq!(back, profile);
 }
