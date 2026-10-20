@@ -34,11 +34,11 @@ fn black_on_white(widgets: Vec<Widget>) -> SideConfig {
     }
 }
 
-#[path = "side_tests/part1.rs"]
-mod part1;
+#[path = "side_tests/canvas.rs"]
+mod canvas;
 
-#[path = "side_tests/part2.rs"]
-mod part2;
+#[path = "side_tests/widget_stack.rs"]
+mod widget_stack;
 
-#[path = "side_tests/part3.rs"]
-mod part3;
+#[path = "side_tests/bar_and_values.rs"]
+mod bar_and_values;
