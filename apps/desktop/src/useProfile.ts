@@ -40,19 +40,20 @@ export function useProfile() {
     }
   }, [load]);
 
-  // `force` overwrites the file on disk. Only the Overwrite choice passes it.
-  const save = async (force = false) => {
-    if (!draft) return;
+  /** `force` overwrites the file on disk. Only the Overwrite choice passes it. Resolves true when saved. */
+  const save = async (force = false): Promise<boolean> => {
+    if (!draft) return false;
     const result = await commands.saveProfile(draft, force);
     if (result.status === "error") {
       if (result.error.kind === "conflict") setConflict(true);
       else setError(result.error.message);
-      return;
+      return false;
     }
     setSaved(draft);
     setError(null);
     setNotice(null);
     setConflict(false);
+    return true;
   };
 
   // Edits the page on screen. Every other field of the draft stays as it was.

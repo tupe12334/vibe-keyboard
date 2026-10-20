@@ -26,6 +26,10 @@ pub struct KeyPressed {
 #[derive(Clone, Serialize, Type, tauri_specta::Event)]
 pub struct ProfileReloaded {}
 
+/// The app wants to quit. The editor answers with `confirm_quit` once unsaved edits are settled.
+#[derive(Clone, Serialize, Type, tauri_specta::Event)]
+pub struct QuitRequested {}
+
 /// Keep the device flag current and forward every controller event to the webview.
 pub fn on_event(app: &AppHandle, event: ControllerEvent) {
     let state = app.state::<App>();

@@ -4,6 +4,7 @@ import { Inspector } from "./Inspector";
 import type { InspectorTab } from "./InspectorTabs";
 import { KeyGrid } from "./KeyGrid";
 import { PageList } from "./PageList";
+import { QuitPrompt } from "./QuitPrompt";
 import { Toolbar } from "./Toolbar";
 import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
@@ -79,6 +80,7 @@ export function App() {
         )}
         <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={pickKey} />
       </main>
+      <QuitPrompt dirty={dirty} save={save} />
       <Inspector
         draft={draft}
         page={page}

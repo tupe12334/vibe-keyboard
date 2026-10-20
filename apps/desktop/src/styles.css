@@ -166,3 +166,9 @@ label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
 
 .side-preview { width: 100px; height: 480px; max-height: 240px; object-fit: contain; align-self: center; image-rendering: pixelated; }
 .bar-style { display: flex; flex-direction: column; gap: 6px; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); display: flex; align-items: center; justify-content: center; z-index: 10; }
+.modal { background: var(--panel, #fff); color: inherit; border-radius: 8px; padding: 16px 18px; max-width: 360px; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3); }
+.modal h2 { font-size: 15px; margin: 0 0 8px; }
+.modal p { margin: 0 0 14px; font-size: 13px; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
