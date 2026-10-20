@@ -24,10 +24,10 @@ pub(super) fn beat(generation: u64) {
 }
 
 /// Probe focus and Accessibility every `PROBE_EVERY` until the hold ends.
-pub(super) fn watch_focus(generation: u64) {
+pub(super) fn watch_focus(generation: u64, tty: &Option<String>) {
     loop {
         thread::sleep(PROBE_EVERY);
-        let probe = read_probe();
+        let probe = read_probe(tty.as_deref());
         if !lock().observe(generation, probe) {
             break;
         }

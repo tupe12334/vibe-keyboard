@@ -22,12 +22,14 @@ fn start_is_refused_without_focus_or_trust() {
     let no_front = Probe {
         front: None,
         trusted: true,
+        session_moved: false,
     };
     assert!(!guard.start(no_focus, 1, SPACE, 0, no_front, now));
     let untrusted = guard.begin(1);
     let no_trust = Probe {
         front: Some(APP),
         trusted: false,
+        session_moved: false,
     };
     assert!(!guard.start(untrusted, 1, SPACE, 0, no_trust, now));
     assert!(log.borrow().is_empty());

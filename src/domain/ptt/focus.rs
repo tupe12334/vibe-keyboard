@@ -14,8 +14,8 @@ pub(super) struct MoveCheck {
 
 impl MoveCheck {
     /// Record one probe. True when the hold's app missed focus for `MOVE_AFTER` probes in a row.
-    pub(super) fn observe(&mut self, front: Option<i32>, pid: i32) -> bool {
-        if front == Some(pid) {
+    pub(super) fn observe(&mut self, front: Option<i32>, pid: i32, session_moved: bool) -> bool {
+        if front == Some(pid) && !session_moved {
             self.misses = 0;
         } else {
             self.misses = self.misses.saturating_add(1);
@@ -34,7 +34,9 @@ impl<P: KeyPoster> PttGuard<P> {
         if hold.generation != generation {
             return false;
         }
-        let moved = hold.moves.observe(probe.front, hold.pid);
+        let moved = hold
+            .moves
+            .observe(probe.front, hold.pid, probe.session_moved);
         if !probe.trusted {
             self.release(Release::Untrusted);
             return false;

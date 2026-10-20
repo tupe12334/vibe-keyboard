@@ -10,6 +10,7 @@ use super::beat::{beat, watch_focus};
 use super::post::{trusted, CgPoster};
 use crate::domain::hotkey::{key_code, modifier_flags, Hotkey};
 use crate::domain::ptt::{Probe, PttGuard, Release};
+use crate::infrastructure::claude_sessions::iterm_moved_from;
 use crate::infrastructure::frontmost::frontmost_pid;
 
 /// The one push-to-talk hold of this process. A `static` never drops, so every exit path
@@ -29,19 +30,21 @@ pub fn hold_end(key: u8) {
 /// Key down for the hold reserved by `hold_begin`, then repeats until `hold_end` or a release.
 /// Does nothing if the generation is stale, another hold is active, no app has focus, or
 /// Accessibility is off. The repeats and the focus checks run on their own threads.
-pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey) {
+/// `tty` is the selected session, when the hold dictates into one. Its probe checks iTerm2's tab.
+pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey, tty: Option<&str>) {
     let Some(code) = key_code(&hotkey.key) else {
         error!("push to talk: no key code for this key");
         return;
     };
     let flags = modifier_flags(&hotkey.modifiers);
     // Read the OS before taking the lock.
-    let probe = read_probe();
+    let probe = read_probe(tty);
     if !lock().start(generation, key, code, flags, probe, Instant::now()) {
         return;
     }
     thread::spawn(move || beat(generation));
-    thread::spawn(move || watch_focus(generation));
+    let tty = tty.map(str::to_string);
+    thread::spawn(move || watch_focus(generation, &tty));
 }
 
 /// The app is alive. Called from the device loop, so a stalled loop stops the repeats.
@@ -60,9 +63,10 @@ pub(super) fn lock() -> MutexGuard<'static, PttGuard<CgPoster>> {
 }
 
 /// What the guard needs from the OS. Read outside the lock.
-pub(super) fn read_probe() -> Probe {
+pub(super) fn read_probe(tty: Option<&str>) -> Probe {
     Probe {
         front: frontmost_pid(),
         trusted: trusted(),
+        session_moved: tty.is_some_and(iterm_moved_from),
     }
 }

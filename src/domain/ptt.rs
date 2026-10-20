@@ -33,6 +33,8 @@ pub struct Probe {
     pub front: Option<i32>,
     /// Whether this process may post key events.
     pub trusted: bool,
+    /// The selected session's tty is no longer iTerm2's front session.
+    pub session_moved: bool,
 }
 
 /// Posts a key event to one process.

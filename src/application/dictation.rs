@@ -32,7 +32,7 @@ pub(super) fn start_hold(
             Ok(hotkey) => {
                 info!("profile: push-to-talk hold start");
                 let generation = keyboard::hold_begin(key);
-                keyboard::push_to_talk_start(generation, key, &hotkey);
+                keyboard::push_to_talk_start(generation, key, &hotkey, None);
             }
             Err(e) => tracing::error!("profile: bad push-to-talk key: {e}"),
         }
@@ -67,7 +67,14 @@ pub(super) fn start_session_dictation(tty: String, key: u8) {
     thread::spawn(move || {
         dictate_once_focused(
             || focus_session(&tty),
-            || keyboard::push_to_talk_start(generation, key, &default_push_to_talk()),
+            || {
+                keyboard::push_to_talk_start(
+                    generation,
+                    key,
+                    &default_push_to_talk(),
+                    Some(tty.as_str()),
+                );
+            },
         );
     });
 }

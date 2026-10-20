@@ -25,6 +25,7 @@ pub(super) fn ok(front: i32) -> Probe {
     Probe {
         front: Some(front),
         trusted: true,
+        session_moved: false,
     }
 }
 

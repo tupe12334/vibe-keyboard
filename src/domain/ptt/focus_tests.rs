@@ -32,6 +32,7 @@ fn a_probe_with_no_frontmost_app_counts_as_a_miss() {
     let none = Probe {
         front: None,
         trusted: true,
+        session_moved: false,
     };
     assert!(guard.observe(generation, none));
     assert!(!guard.observe(generation, none));
@@ -45,6 +46,7 @@ fn lost_accessibility_lifts_the_key_at_once() {
     let untrusted = Probe {
         front: Some(APP),
         trusted: false,
+        session_moved: false,
     };
     assert!(!guard.observe(generation, untrusted));
     assert_eq!(up_count(&log), 1);
@@ -63,8 +65,25 @@ fn a_stale_or_ended_hold_ignores_probes() {
 #[test]
 fn move_check_resets_after_a_hit() {
     let mut check = MoveCheck::default();
-    assert!(!check.observe(Some(OTHER), APP));
-    assert!(!check.observe(Some(APP), APP));
-    assert!(!check.observe(Some(OTHER), APP));
-    assert!(check.observe(Some(OTHER), APP));
+    assert!(!check.observe(Some(OTHER), APP, false));
+    assert!(!check.observe(Some(APP), APP, false));
+    assert!(!check.observe(Some(OTHER), APP, false));
+    assert!(check.observe(Some(OTHER), APP, false));
+}
+
+fn away(front: i32) -> Probe {
+    Probe {
+        front: Some(front),
+        trusted: true,
+        session_moved: true,
+    }
+}
+
+#[test]
+fn selected_session_leaving_the_front_moves_the_hold_after_two_probes() {
+    let (mut guard, log) = setup();
+    let generation = start_hold(&mut guard, 1, Instant::now());
+    assert!(guard.observe(generation, away(APP)));
+    assert!(!guard.observe(generation, away(APP)));
+    assert_eq!(up_count(&log), 1);
 }
