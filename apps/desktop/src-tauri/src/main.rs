@@ -30,6 +30,7 @@ mod key_commands;
 mod layout_commands;
 mod lifecycle;
 mod login_item;
+mod photo_commands;
 mod profile_io;
 #[cfg(test)]
 mod profile_roundtrip_tests;

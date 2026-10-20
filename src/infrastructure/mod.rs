@@ -3,6 +3,7 @@ pub mod claude_sessions;
 pub mod controller_lock;
 pub mod focused_session;
 pub mod frontmost;
+pub mod google_photos;
 pub mod images;
 pub mod keyboard;
 pub mod login_path;

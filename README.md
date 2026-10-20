@@ -16,6 +16,7 @@ A custom management system for the Stream Dock 293S. Control button images, brig
 - [x] User-defined pages, key labels/colors/images, and key actions in one TOML file
 - [x] `editor` GUI to build those pages without editing TOML
 - [x] Hot reload: saved changes reach the device within about a second
+- [x] Key image from a Google Photos share link: paste the link in the editor (Image → Path or icon), no sign-in
 
 ## Architecture
 
