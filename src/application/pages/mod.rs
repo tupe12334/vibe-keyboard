@@ -40,6 +40,7 @@ pub fn render_screen(
         s.nav_can_forward = nav.can_forward();
         // clear_all below blanks the side screen too, so the sent frame is no longer shown.
         s.side_frame = None;
+        s.side_texts = None;
     }
     clear_all(handle);
     let screen = nav.current();
