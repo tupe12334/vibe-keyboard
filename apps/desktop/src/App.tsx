@@ -24,7 +24,7 @@ export function App() {
     void commands.editorRules().then(setRules);
   }, [load]);
 
-  if (!draft) {
+  if (!draft || !rules) {
     return <div className="main">{error ? <div className="error">{error}</div> : "Loading…"}</div>;
   }
 
@@ -82,7 +82,8 @@ export function App() {
             config={current.keys[selected]}
             builtins={builtins}
             pageCount={draft.pages.length}
-            holdMs={draft.input?.hold_ms ?? rules?.default_hold_ms ?? 0}
+            holdMs={draft.input?.hold_ms ?? rules.default_hold_ms}
+            rules={rules}
             onHoldMsChange={setHoldMs}
             onChange={(config) => setKey(selected, config)}
             onClear={() => setKey(selected, undefined)}

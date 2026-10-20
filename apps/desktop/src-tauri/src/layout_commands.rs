@@ -14,6 +14,9 @@ pub struct EditorRules {
     pub min_pages: u32,
     /// The hold time a layout without `[input]` uses, in milliseconds.
     pub default_hold_ms: u32,
+    /// Shortest and longest hold time the editor accepts, in milliseconds.
+    pub hold_ms_min: u32,
+    pub hold_ms_max: u32,
 }
 
 #[tauri::command]
@@ -23,6 +26,8 @@ pub fn editor_rules() -> EditorRules {
         nav_keys: profile_rules::nav_keys(),
         min_pages: profile_rules::MIN_PAGES as u32,
         default_hold_ms: InputConfig::default().hold_ms as u32,
+        hold_ms_min: profile_rules::HOLD_MS_MIN as u32,
+        hold_ms_max: profile_rules::HOLD_MS_MAX as u32,
     }
 }
 

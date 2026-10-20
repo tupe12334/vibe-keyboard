@@ -1,4 +1,4 @@
-import type { Action, KeyConfig_Serialize as KeyConfig } from "./bindings";
+import type { Action, EditorRules, KeyConfig_Serialize as KeyConfig } from "./bindings";
 import { ACTION_LABELS, blankAction } from "./actions";
 import { ActionFields } from "./ActionFields";
 import { ActionProblem } from "./ActionProblem";
@@ -21,12 +21,13 @@ interface Props {
   builtins: string[];
   pageCount: number;
   holdMs: number;
+  rules: EditorRules;
   onHoldMsChange: (ms: number) => void;
   onChange: (config: KeyConfig) => void;
   onClear: () => void;
 }
 
-export function KeyPanel({ config, keyNumber, builtins, pageCount, holdMs, onHoldMsChange, onChange, onClear }: Props) {
+export function KeyPanel({ config, keyNumber, builtins, pageCount, holdMs, rules, onHoldMsChange, onChange, onClear }: Props) {
   const value = config ?? BLANK_KEY;
   const set = (patch: Partial<KeyConfig>) => onChange({ ...value, ...patch });
   const setAction = (action: Action) => set({ action });
@@ -67,6 +68,7 @@ export function KeyPanel({ config, keyNumber, builtins, pageCount, holdMs, onHol
       <HoldFields
         hold={value.hold ?? null}
         holdMs={holdMs}
+        rules={rules}
         builtins={builtins}
         pageCount={pageCount}
         onChange={(hold) => set({ hold })}

@@ -1,16 +1,15 @@
-import type { Action } from "./bindings";
+import type { Action, EditorRules } from "./bindings";
 import { ACTION_LABELS, blankAction } from "./actions";
 import { ActionFields } from "./ActionFields";
 import { ActionProblem } from "./ActionProblem";
 import { Field } from "./Field";
 
-export const HOLD_MS_MIN = 50;
-export const HOLD_MS_MAX = 5000;
-
 interface Props {
   /** Null when the key has no hold action. */
   hold: Action | null;
   holdMs: number;
+  /** The bounds of the hold time, from the Rust rules. */
+  rules: EditorRules;
   builtins: string[];
   pageCount: number;
   onChange: (hold: Action | null) => void;
@@ -18,7 +17,7 @@ interface Props {
 }
 
 /** The hold action of a key, and how long the key must stay down before it runs. */
-export function HoldFields({ hold, holdMs, builtins, pageCount, onChange, onHoldMsChange }: Props) {
+export function HoldFields({ hold, holdMs, rules, builtins, pageCount, onChange, onHoldMsChange }: Props) {
   const pick = (type: Action["type"]) => onChange(type === "none" ? null : blankAction(type, builtins[0] ?? ""));
   return (
     <section className="panel">
@@ -35,8 +34,8 @@ export function HoldFields({ hold, holdMs, builtins, pageCount, onChange, onHold
         <Field label={`Hold time: ${holdMs} ms`}>
           <input
             type="range"
-            min={HOLD_MS_MIN}
-            max={HOLD_MS_MAX}
+            min={rules.hold_ms_min}
+            max={rules.hold_ms_max}
             step={10}
             value={holdMs}
             onChange={(e) => onHoldMsChange(Number(e.target.value))}

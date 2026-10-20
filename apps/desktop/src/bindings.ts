@@ -119,6 +119,9 @@ export type EditorRules = {
 	min_pages: number,
 	/**  The hold time a layout without `[input]` uses, in milliseconds. */
 	default_hold_ms: number,
+	/**  Shortest and longest hold time the editor accepts, in milliseconds. */
+	hold_ms_min: number,
+	hold_ms_max: number,
 };
 
 /**  The `[input]` table of `profile.toml`. */
