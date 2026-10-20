@@ -3,18 +3,22 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+mod builtins;
 mod color;
 mod display;
 mod input_config;
 mod layout;
 mod legacy;
 mod page;
+mod prompt;
+pub use builtins::BUILTIN_NAMES;
 #[cfg(test)]
 use color::DEFAULT_BG;
 pub use color::{format_color, parse_color};
 pub use display::{inner_rect, is_default, DisplaySettings, KeyInset, PixelRect, SideInset};
 pub use input_config::InputConfig;
 pub use page::Page;
+pub use prompt::{Prompt, PROMPT_LABEL_MAX_CHARS, PROMPT_MAX_CHARS};
 mod key;
 pub use key::{Action, ActionKind, KeyConfig};
 mod side_config;
@@ -23,19 +27,6 @@ pub use side_config::{SideConfig, Widget};
 
 /// Largest physical key number. Keys 1–15 are usable; 11–13 are navigation.
 pub const KEY_COUNT: u8 = 15;
-
-/// Names accepted by `Action::Builtin`. Each one maps to hard-coded code in the app.
-pub const BUILTIN_NAMES: [&str; 9] = [
-    "centy_projects",
-    "terminal",
-    "claude",
-    "centy_web",
-    "numpad",
-    "log_file",
-    "vscode_config",
-    "claude_sessions",
-    "moadim",
-];
 
 /// The whole user layout: an ordered list of main pages, and the prompts a session action sends.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -55,19 +46,6 @@ pub struct Profile {
 }
 
 /// A prompt a session action types into a Claude Code session, followed by Enter.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct Prompt {
-    pub label: String,
-    pub text: String,
-}
-
-/// Longest prompt text the profile accepts.
-pub const PROMPT_MAX_CHARS: usize = 2000;
-
-/// Longest prompt label the profile accepts. Labels print on a key image.
-pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
-
 /// True for macOS bundle ids such as `com.apple.Terminal`: dotted, no spaces.
 /// Names ending in `.app` are app names (`Google Chrome.app`), not bundle ids.
 pub fn is_bundle_id(text: &str) -> bool {
