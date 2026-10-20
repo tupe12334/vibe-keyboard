@@ -28,6 +28,7 @@ const DEFAULT_FG: &str = "#E6E6E6";
 
 /// The whole user layout: an ordered list of main pages, and the prompts a session action sends.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Profile {
     #[serde(default)]
     pub pages: Vec<Page>,
@@ -44,6 +45,7 @@ pub struct Profile {
 
 /// A prompt a session action types into a Claude Code session, followed by Enter.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Prompt {
     pub label: String,
     pub text: String,
@@ -57,6 +59,7 @@ pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
 
 /// Bands the bezel hides. Content goes inside them; the background fills them.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct DisplaySettings {
     /// Per-key margins, in px of the 85x85 key canvas.
@@ -69,6 +72,7 @@ pub struct DisplaySettings {
 
 /// Key margins. The default hides the top 8 px of each key.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct KeyInset {
     pub top: u32,
@@ -90,6 +94,7 @@ impl Default for KeyInset {
 
 /// Side screen margins. The defaults keep the old safe area, y 30..440.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct SideInset {
     pub top: u32,
@@ -112,6 +117,7 @@ pub fn is_default<T: Default + PartialEq>(value: &T) -> bool {
 
 /// A pixel rectangle inside a canvas.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct PixelRect {
     pub x: u32,
     pub y: u32,
@@ -170,9 +176,14 @@ impl InputConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Page {
     pub name: String,
     #[serde(default, with = "key_map")]
+    #[cfg_attr(
+        feature = "specta",
+        specta(type = std::collections::BTreeMap<String, KeyConfig>)
+    )]
     pub keys: BTreeMap<u8, KeyConfig>,
     /// Bundle ids (for example `com.google.Chrome`). The page shows when one is in front.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -184,6 +195,7 @@ pub struct Page {
 
 /// The side screen: a 480x100 strip. Same image sources as keys, else the label.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct SideConfig {
     #[serde(default)]
     pub label: String,
@@ -202,6 +214,7 @@ pub struct SideConfig {
 /// One value on the side screen. TOML: `type = "cpu_percent"`, `type = "text"`, etc.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub enum Widget {
     /// Global CPU use as a number.
     CpuPercent,
@@ -264,6 +277,7 @@ mod key_map {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct KeyConfig {
     #[serde(default)]
     pub label: String,
@@ -283,6 +297,7 @@ pub struct KeyConfig {
 
 /// What a key does when pressed. TOML: `type = "open_url"`, etc.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Action {
     #[default]
@@ -304,6 +319,7 @@ pub enum Action {
     },
     /// Jump to a main page by its 0-based index.
     GoToPage {
+        #[cfg_attr(feature = "specta", specta(type = u32))]
         page: usize,
     },
     /// A built-in action from `BUILTIN_NAMES`.

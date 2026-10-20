@@ -21,6 +21,21 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      # The Tauri crate embeds apps/desktop/dist at compile time, so build the frontend first.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Build desktop frontend
+        working-directory: apps/desktop
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
       - name: Install linecheck
         run: cargo install linecheck --locked
 
@@ -31,10 +46,10 @@ jobs:
         run: cargo fmt --check
 
       - name: Build
-        run: cargo build --all-targets --locked
+        run: cargo build --workspace --all-targets --locked
 
       - name: Test
-        run: cargo test --locked
+        run: cargo test --workspace --locked
 
       - name: Clippy
-        run: cargo clippy --all-targets --locked
+        run: cargo clippy --workspace --all-targets --locked
