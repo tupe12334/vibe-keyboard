@@ -79,3 +79,11 @@ impl DeviceState {
     reason = "test module: setup failures should panic"
 )]
 mod tests;
+
+#[cfg(test)]
+#[path = "persistence_load_tests.rs"]
+#[allow(
+    clippy::expect_used,
+    reason = "test module: setup failures should panic"
+)]
+mod load_tests;
