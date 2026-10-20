@@ -13,8 +13,6 @@ rules:
     error: 639
   - pattern: "src/infrastructure/profile_store.rs"
     error: 469
-  - pattern: "src/infrastructure/images/side.rs"
-    error: 362
   - pattern: "src/main.rs"
     error: 284
   - pattern: "src/infrastructure/images/profile_key.rs"
