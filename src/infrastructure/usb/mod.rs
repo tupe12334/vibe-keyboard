@@ -1,3 +1,4 @@
+pub mod calibrate;
 mod commands;
 mod image;
 mod reconnect;

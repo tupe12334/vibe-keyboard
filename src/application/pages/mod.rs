@@ -3,6 +3,7 @@ mod claude_sessions;
 mod input_number;
 mod issue_actions;
 mod issue_list;
+pub mod key_tiles;
 mod main_page;
 mod new_session;
 mod project_actions;
@@ -11,16 +12,16 @@ mod session_actions;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
+pub use key_tiles::show_focus_only;
 pub use main_page::refresh_side_widgets;
 use main_page::render_side;
-pub use session_actions::show_focus_only;
 
 use crate::infrastructure::usb::Device;
 use std::sync::{Arc, Mutex};
 
 use crate::domain::navigation::{back_key_on, BackKey, NavigationStack, Screen};
 use crate::infrastructure::persistence::DeviceState;
-use crate::infrastructure::usb::{clear_all, send_button_image};
+use crate::infrastructure::usb::clear_all;
 use crate::presentation::tui;
 
 /// Render the given screen to both the TUI state and the hardware device.
@@ -92,19 +93,7 @@ pub fn render_screen(
     }
     // Every sub-screen shows OUT on key 11. Drawn last, so a page cannot cover it.
     if back_key_on(screen) == BackKey::Out {
-        let inset = state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .profile
-            .display
-            .key_inset;
-        send_button_image(
-            handle,
-            11,
-            image::DynamicImage::ImageRgb8(crate::infrastructure::images::label_image(
-                "OUT", &inset,
-            )),
-        );
+        key_tiles::show_out(handle, state);
     }
     render_side(handle, state, nav);
 }

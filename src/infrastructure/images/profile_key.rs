@@ -27,8 +27,6 @@ const FALLBACK_BG: [u8; 3] = [20, 20, 20];
 const FALLBACK_FG: [u8; 3] = [230, 230, 230];
 const BLANK: [u8; 3] = [0, 0, 0];
 const NAV_BG: [u8; 3] = [40, 40, 40];
-/// Calibration only: outline of the visible rect.
-const CALIBRATION_LINE: [u8; 3] = [255, 0, 0];
 
 /// The bitmap the deck shows for `key`, `DECK_IMAGE_SIZE` square. The controller sends this
 /// image, and the editor previews this same image. Rotation is not applied here: it is a
@@ -48,7 +46,7 @@ pub fn key_image(key: u8, config: Option<&KeyConfig>, root: &Path, inset: &KeyIn
 
 /// The one place key insets apply. `picture` is the full key render. It shrinks to a square
 /// that fits the visible rect and sits centered in it. The hidden band keeps the key color `bg`.
-fn inset_key(picture: &RgbImage, inset: &KeyInset, bg: [u8; 3]) -> RgbImage {
+pub(super) fn inset_key(picture: &RgbImage, inset: &KeyInset, bg: [u8; 3]) -> RgbImage {
     let size = DECK_IMAGE_SIZE;
     let mut canvas = ImageBuffer::from_pixel(size, size, Rgb(bg));
     let rect = inner_rect(size, size, inset.top, inset.bottom, inset.left, inset.right);
@@ -61,41 +59,6 @@ fn inset_key(picture: &RgbImage, inset: &KeyInset, bg: [u8; 3]) -> RgbImage {
     let y = rect.y + (rect.h - side) / 2;
     imageops::replace(&mut canvas, &fitted, i64::from(x), i64::from(y));
     canvas
-}
-
-/// Calibration tile: the logical key number in big white digits on black, inside the visible
-/// rect. A red outline marks that rect, so the user can tune the inset.
-pub fn calibration_image(key: u8, inset: &KeyInset) -> RgbImage {
-    let picture = label_tile(&key.to_string(), [0, 0, 0], [255, 255, 255]);
-    let mut img = inset_key(&picture, inset, [0, 0, 0]);
-    outline_visible(&mut img, inset);
-    img
-}
-
-/// Draws a 1 px outline around the visible rect of `inset` on a deck-size image.
-fn outline_visible(img: &mut RgbImage, inset: &KeyInset) {
-    let rect = inner_rect(
-        DECK_IMAGE_SIZE,
-        DECK_IMAGE_SIZE,
-        inset.top,
-        inset.bottom,
-        inset.left,
-        inset.right,
-    );
-    if rect.w == 0 || rect.h == 0 {
-        return;
-    }
-    let (x0, y0) = (rect.x, rect.y);
-    let (x1, y1) = (rect.x + rect.w - 1, rect.y + rect.h - 1);
-    let color = Rgb(CALIBRATION_LINE);
-    for x in x0..=x1 {
-        img.put_pixel(x, y0, color);
-        img.put_pixel(x, y1, color);
-    }
-    for y in y0..=y1 {
-        img.put_pixel(x0, y, color);
-        img.put_pixel(x1, y, color);
-    }
 }
 
 /// Every key 1–15 of one page, in key order. This is exactly what the controller sends.
@@ -191,7 +154,7 @@ fn app_icon_cached(bundle_id: &str, size: u32) -> Option<RgbImage> {
     None
 }
 
-fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {
+pub(super) fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {
     let mut img = ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE, Rgb(bg));
     draw_label(&mut img, label, Rgb(fg));
     img
@@ -262,185 +225,5 @@ fn builtin_icon(name: &str) -> Option<RgbImage> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::actions::SessionStatus;
-    use crate::domain::profile::Profile;
-    use std::path::PathBuf;
-
-    #[test]
-    fn every_key_gives_a_square_bitmap() {
-        let profile = Profile::default_from_legacy();
-        let root = PathBuf::from("/nonexistent");
-        for key in 1..=15u8 {
-            let config = profile.key_at(0, key);
-            let img = key_image(key, config, &root, &KeyInset::default());
-            assert_eq!(
-                img.dimensions(),
-                (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE),
-                "key {key}"
-            );
-        }
-    }
-
-    #[test]
-    fn page_images_lists_every_key_once_in_order() {
-        let profile = Profile::default_from_legacy();
-        let root = PathBuf::from("/nonexistent");
-        let keys = &profile.pages[0].keys;
-        let inset = KeyInset::default();
-        let images = page_images(keys, &root, &inset);
-        let numbers: Vec<u8> = images.iter().map(|(key, _)| *key).collect();
-        assert_eq!(numbers, (1..=15).collect::<Vec<u8>>());
-        for (key, img) in images {
-            assert_eq!(
-                img,
-                key_image(key, keys.get(&key), &root, &inset),
-                "key {key}"
-            );
-        }
-    }
-
-    #[test]
-    fn nav_keys_do_not_depend_on_the_profile() {
-        let root = PathBuf::from("/nonexistent");
-        let inset = KeyInset::default();
-        let config = KeyConfig {
-            label: "x".into(),
-            ..KeyConfig::default()
-        };
-        assert_eq!(
-            key_image(11, Some(&config), &root, &inset),
-            key_image(11, None, &root, &inset)
-        );
-        assert_ne!(
-            key_image(12, None, &root, &inset),
-            key_image(13, None, &root, &inset)
-        );
-    }
-
-    #[test]
-    fn key_content_stays_below_the_top_inset() {
-        let root = PathBuf::from("/nonexistent");
-        let config = KeyConfig {
-            label: "HI".into(),
-            bg: "#000000".into(),
-            fg: "#FFFFFF".into(),
-            ..KeyConfig::default()
-        };
-        let inset = KeyInset {
-            top: 20,
-            bottom: 0,
-            left: 0,
-            right: 0,
-        };
-        let img = key_image(5, Some(&config), &root, &inset);
-        // The hidden band keeps the key color. No text pixel may land in it.
-        for y in 0..20 {
-            for x in 0..DECK_IMAGE_SIZE {
-                assert_eq!(img.get_pixel(x, y).0, [0, 0, 0], "x={x} y={y}");
-            }
-        }
-        assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
-    }
-
-    #[test]
-    fn oversized_key_inset_gives_a_solid_key_color() {
-        let root = PathBuf::from("/nonexistent");
-        let config = KeyConfig {
-            label: "HI".into(),
-            bg: "#000000".into(),
-            fg: "#FFFFFF".into(),
-            ..KeyConfig::default()
-        };
-        // Insets at or past the key size leave no visible rect. Each must give a full
-        // deck-size image in the key color, with no panic.
-        let insets = [
-            KeyInset {
-                top: DECK_IMAGE_SIZE,
-                bottom: 0,
-                left: 0,
-                right: 0,
-            },
-            KeyInset {
-                top: 200,
-                bottom: 200,
-                left: 200,
-                right: 200,
-            },
-            KeyInset {
-                top: u32::MAX,
-                bottom: u32::MAX,
-                left: u32::MAX,
-                right: u32::MAX,
-            },
-            KeyInset {
-                top: 0,
-                bottom: 0,
-                left: DECK_IMAGE_SIZE,
-                right: 1,
-            },
-        ];
-        for inset in insets {
-            let img = key_image(5, Some(&config), &root, &inset);
-            assert_eq!(img.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
-            assert!(img.pixels().all(|p| p.0 == [0, 0, 0]), "{inset:?}");
-        }
-    }
-
-    #[test]
-    fn label_session_and_calibration_tiles_respect_the_inset() {
-        let inset = KeyInset {
-            top: 20,
-            bottom: 0,
-            left: 0,
-            right: 0,
-        };
-        let label = label_image("HI", &inset);
-        assert_eq!(label.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
-        assert!((0..20).all(|y| label.get_pixel(0, y).0 == FALLBACK_BG));
-        let session = session_image("X", SessionStatus::Active, "1m", &inset);
-        assert_eq!(session.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
-        assert!((0..20).all(|y| session.get_pixel(0, y).0 == FALLBACK_BG));
-        // Calibration: the red outline starts on the inset edge, and the hidden band stays black.
-        let tile = calibration_image(7, &inset);
-        assert_eq!(tile.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
-        assert_eq!(tile.get_pixel(40, 20).0, CALIBRATION_LINE);
-        assert!((0..20).all(|y| tile.get_pixel(40, y).0 == [0, 0, 0]));
-        assert!(tile.pixels().any(|p| p.0 == [255, 255, 255]));
-    }
-
-    #[test]
-    fn oversized_calibration_inset_does_not_panic() {
-        let inset = KeyInset {
-            top: u32::MAX,
-            bottom: u32::MAX,
-            left: u32::MAX,
-            right: u32::MAX,
-        };
-        let tile = calibration_image(3, &inset);
-        assert_eq!(tile.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
-    }
-
-    #[test]
-    fn empty_key_is_black_and_app_sources_fall_back() {
-        let root = PathBuf::from("/nonexistent");
-        let inset = KeyInset::default();
-        let blank = key_image(5, None, &root, &inset);
-        assert!(blank.pixels().all(|p| p.0 == BLANK));
-        // An app that is not installed falls back to the label.
-        let app = KeyConfig {
-            image: Some(PathBuf::from("app:com.example.NotInstalled")),
-            label: "Hi".into(),
-            ..KeyConfig::default()
-        };
-        assert_eq!(
-            key_image(5, Some(&app), &root, &inset),
-            inset_key(
-                &label_tile("Hi", FALLBACK_BG, FALLBACK_FG),
-                &inset,
-                FALLBACK_BG
-            )
-        );
-    }
-}
+#[path = "profile_key_tests.rs"]
+mod tests;

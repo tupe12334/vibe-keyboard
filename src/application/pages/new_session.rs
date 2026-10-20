@@ -40,12 +40,7 @@ pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppStat
         s.actions = actions;
         s.screen = ScreenView::NewSessionChoice;
     }
-    let inset = state
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .profile
-        .display
-        .key_inset;
+    let inset = super::key_tiles::key_inset(state);
     let tiles = [
         (1, app_tile("com.googlecode.iterm2", "iTerm", &inset)),
         (2, app_tile("com.apple.Terminal", "Terminal", &inset)),

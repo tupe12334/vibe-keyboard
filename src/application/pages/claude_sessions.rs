@@ -83,15 +83,9 @@ pub fn render_claude_sessions(
 ) {
     const PER_PAGE: usize = 10;
     let pages = sessions.len().div_ceil(PER_PAGE).max(1);
-    let inset = state
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .profile
-        .display
-        .key_inset;
+    let inset = super::key_tiles::key_inset(state);
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
     let mut tiles = Vec::new();
-
     for (i, session) in sessions
         .iter()
         .skip(page * PER_PAGE)
@@ -107,15 +101,9 @@ pub fn render_claude_sessions(
                 description: format!("/dev/{}", session.tty),
             },
         );
-        tiles.push((
-            key,
-            session_image(
-                &session.label,
-                session.status,
-                &age_label(session.age),
-                &inset,
-            ),
-        ));
+        let age = age_label(session.age);
+        let tile = session_image(&session.label, session.status, &age, &inset);
+        tiles.push((key, tile));
     }
     if page > 0 {
         actions.insert(
@@ -147,10 +135,8 @@ pub fn render_claude_sessions(
             },
         );
         let word = if page + 1 < pages { "MORE" } else { "PAGE" };
-        tiles.push((
-            15,
-            label_image(&format!("{word} {}/{pages}", page + 1), &inset),
-        ));
+        let label = format!("{word} {}/{pages}", page + 1);
+        tiles.push((15, label_image(&label, &inset)));
     }
 
     {
