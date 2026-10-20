@@ -7,6 +7,7 @@ use ratatui::{
 use throbber_widgets_tui::Throbber;
 
 use super::app_state::AppState;
+use super::render_action::render_action;
 use super::render_title;
 
 pub fn render(state: &mut AppState, frame: &mut Frame) {
@@ -114,32 +115,6 @@ fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &mut AppState) {
     }
 
     if let Some(action) = state.actions.get(&key) {
-        let vert = Layout::vertical([
-            Constraint::Fill(1),
-            Constraint::Length(1), // name
-            Constraint::Length(1), // title
-            Constraint::Length(1), // description
-            Constraint::Fill(1),
-        ])
-        .split(inner);
-
-        frame.render_widget(
-            Paragraph::new(action.name.as_str())
-                .alignment(Alignment::Center)
-                .style(base_style.add_modifier(Modifier::BOLD)),
-            vert[1],
-        );
-        frame.render_widget(
-            Paragraph::new(action.title.as_str())
-                .alignment(Alignment::Center)
-                .style(base_style),
-            vert[2],
-        );
-        frame.render_widget(
-            Paragraph::new(action.description.as_str())
-                .alignment(Alignment::Center)
-                .style(base_style.fg(Color::DarkGray)),
-            vert[3],
-        );
+        render_action(frame, inner, action, base_style);
     }
 }
