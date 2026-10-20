@@ -5,13 +5,18 @@ use image::DynamicImage;
 
 use crate::domain::actions::{ButtonAction, ClaudeSession, ScreenView, TerminalApp};
 use crate::domain::navigation::{action_pages, prompt_index, PROMPTS_PER_PAGE};
+
 use crate::infrastructure::images::{label_image, muted_image};
 use crate::infrastructure::usb::{send_button_image, Device};
 use crate::presentation::tui;
 
-/// The action page for one session. Key 1 focuses the tab. Keys 2 to 10 send the prompts for
-/// this page. Keys 14 and 15 page through prompts. Key 11 (out) is drawn by the page renderer,
-/// and key 12 goes back to the list. Prompts are muted for apps that take no text.
+/// Text that key 14 sends to a session. Fixed, so it stays off the prompt list.
+pub const RECAP_TEXT: &str = "/recap";
+
+/// The action page for one session. Keys 1 to 10 send the prompts for this page. Key 11 (out) is
+/// drawn by the page renderer, and key 12 goes back to the list. Key 13 stays empty, reserved for
+/// voice. Key 14 sends Recap. Key 15 turns to the next prompt page, when there is one. Prompts and
+/// Recap are muted for apps that take no text.
 pub fn render_session_actions(
     session: &ClaudeSession,
     page: usize,
@@ -26,19 +31,8 @@ pub fn render_session_actions(
         .session_prompts();
     let typed = session.app != TerminalApp::Other;
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-    let mut tiles = vec![
-        (1, label_image("FOCUS", &inset)),
-        (12, label_image("BACK", &inset)),
-    ];
-    actions.insert(
-        1,
-        ButtonAction {
-            name: "Focus".into(),
-            title: "Focus".into(),
-            description: "Show this session's tab".into(),
-        },
-    );
-    for key in 2..=(PROMPTS_PER_PAGE as u8 + 1) {
+    let mut tiles = vec![(12, label_image("BACK", &inset))];
+    for key in 1..=(PROMPTS_PER_PAGE as u8) {
         let Some(index) = prompt_index(page, key, prompts.len()) else {
             continue;
         };
@@ -66,12 +60,11 @@ pub fn render_session_actions(
             },
         ));
     }
-    let pages = action_pages(prompts.len());
-    if page > 0 {
-        tiles.push((14, label_image("PREV", &inset)));
-    }
-    if page + 1 < pages {
-        tiles.push((15, label_image("NEXT", &inset)));
+    let (recap_tile, recap) = recap_key(typed, &inset);
+    tiles.push((14, recap_tile));
+    actions.insert(14, recap);
+    if action_pages(prompts.len()) > 1 {
+        tiles.push((15, label_image("MORE", &inset)));
     }
     actions.insert(
         12,
@@ -94,3 +87,12 @@ pub fn render_session_actions(
         send_button_image(handle, key, DynamicImage::ImageRgb8(img));
     }
 }
+
+#[path = "session_actions_keys.rs"]
+mod keys;
+pub use keys::open_session_actions;
+use keys::recap_key;
+
+#[cfg(test)]
+#[path = "session_actions_tests.rs"]
+mod tests;

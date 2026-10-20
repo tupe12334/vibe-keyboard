@@ -67,7 +67,7 @@ pub(super) fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
                 if value.is_empty() { "_" } else { value },
             ),
             ScreenView::SessionActions { label } => format!(
-                " {label}    [1] focus  [2] recap  [3] voice  [11] out  [12] back  [q] quit ",
+                " {label}    [1-10] prompts  [11] out  [12] back  [14] recap  [15] more  [q] quit ",
             ),
             ScreenView::NewSessionChoice => {
                 " New Claude session    [1] iTerm  [2] Terminal    [11] out  [q] quit ".into()

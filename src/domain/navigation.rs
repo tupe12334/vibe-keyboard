@@ -58,8 +58,8 @@ const fn moadim_len(list: &MoadimList) -> usize {
     }
 }
 
-/// Prompt keys on a session action page: keys 2 to 10. Nine prompts fit on one page.
-pub const PROMPTS_PER_PAGE: usize = 9;
+/// Prompt keys on a session action page: keys 1 to 10. Ten prompts fit on one page.
+pub const PROMPTS_PER_PAGE: usize = 10;
 
 /// Number of action pages for `count` prompts. Always at least one.
 pub const fn action_pages(count: usize) -> usize {
@@ -72,10 +72,10 @@ pub const fn action_pages(count: usize) -> usize {
 
 /// Index into the prompt list for `key` on `page`. None for a key with no prompt on that page.
 pub const fn prompt_index(page: usize, key: u8, count: usize) -> Option<usize> {
-    if key < 2 || key > 10 {
+    if key < 1 || key > 10 {
         return None;
     }
-    let index = page * PROMPTS_PER_PAGE + (key as usize - 2);
+    let index = page * PROMPTS_PER_PAGE + (key as usize - 1);
     if index < count {
         Some(index)
     } else {
@@ -270,14 +270,14 @@ impl NavigationStack {
         }
     }
 
-    /// Turn the page of a session action page. `count` is the number of prompts.
+    /// Turn the page of a session action page. Forward wraps to the first page.
     pub fn turn_action_page(&mut self, forward: bool, count: usize) {
         if let Some(Screen::SessionActions { page, .. }) = self.stack.last_mut() {
-            if forward && *page + 1 < action_pages(count) {
-                *page += 1;
-            } else if !forward && *page > 0 {
-                *page -= 1;
-            }
+            *page = if forward {
+                (*page + 1) % action_pages(count)
+            } else {
+                page.saturating_sub(1)
+            };
         }
     }
 

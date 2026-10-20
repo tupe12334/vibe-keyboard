@@ -4,7 +4,10 @@ use super::*;
 fn prompts_round_trip_and_stay_out_of_files_when_empty() {
     let mut profile = Profile::default_from_legacy();
     assert!(profile.prompts.is_empty(), "first run writes no prompts");
-    profile.prompts = default_prompts();
+    profile.prompts = vec![Prompt {
+        label: "Ask".into(),
+        text: "Ask me".into(),
+    }];
     let text = toml::to_string_pretty(&profile).unwrap_or_default();
     assert!(text.contains("[[prompts]]"));
     let back: Profile = toml::from_str(&text).unwrap_or_default();
@@ -16,15 +19,14 @@ fn prompts_round_trip_and_stay_out_of_files_when_empty() {
     assert!(!text.contains("prompts"));
     let back: Profile = toml::from_str(&text).unwrap_or_default();
     assert_eq!(back, profile);
-    assert_eq!(profile.session_prompts(), default_prompts());
+    assert!(profile.session_prompts().is_empty());
 }
 
 #[test]
-fn profile_without_prompts_falls_back_to_recap_and_voice() {
+fn profile_without_prompts_has_no_session_prompts() {
     let old: Profile = toml::from_str("[[pages]]\nname = \"Main\"\n").unwrap_or_default();
     assert!(old.prompts.is_empty());
-    let labels: Vec<String> = old.session_prompts().into_iter().map(|p| p.label).collect();
-    assert_eq!(labels, ["Recap", "Voice"]);
+    assert!(old.session_prompts().is_empty());
 }
 
 #[test]

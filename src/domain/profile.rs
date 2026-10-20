@@ -51,17 +51,6 @@ pub const PROMPT_MAX_CHARS: usize = 2000;
 /// Longest prompt label the profile accepts. Labels print on a key image.
 pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
 
-/// Prompts used when the profile has none: Recap and Voice.
-pub fn default_prompts() -> Vec<Prompt> {
-    [("Recap", "/recap"), ("Voice", "/voice")]
-        .into_iter()
-        .map(|(label, text)| Prompt {
-            label: label.into(),
-            text: text.into(),
-        })
-        .collect()
-}
-
 /// Bands the bezel hides. Content goes inside them; the background fills them.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
@@ -465,13 +454,9 @@ impl Profile {
         }
     }
 
-    /// The prompts a session action can send: the profile's own, else the built-in pair.
+    /// The prompts a session action can send. Empty when the profile has none.
     pub fn session_prompts(&self) -> Vec<Prompt> {
-        if self.prompts.is_empty() {
-            default_prompts()
-        } else {
-            self.prompts.clone()
-        }
+        self.prompts.clone()
     }
 
     /// Human-readable problems in the layout. Empty when the profile is valid.

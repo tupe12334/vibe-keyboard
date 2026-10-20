@@ -16,6 +16,7 @@ pub use claude_sessions::SessionsRefresh;
 pub use key_tiles::show_focus_only;
 pub use main_page::refresh_side_widgets;
 use main_page::render_side;
+pub use session_actions::{open_session_actions, RECAP_TEXT};
 
 use crate::infrastructure::usb::Device;
 use std::sync::{Arc, Mutex};
