@@ -24,6 +24,7 @@ fn sample() -> Metrics {
             total: 994_000_000_000,
         }),
         temperature: Some(71.4),
+        memory: None,
     }
 }
 
@@ -50,3 +51,6 @@ mod bar_style;
 
 #[path = "side_tests/bar_look.rs"]
 mod bar_look;
+
+#[path = "side_tests/split_bar.rs"]
+mod split_bar;

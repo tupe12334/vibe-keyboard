@@ -8,9 +8,11 @@
 mod os;
 
 mod disks;
+mod memory;
 mod temperature;
 
 use disks::{choose_disk, is_candidate_mount};
+pub use memory::{memory_percent, Memory};
 use temperature::hottest_cpu;
 #[cfg(test)]
 use temperature::is_cpu_sensor;
@@ -42,6 +44,8 @@ pub struct Metrics {
     pub disk: Option<Disk>,
     /// Hottest CPU sensor, in degrees Celsius. `None` when the machine has no such sensor.
     pub temperature: Option<f32>,
+    /// Physical memory in use. `None` before the first sample.
+    pub memory: Option<Memory>,
 }
 
 /// Copy of the latest sample, or the default before the first one.
@@ -62,7 +66,12 @@ pub const fn clamp_percent(value: f32) -> u8 {
 }
 
 /// Builds one sample from the raw values the sampler read.
-pub fn build(cpu: f32, disks: &[(String, Disk)], readings: &[(String, f32)]) -> Metrics {
+pub fn build(
+    cpu: f32,
+    memory: Option<Memory>,
+    disks: &[(String, Disk)],
+    readings: &[(String, f32)],
+) -> Metrics {
     let candidates: Vec<Disk> = disks
         .iter()
         .filter(|(mount, _)| is_candidate_mount(mount))
@@ -72,6 +81,7 @@ pub fn build(cpu: f32, disks: &[(String, Disk)], readings: &[(String, f32)]) -> 
         cpu_percent: clamp_percent(cpu),
         disk: choose_disk(&candidates),
         temperature: hottest_cpu(readings),
+        memory,
     }
 }
 

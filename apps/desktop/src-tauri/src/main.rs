@@ -22,6 +22,7 @@ mod profile_io;
 #[cfg(test)]
 mod profile_roundtrip_tests;
 mod prompt_commands;
+mod side_commands;
 #[cfg(test)]
 mod side_tests;
 mod status;

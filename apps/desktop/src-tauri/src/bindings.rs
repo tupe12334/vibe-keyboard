@@ -6,7 +6,7 @@ use tauri_specta::{collect_commands, collect_events, Builder};
 
 use crate::{
     app_commands, commands, display_commands, events, key_commands, layout_commands,
-    prompt_commands,
+    prompt_commands, side_commands,
 };
 
 /// The command and event list the frontend binds to. Also the source of the TypeScript bindings.
@@ -18,7 +18,7 @@ pub fn specta_builder() -> Builder<Wry> {
             key_commands::key_preview,
             key_commands::list_builtins,
             key_commands::action_problem,
-            key_commands::side_preview,
+            side_commands::side_preview,
             commands::device_status,
             layout_commands::editor_rules,
             layout_commands::add_page,

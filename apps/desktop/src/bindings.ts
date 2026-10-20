@@ -344,6 +344,10 @@ export type Widget =
 { type: "cpu_percent" } | 
 /**  Global CPU use as a bar from 0 to 100 %. */
 { type: "cpu_bar" } | 
+/**  Global memory use as a bar from 0 to 100 %. */
+{ type: "mem_bar" } | 
+/**  CPU and memory in one bar: the left half is CPU use, the right half is memory use. */
+{ type: "cpu_mem_bar" } | 
 /**  Hottest CPU sensor in degrees Celsius, or `N/A`. */
 { type: "temperature" } | 
 /**  Free space on the user volume. */

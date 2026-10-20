@@ -7,7 +7,7 @@ use std::thread;
 
 use sysinfo::{Components, Disks, System, MINIMUM_CPU_UPDATE_INTERVAL};
 
-use super::{build, is_candidate_mount, Disk, Metrics, Shared, SAMPLE_INTERVAL};
+use super::{build, is_candidate_mount, Disk, Memory, Metrics, Shared, SAMPLE_INTERVAL};
 
 /// Starts the background sampler and returns the snapshot it fills.
 pub fn start() -> Shared {
@@ -53,6 +53,12 @@ impl Probe {
         self.sys.refresh_cpu_usage();
         self.components.refresh(true);
         self.disks.refresh(true);
+        self.sys.refresh_memory();
+        let memory = Some(Memory {
+            used: self.sys.used_memory(),
+            total: self.sys.total_memory(),
+        })
+        .filter(|m| m.total > 0);
         let disks: Vec<(String, Disk)> = self
             .disks
             .list()
@@ -72,29 +78,10 @@ impl Probe {
             .iter()
             .filter_map(|c| c.temperature().map(|t| (c.label().to_string(), t)))
             .collect();
-        build(self.sys.global_cpu_usage(), &disks, &readings)
+        build(self.sys.global_cpu_usage(), memory, &disks, &readings)
     }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    /// Prints one live snapshot. Run: `cargo test system_metrics -- --ignored --nocapture`.
-    #[test]
-    #[allow(clippy::print_stdout, reason = "manual hardware probe")]
-    #[ignore = "reads real hardware sensors"]
-    fn print_one_snapshot() {
-        let mut probe = Probe::new();
-        thread::sleep(MINIMUM_CPU_UPDATE_INTERVAL);
-        let metrics = probe.read();
-        let labels: Vec<String> = probe
-            .components
-            .list()
-            .iter()
-            .map(|c| format!("{} = {:?}", c.label(), c.temperature()))
-            .collect();
-        println!("METRICS {metrics:?}");
-        println!("SENSORS\n{}", labels.join("\n"));
-    }
-}
+#[path = "os_tests.rs"]
+mod tests;

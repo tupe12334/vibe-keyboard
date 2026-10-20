@@ -1,9 +1,11 @@
 use image::{Rgb, RgbImage};
 
 mod glyphs;
+mod raster;
 mod wrap;
 
 use glyphs::glyph;
+use raster::draw_glyph;
 use wrap::wrap;
 // ponytail: fixed 3x5 pixel font, A-Z 0-9 and a few symbols, scaled 3x. Other characters draw
 // blank. Add a real font crate (ab_glyph) when labels need lowercase or non-ASCII text.
@@ -62,30 +64,24 @@ pub const fn text_height(scale: u32) -> u32 {
 /// Draw `text` on one line, centered horizontally, with its top edge at `y`. Pixels past
 /// the image edge are dropped.
 pub fn draw_line(img: &mut RgbImage, y: u32, text: &str, fg: Rgb<u8>, scale: u32) {
-    let advance = (GLYPH_W + 1) * scale;
-    let width = text.chars().count() as u32 * advance;
-    let left = img.width().saturating_sub(width) / 2;
-    for (i, c) in text.chars().enumerate() {
-        draw_glyph(img, left + i as u32 * advance, y, glyph(c), fg, scale);
-    }
+    draw_line_within(img, 0, img.width(), y, text, fg, scale);
 }
 
-fn draw_glyph(img: &mut RgbImage, x: u32, y: u32, rows: [u8; 5], fg: Rgb<u8>, scale: u32) {
-    for (ry, bits) in rows.iter().enumerate() {
-        for rx in 0..GLYPH_W {
-            if bits & (1 << (GLYPH_W - 1 - rx)) == 0 {
-                continue;
-            }
-            for dy in 0..scale {
-                for dx in 0..scale {
-                    let px = x + rx * scale + dx;
-                    let py = y + ry as u32 * scale + dy;
-                    if px < img.width() && py < img.height() {
-                        img.put_pixel(px, py, fg);
-                    }
-                }
-            }
-        }
+/// Like `draw_line`, but centered in the columns `x..x + width` only.
+pub fn draw_line_within(
+    img: &mut RgbImage,
+    x: u32,
+    width: u32,
+    y: u32,
+    text: &str,
+    fg: Rgb<u8>,
+    scale: u32,
+) {
+    let advance = (GLYPH_W + 1) * scale;
+    let text_w = text.chars().count() as u32 * advance;
+    let left = x + width.saturating_sub(text_w) / 2;
+    for (i, c) in text.chars().enumerate() {
+        draw_glyph(img, left + i as u32 * advance, y, glyph(c), fg, scale);
     }
 }
 

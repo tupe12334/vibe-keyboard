@@ -59,16 +59,29 @@ pub(super) fn bar_span(slot_h: u32, show_value: bool) -> (u32, u32) {
     (top, bottom.max(top))
 }
 
-/// Track, then the filled part. The fill rises from the bottom.
+/// Track, then the filled part, in the bar's own column. The fill rises from the bottom.
 pub(super) fn draw_bar(slot: &mut RgbImage, percent: u8, look: &BarLook) {
-    let percent = percent.min(100);
     let (top, bottom) = bar_span(slot.height(), look.value_color.is_some());
-    let height = bottom - top;
     let x = BAR_CENTER.saturating_sub(look.width / 2);
-    fill_rect(slot, x, top, look.width, height, look.track);
+    draw_column(slot, x, look.width, top, bottom, percent, look);
+}
+
+/// Track and fill of one column `width` px wide, between rows `top` and `bottom`.
+pub(super) fn draw_column(
+    slot: &mut RgbImage,
+    x: u32,
+    width: u32,
+    top: u32,
+    bottom: u32,
+    percent: u8,
+    look: &BarLook,
+) {
+    let percent = percent.min(100);
+    let height = bottom - top;
+    fill_rect(slot, x, top, width, height, look.track);
     let filled = height * u32::from(percent) / 100;
     let color = look.fill.unwrap_or_else(|| bar_color(percent));
-    fill_rect(slot, x, bottom - filled, look.width, filled, color);
+    fill_rect(slot, x, bottom - filled, width, filled, color);
 }
 
 fn fill_rect(img: &mut RgbImage, x: u32, y: u32, width: u32, height: u32, color: [u8; 3]) {

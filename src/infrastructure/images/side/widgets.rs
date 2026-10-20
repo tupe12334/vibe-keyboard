@@ -1,9 +1,11 @@
 use image::{imageops, ImageBuffer, Rgb, RgbImage};
 
 use super::super::text::{draw_label_scaled, draw_line, text_height};
-use super::cpu_bar::{draw_bar, BarLook, BAR_PAD, BAR_VALUE_SCALE};
+use super::bars::{draw_percent_bar, draw_split};
+use super::cpu_bar::BarLook;
 use super::value_text::{free_text, percent, temperature_text};
 use crate::domain::profile::{BarStyle, PixelRect, Widget};
+use crate::infrastructure::system_metrics::memory_percent;
 use crate::infrastructure::system_metrics::Metrics;
 
 /// The text each widget shows, in order. Equal text means equal pixels, so the tick can skip a
@@ -13,6 +15,12 @@ pub fn widget_texts(widgets: &[Widget], metrics: &Metrics) -> Vec<String> {
         .iter()
         .map(|widget| match widget {
             Widget::CpuPercent | Widget::CpuBar => percent(metrics.cpu_percent),
+            Widget::MemBar => percent(memory_percent(metrics.memory)),
+            Widget::CpuMemBar => format!(
+                "{} {}",
+                percent(metrics.cpu_percent),
+                percent(memory_percent(metrics.memory))
+            ),
             Widget::Temperature => temperature_text(metrics.temperature),
             Widget::DiskFree => free_text(metrics.disk),
             Widget::Text { value } => value.clone(),
@@ -59,15 +67,20 @@ fn draw_widget(
         Widget::CpuPercent => caption_value(slot, "CPU", &percent(metrics.cpu_percent), fg),
         Widget::CpuBar => {
             let look = BarLook::resolve(bar, fg.0);
-            draw_line(slot, BAR_PAD, "CPU", fg, CAPTION_SCALE);
-            draw_bar(slot, metrics.cpu_percent, &look);
-            if let Some(text_color) = look.value_color {
-                let y = slot
-                    .height()
-                    .saturating_sub(BAR_PAD + text_height(BAR_VALUE_SCALE));
-                let text = percent(metrics.cpu_percent);
-                draw_line(slot, y, &text, Rgb(text_color), BAR_VALUE_SCALE);
-            }
+            draw_percent_bar(slot, "CPU", metrics.cpu_percent, &look, fg);
+        }
+        Widget::MemBar => {
+            let look = BarLook::resolve(bar, fg.0);
+            draw_percent_bar(slot, "MEM", memory_percent(metrics.memory), &look, fg);
+        }
+        Widget::CpuMemBar => {
+            let look = BarLook::resolve(bar, fg.0);
+            draw_split(
+                slot,
+                metrics.cpu_percent,
+                memory_percent(metrics.memory),
+                &look,
+            );
         }
         Widget::Temperature => {
             caption_value(slot, "TEMP", &temperature_text(metrics.temperature), fg);
