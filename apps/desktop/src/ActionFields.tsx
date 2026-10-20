@@ -52,6 +52,15 @@ export function ActionFields({
           />
         </Field>
       );
+    case "push_to_talk":
+      return (
+        <Field label="Key (empty means Space, the Claude Code dictation key)">
+          <input
+            value={action.key ?? ""}
+            onChange={(e) => onChange({ type: "push_to_talk", key: e.target.value || null })}
+          />
+        </Field>
+      );
     case "builtin":
       return (
         <Field label="Built-in">

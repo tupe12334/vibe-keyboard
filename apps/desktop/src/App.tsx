@@ -4,13 +4,14 @@ import { KeyGrid } from "./KeyGrid";
 import { KeyPanel } from "./KeyPanel";
 import { PageList } from "./PageList";
 import { Toolbar } from "./Toolbar";
-import type { KeyConfig, Page } from "./types";
+import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
 import { usePreviews } from "./usePreviews";
 import { useProfile } from "./useProfile";
 
 export function App() {
-  const { draft, setDraft, page, setPage, dirty, error, setError, notice, load, onReload, save } = useProfile();
+  const { draft, setDraft, page, setPage, dirty, error, setError, notice, load, onReload, save, updatePage, setKey, setHoldMs } =
+    useProfile();
   const { deck, pressed } = useDeckEvents(onReload);
   const previews = usePreviews(draft, page);
   const [selected, setSelected] = useState<number | null>(null);
@@ -29,15 +30,6 @@ export function App() {
 
   const current: Page = draft.pages[page];
   const navKeys = new Set(rules?.nav_keys ?? []);
-  const updatePage = (change: (p: Page) => Page) =>
-    setDraft((d) => d && { ...d, pages: d.pages.map((p, i) => (i === page ? change(p) : p)) });
-  const setKey = (key: number, config: KeyConfig | undefined) =>
-    updatePage((p) => {
-      const keys = { ...p.keys };
-      if (config) keys[key] = config;
-      else delete keys[key];
-      return { ...p, keys };
-    });
   // Page rules come from the core crate, through these commands.
   const addPage = async () => {
     setDraft(await commands.addPage(draft));
@@ -90,6 +82,8 @@ export function App() {
             config={current.keys[selected]}
             builtins={builtins}
             pageCount={draft.pages.length}
+            holdMs={draft.input?.hold_ms ?? rules?.default_hold_ms ?? 0}
+            onHoldMsChange={setHoldMs}
             onChange={(config) => setKey(selected, config)}
             onClear={() => setKey(selected, undefined)}
           />

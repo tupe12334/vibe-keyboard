@@ -45,3 +45,7 @@ pub fn device_status(app: State<'_, App>) -> DeviceStatus {
 #[cfg(test)]
 #[path = "commands_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "commands_hold_tests.rs"]
+mod hold_tests;
