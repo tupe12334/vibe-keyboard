@@ -21,7 +21,7 @@ export function HoldFields({ hold, holdMs, rules, builtins, pageCount, onChange,
   const pick = (type: Action["type"]) => onChange(type === "none" ? null : blankAction(type, builtins[0] ?? ""));
   return (
     <section className="panel">
-      <div className="row three">
+      <div className="row">
         <Field label="Hold action">
           <select value={hold?.type ?? "none"} onChange={(e) => pick(e.target.value as Action["type"])}>
             {(Object.keys(ACTION_LABELS) as Action["type"][]).map((type) => (
