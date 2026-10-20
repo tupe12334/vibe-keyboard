@@ -10,6 +10,8 @@ export function useQuitPrompt(dirty: boolean, save: () => Promise<boolean>) {
 
   useEffect(() => {
     const subscription = events.quitRequested.listen(() => {
+      // Tells the app this editor is alive, so a later quit asks again.
+      void commands.acknowledgeQuit();
       if (latest.current.dirty) setAsking(true);
       else void commands.confirmQuit();
     });
