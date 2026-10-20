@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use crate::domain::navigation::{NavigationStack, Screen};
-use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
+use crate::infrastructure::claude_sessions::{focus_session, send_prompt};
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
@@ -61,9 +61,8 @@ pub(super) fn session_action(
         }
         Action::NewSession { terminal } => {
             info!("claude sessions: new session in {terminal:?}");
-            // Off the device loop: osascript can take a while to answer.
-            std::thread::spawn(move || open_new_session(terminal));
-            // Back to the list. The new session shows on the next refresh.
+            // Back to the list. Its action page opens once the session appears (`new_session_open`).
+            super::new_session_open::start_new_session(terminal);
             nav.back();
             render_screen(nav, handle, state, dev_state);
         }
