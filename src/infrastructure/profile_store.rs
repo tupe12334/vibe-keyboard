@@ -72,8 +72,8 @@ fn write_guide(root: &Path) -> Result<(), String> {
 
 /// Write the profile to `path`. Output is deterministic and always ends with a newline.
 /// Skips the write when the bytes are unchanged.
+#[allow(clippy::expect_used, reason = "a Profile always serializes")]
 pub fn save(path: &Path, profile: &Profile) -> Result<(), String> {
-    // A `Profile` made of strings, maps and integers always serializes.
     let toml = toml::to_string_pretty(profile).expect("profile serializes to TOML");
     let text = format!("{}\n", toml.trim_end());
     if fs::read_to_string(path).is_ok_and(|current| current == text) {

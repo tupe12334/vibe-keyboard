@@ -11,9 +11,7 @@ pub use os::{focus_session, list_sessions, open_new_session, send_prompt};
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::domain::actions::{
-    ClaudeSession, Glyph, NewSessionTerminal, SessionStatus, TerminalApp,
-};
+use crate::domain::actions::{ClaudeSession, Glyph, SessionStatus, TerminalApp};
 
 /// A tty that printed within this long is `Active`. Older is `Stale`. Claude Code redraws while it
 /// works, so a session that is quiet for a minute is waiting or idle.

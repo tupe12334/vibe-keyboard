@@ -20,6 +20,8 @@ pub use setup::{load_profile, load_profile_at};
 
 /// Take the single-controller lock. Keep the guard alive for the whole run.
 pub fn claim() -> Result<ControllerLock, AcquireError> {
+    // A panic must not leave a push-to-talk key down.
+    crate::application::install_panic_release();
     claim_at(&controller_lock::default_lock_path())
 }
 

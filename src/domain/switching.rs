@@ -10,7 +10,7 @@ pub struct AutoPage {
 
 impl AutoPage {
     /// The user paged by hand. The page is manual again from now on.
-    pub fn on_manual_page(&mut self) {
+    pub const fn on_manual_page(&mut self) {
         self.auto = false;
         self.manual = None;
     }

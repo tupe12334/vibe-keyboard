@@ -1,5 +1,6 @@
 use super::content_box::content_bbox;
 use super::*;
+use crate::domain::profile::inner_rect;
 
 #[test]
 fn key_content_fills_the_visible_rect() {
