@@ -8,6 +8,7 @@ use crate::application::{
     handle_filter_query, handle_frontmost, poll_holds, prompt_return, release_all_holds,
     render_screen,
 };
+use crate::domain::ptt::Release;
 use crate::infrastructure::images::app_icon_generation;
 use crate::infrastructure::profile_store;
 use crate::infrastructure::usb::Device;
@@ -47,7 +48,7 @@ fn release_on_page_change(c: &mut Ctx) {
     let screen = c.nav.screen_id();
     if screen != c.last_screen {
         c.last_screen = screen;
-        release_all_holds(&c.app_state);
+        release_all_holds(&c.app_state, Release::Screen);
     }
 }
 

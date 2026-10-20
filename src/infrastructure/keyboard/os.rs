@@ -1,100 +1,16 @@
 //! Push-to-talk hold API for the device loop. Excluded from the coverage gate.
 //!
-//! Claude Code starts dictation on a held key by counting rapid key-repeat events. A real
-//! keyboard sends those repeats; a single synthetic key down does not. So a hold posts key
-//! down again, with the auto-repeat flag set, until the hold ends. The hold rules live in
-//! `domain/ptt.rs`; this file only probes the OS and posts.
-
-use std::sync::{Mutex, MutexGuard, PoisonError};
-use std::thread;
-use std::time::{Duration, Instant};
-
-use crate::domain::hotkey::{key_code, modifier_flags, Hotkey};
-use crate::domain::ptt::{Probe, PttGuard};
-use tracing::error;
+//! Claude Code starts dictation on a held key by counting rapid key-repeat events. So a hold
+//! posts key down again, with the auto-repeat flag set, until it ends. The rules live in
+//! `domain/ptt`; `hold.rs` owns the guard and `beat.rs` owns the two threads of a hold.
 
 mod accessibility;
+mod beat;
+mod hold;
 mod panic;
 mod post;
 
 pub use accessibility::accessibility_trusted;
+pub use hold::{hold_begin, hold_end, hold_touch, push_to_talk_start, release_all};
 pub use panic::install_panic_release;
 pub use post::tap;
-
-use crate::infrastructure::frontmost::frontmost_pid;
-use post::{trusted, CgPoster};
-
-/// Gap between repeated key downs while held. Terminal key repeat is about 30 ms.
-const REPEAT_EVERY: Duration = Duration::from_millis(30);
-/// How often a hold re-checks the frontmost app and Accessibility.
-const PROBE_EVERY: Duration = Duration::from_millis(250);
-
-/// The one push-to-talk hold of this process. A `static` never drops, so every exit path
-/// calls `release_all`, and the panic hook covers panics.
-static GUARD: Mutex<PttGuard<CgPoster>> = Mutex::new(PttGuard::new(CgPoster));
-
-/// Reserve a hold for logical `key`. The returned generation goes to `push_to_talk_start`.
-pub fn hold_begin(key: u8) -> u64 {
-    lock().begin(key)
-}
-
-/// Key up for logical `key`. Ends only the hold or pending start that belongs to `key`.
-pub fn hold_end(key: u8) {
-    lock().end(key);
-}
-
-/// Key down for the hold reserved by `hold_begin`, then repeats until `hold_end` or a release.
-/// The OS is read before the lock is taken. Does nothing if the generation is stale, another
-/// hold is active, no app has focus, or Accessibility is off.
-pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey) {
-    let Some(code) = key_code(&hotkey.key) else {
-        error!("push to talk: no key code for this key");
-        return;
-    };
-    let flags = modifier_flags(&hotkey.modifiers);
-    // Read the OS before taking the lock.
-    let probe = read_probe();
-    if !lock().start(generation, key, code, flags, probe, Instant::now()) {
-        return;
-    }
-    // Steady beat: a late repeat reads as a release and ends dictation. Probe only every PROBE_EVERY.
-    thread::spawn(move || {
-        let mut probe = probe;
-        let mut probed = Instant::now();
-        let mut next = Instant::now() + REPEAT_EVERY;
-        loop {
-            thread::sleep(next.saturating_duration_since(Instant::now()));
-            next += REPEAT_EVERY;
-            if probed.elapsed() >= PROBE_EVERY {
-                probe = read_probe();
-                probed = Instant::now();
-            }
-            if !lock().pump(generation, probe, Instant::now()) {
-                break;
-            }
-        }
-    });
-}
-
-/// The app is alive. Called from the device loop, so a stalled loop stops the repeats.
-pub fn hold_touch() {
-    lock().touch(Instant::now());
-}
-
-/// Lift any held key now. Called on shutdown, disconnect and page change.
-pub fn release_all() {
-    lock().release_all();
-}
-
-/// Lock the guard. A poisoned lock still holds valid state, so use it.
-fn lock() -> MutexGuard<'static, PttGuard<CgPoster>> {
-    GUARD.lock().unwrap_or_else(PoisonError::into_inner)
-}
-
-/// What the guard needs from the OS. Read outside the lock.
-fn read_probe() -> Probe {
-    Probe {
-        front: frontmost_pid(),
-        trusted: trusted(),
-    }
-}

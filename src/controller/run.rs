@@ -5,7 +5,7 @@ use super::setup::{open_device, reconnect};
 use super::stop::stop_if_none;
 use super::tick;
 use crate::application::{release_all_holds, render_screen};
-use crate::domain::navigation::NavigationStack;
+use crate::domain::{navigation::NavigationStack, ptt::Release};
 use crate::infrastructure::profile_store;
 use crate::infrastructure::usb::clear_all;
 use crate::presentation;
@@ -79,14 +79,14 @@ pub fn run(opts: RunOptions) -> Result<(), Box<dyn std::error::Error>> {
             Flow::Continue => {}
             Flow::Stop => {
                 info!("stopping");
-                release_all_holds(&ctx.app_state);
+                release_all_holds(&ctx.app_state, Release::Shutdown);
                 clear_all(&handle);
                 (ctx.events)(ControllerEvent::Stopped);
                 return Ok(());
             }
             Flow::Lost => {
                 warn!("device disconnected");
-                release_all_holds(&ctx.app_state);
+                release_all_holds(&ctx.app_state, Release::Disconnected);
                 (ctx.events)(ControllerEvent::DeviceLost);
                 let Some(new_handle) = stop_if_none(reconnect(handle, &ctx), &*ctx.events) else {
                     return Ok(());
