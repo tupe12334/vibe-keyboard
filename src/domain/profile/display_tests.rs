@@ -1,4 +1,5 @@
 use super::*;
+use crate::domain::profile::Profile;
 
 #[test]
 fn default_display_is_not_written() {
