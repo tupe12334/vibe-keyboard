@@ -43,11 +43,14 @@ fn pages_without_a_google_photo_give_none() {
 }
 
 /// Real request to a public sample album. Run with `cargo test -- --ignored google_photos`.
+/// Set `GOOGLE_PHOTOS_LINK` to try another share link.
 #[test]
 #[ignore = "network"]
 fn a_public_album_downloads_into_images() {
     let root = std::env::temp_dir().join(format!("vibe-keyboard-gphotos-{}", std::process::id()));
-    let imported = import_shared_photo(&root, "https://photos.app.goo.gl/JEadX4KBqViVFXdm9");
+    let link = std::env::var("GOOGLE_PHOTOS_LINK")
+        .unwrap_or_else(|_| "https://photos.app.goo.gl/JEadX4KBqViVFXdm9".into());
+    let imported = import_shared_photo(&root, &link);
     let path = imported.expect("import");
     assert!(path.starts_with("images"), "{}", path.display());
     let photo = image::open(root.join(&path)).expect("decode");
