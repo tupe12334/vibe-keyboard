@@ -48,6 +48,8 @@ export const commands = {
 	displayDefaults: () => __TAURI_INVOKE<DisplayDefaults>("display_defaults"),
 	/**  The editor allows the quit: nothing unsaved, or Save or Discard was chosen. */
 	confirmQuit: () => __TAURI_INVOKE<void>("confirm_quit"),
+	/**  The editor got a quit request and is alive. The next quit asks again. */
+	acknowledgeQuit: () => __TAURI_INVOKE<void>("acknowledge_quit"),
 };
 
 /** Events */

@@ -30,6 +30,7 @@ pub fn specta_builder() -> Builder<Wry> {
             app_commands::check_bundle_id,
             display_commands::display_defaults,
             quit::confirm_quit,
+            quit::acknowledge_quit,
         ])
         .events(collect_events![
             events::DeviceConnected,
