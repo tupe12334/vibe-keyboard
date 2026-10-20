@@ -82,6 +82,7 @@ export function App() {
           <KeyPanel
             key={selected}
             keyNumber={selected}
+            preview={previews[selected]}
             config={current.keys[selected]}
             builtins={builtins}
             pageCount={draft.pages.length}

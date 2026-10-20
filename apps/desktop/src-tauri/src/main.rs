@@ -4,6 +4,7 @@
 )]
 
 mod app;
+mod app_commands;
 mod bindings;
 #[cfg(test)]
 mod command_harness;
@@ -45,6 +46,8 @@ fn specta_builder() -> Builder<Wry> {
             prompt_commands::add_prompt,
             prompt_commands::move_prompt,
             prompt_commands::delete_prompt,
+            app_commands::list_running_apps,
+            app_commands::check_bundle_id,
         ])
         .events(collect_events![
             events::DeviceConnected,

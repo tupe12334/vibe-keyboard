@@ -10,5 +10,6 @@ pub mod persistence;
 pub mod process;
 pub mod profile_save;
 pub mod profile_store;
+pub mod running_apps;
 pub mod system_metrics;
 pub mod usb;

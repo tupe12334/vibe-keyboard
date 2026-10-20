@@ -4,6 +4,7 @@ import { ActionFields } from "./ActionFields";
 import { ActionProblem } from "./ActionProblem";
 import { Field } from "./Field";
 import { HoldFields } from "./HoldFields";
+import { ImageFields } from "./ImageFields";
 
 // Used when a key has no config yet. The first edit writes it into the layout.
 const BLANK_KEY: KeyConfig = {
@@ -18,6 +19,8 @@ interface Props {
   /** Undefined when the key has no config yet. */
   config: KeyConfig | undefined;
   keyNumber: number;
+  /** The key's rendered preview, from the draft. */
+  preview?: string;
   builtins: string[];
   pageCount: number;
   holdMs: number;
@@ -27,7 +30,7 @@ interface Props {
   onClear: () => void;
 }
 
-export function KeyPanel({ config, keyNumber, builtins, pageCount, holdMs, rules, onHoldMsChange, onChange, onClear }: Props) {
+export function KeyPanel({ config, keyNumber, preview, builtins, pageCount, holdMs, rules, onHoldMsChange, onChange, onClear }: Props) {
   const value = config ?? BLANK_KEY;
   const set = (patch: Partial<KeyConfig>) => onChange({ ...value, ...patch });
   const setAction = (action: Action) => set({ action });
@@ -39,9 +42,7 @@ export function KeyPanel({ config, keyNumber, builtins, pageCount, holdMs, rules
         <Field label="Label">
           <input value={value.label} onChange={(e) => set({ label: e.target.value })} />
         </Field>
-        <Field label="Image (relative path, optional)">
-          <input value={value.image ?? ""} onChange={(e) => set({ image: e.target.value || null })} />
-        </Field>
+        <ImageFields image={value.image ?? null} preview={preview} onChange={(image) => set({ image })} />
       </div>
       <div className="row three">
         <Field label="Background">
