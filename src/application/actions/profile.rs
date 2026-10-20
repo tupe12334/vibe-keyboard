@@ -4,7 +4,7 @@ use std::thread;
 
 use tracing::{error, info};
 
-use super::builtin::run_builtin;
+use super::plugin_host::DeckHost;
 use crate::application::render_screen;
 use crate::domain::hotkey::{parse_hotkey, push_to_talk_key};
 use crate::domain::navigation::NavigationStack;
@@ -12,6 +12,7 @@ use crate::domain::profile::{is_bundle_id, Action};
 use crate::infrastructure::keyboard;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
+use crate::plugins;
 use crate::presentation::tui;
 
 /// Run the action bound to a main page key.
@@ -60,7 +61,18 @@ pub fn run_action(
             nav.go_to_page(*page);
             render_screen(nav, handle, state, dev_state);
         }
-        Action::Builtin { name } => run_builtin(name, nav, handle, state, dev_state),
+        Action::Builtin { name } => {
+            if let Some(plugin) = plugins::find(name) {
+                plugin.run(&mut DeckHost {
+                    nav,
+                    handle,
+                    state,
+                    dev_state,
+                });
+            } else {
+                error!("profile: unknown built-in '{name}'");
+            }
+        }
     }
 }
 

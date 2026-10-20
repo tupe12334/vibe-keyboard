@@ -26,6 +26,7 @@ pub use numpad::{
     generate_numpad_backspace_image, generate_numpad_clear_image, generate_numpad_digit_image,
     generate_numpad_entry_image,
 };
+pub(crate) use profile_key::label_tile;
 pub use profile_key::{
     app_icon_generation, danger_image, key_image, label_image, muted_image, page_images,
     session_image,

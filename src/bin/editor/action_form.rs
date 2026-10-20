@@ -1,6 +1,7 @@
 use eframe::egui;
 
-use vibe_keyboard::domain::profile::{Action, BUILTIN_NAMES};
+use vibe_keyboard::domain::profile::Action;
+use vibe_keyboard::plugins;
 
 /// Inputs for the fields of one action type.
 pub(super) fn action_fields(ui: &mut egui::Ui, action: &mut Action, page_count: usize) {
@@ -41,7 +42,7 @@ pub(super) fn action_fields(ui: &mut egui::Ui, action: &mut Action, page_count: 
             egui::ComboBox::from_label("Built-in")
                 .selected_text(name.as_str())
                 .show_ui(ui, |ui| {
-                    for option in BUILTIN_NAMES {
+                    for option in plugins::names() {
                         ui.selectable_value(name, option.to_string(), option);
                     }
                 });

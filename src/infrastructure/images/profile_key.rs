@@ -13,12 +13,12 @@ use crate::domain::keys::is_nav_key;
 use crate::domain::profile::KEY_COUNT;
 use crate::domain::profile::{parse_color, Action, KeyConfig, KeyInset};
 use crate::infrastructure::usb::DECK_IMAGE_SIZE;
+use crate::plugins::{self, Plugin};
 pub use app_icon_cache::app_icon_generation;
 pub use session_tile::session_image;
-use sources::builtin_icon;
 pub(super) use sources::source_image;
 pub use tiles::danger_image;
-pub(super) use tiles::label_tile;
+pub(crate) use tiles::label_tile;
 use tiles::nav_image;
 pub use tiles::{label_image, muted_image};
 
@@ -74,7 +74,7 @@ fn render_key(config: &KeyConfig, root: &Path) -> RgbImage {
         return img;
     }
     if let Action::Builtin { name } = &config.action {
-        if let Some(icon) = builtin_icon(name) {
+        if let Some(icon) = plugins::find(name).and_then(Plugin::tile) {
             return icon;
         }
     }
