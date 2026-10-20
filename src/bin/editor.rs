@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 
 use eframe::egui::{self, Color32};
-use vibe_keyboard::infrastructure::images::{app_icon_generation, key_image, SIDE_HEIGHT};
+use vibe_keyboard::infrastructure::images::SIDE_HEIGHT;
 #[path = "editor/app.rs"]
 mod app;
 #[path = "editor/app_picker.rs"]
@@ -25,6 +25,8 @@ mod image_picker;
 mod key_grid;
 #[path = "editor/key_panel.rs"]
 mod key_panel;
+#[path = "editor/key_preview.rs"]
+mod key_preview;
 #[path = "editor/layout.rs"]
 mod layout;
 #[path = "editor/page_list.rs"]
@@ -40,7 +42,6 @@ use layout::{cell_size, side_strip_size};
 use prompts::{apply_prompt_op, PromptOp};
 #[cfg(test)]
 use running_apps::parse_lsappinfo;
-use running_apps::running_apps;
 #[path = "editor/side_panel.rs"]
 mod side_panel;
 #[path = "editor/side_strip.rs"]
@@ -165,24 +166,6 @@ impl Editor {
         editor
     }
 
-    /// Run `lsappinfo` on a background thread. `ui` picks up the result.
-    fn start_running_refresh(&mut self) {
-        let (tx, rx) = mpsc::channel();
-        std::thread::spawn(move || {
-            let _ = tx.send(running_apps());
-        });
-        self.running_rx = Some(rx);
-    }
-
-    fn poll_running(&mut self) {
-        if let Some(rx) = &self.running_rx {
-            if let Ok(apps) = rx.try_recv() {
-                self.running = apps;
-                self.running_rx = None;
-            }
-        }
-    }
-
     fn dirty(&self) -> bool {
         self.session.profile != self.session.saved
     }
@@ -196,36 +179,6 @@ impl Editor {
             self.page = page;
             self.key = None;
         }
-    }
-
-    /// Texture of the deck image for `key`. Re-rendered only when that key's config changes.
-    fn preview(&mut self, ctx: &egui::Context, key: u8) -> egui::TextureHandle {
-        let config = self.session.profile.key_at(self.page, key).cloned();
-        let inset = self.session.profile.display.key_inset;
-        let generation = app_icon_generation();
-        if let Some(cached) = self.previews.get(&key) {
-            if cached.config == config && cached.generation == generation && cached.inset == inset {
-                return cached.texture.clone();
-            }
-        }
-        let img = key_image(key, config.as_ref(), &self.root, &inset);
-        let size = [img.width() as usize, img.height() as usize];
-        let rgba: Vec<u8> = img
-            .pixels()
-            .flat_map(|p| [p.0[0], p.0[1], p.0[2], 255])
-            .collect();
-        let color = egui::ColorImage::from_rgba_unmultiplied(size, &rgba);
-        let texture = ctx.load_texture(format!("key-{key}"), color, egui::TextureOptions::LINEAR);
-        self.previews.insert(
-            key,
-            Preview {
-                config,
-                inset,
-                generation,
-                texture: texture.clone(),
-            },
-        );
-        texture
     }
 }
 
