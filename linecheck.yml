@@ -12,7 +12,7 @@ rules:
   - pattern: "src/application/mod.rs"
     error: 202
   - pattern: "src/infrastructure/profile_store.rs"
-    error: 152
+    error: 105
   - pattern: "src/infrastructure/profile_store_tests.rs"
     error: 316
   - pattern: "src/main.rs"
