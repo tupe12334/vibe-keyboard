@@ -15,11 +15,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Ok(lock) => lock,
         Err(AcquireError::Held) => {
             let lock_path = controller_lock::default_lock_path();
-            let msg = format!(
-                "another vibe-keyboard controller is already running (lock {})",
-                lock_path.display()
-            );
-            eprintln!("{msg}");
+            eprintln!("{}", controller::held_message(&lock_path));
             // Login item (launchd KeepAlive SuccessfulExit=false) restarts only on non-zero
             // exit. A duplicate start is not a crash, so exit 0 and stop the restart loop.
             // Interactive runs exit 1 so the caller sees the failure.

@@ -6,6 +6,7 @@ pub mod keys;
 pub mod moadim;
 pub mod navigation;
 pub mod profile;
+pub mod profile_rules;
 pub mod ptt;
 pub mod side;
 pub mod switching;

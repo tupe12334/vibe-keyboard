@@ -7,8 +7,8 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
-use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{format_color, inner_rect, parse_color, Action, ActionKind};
+use vibe_keyboard::domain::{keys::is_nav_key, profile_rules};
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, key_image, SIDE_HEIGHT, SIDE_WIDTH,
 };
@@ -79,6 +79,8 @@ enum PageOp {
 mod image_kind;
 #[path = "editor/previews.rs"]
 mod previews;
+#[path = "editor/saving.rs"]
+mod saving;
 use image_kind::ImageKind;
 use previews::{shade_hidden, Preview, SidePreview};
 
@@ -184,29 +186,20 @@ impl Editor {
                 format!("Cannot save: {error}. Fix the file by hand, then reopen the editor.");
             return false;
         }
-        let problems = self.session.profile.problems();
-        if !problems.is_empty() {
-            self.status = format!(
-                "Cannot save: {} problem(s) in the layout. Fix them first (listed below).",
-                problems.len()
-            );
-            return false;
-        }
-        let path = profile_store::profile_path();
-        if !overwrite && profile_store::modified_at(&path) != self.loaded_mtime {
-            self.disk_conflict = true;
-            return false;
-        }
-        match profile_store::save(&path, &self.session.profile) {
-            Ok(()) => {
+        match saving::write(&self.session.profile, self.loaded_mtime, overwrite) {
+            saving::Outcome::Saved => {
                 self.session.mark_saved();
-                self.loaded_mtime = profile_store::modified_at(&path);
+                self.loaded_mtime = profile_store::modified_at(&profile_store::profile_path());
                 self.disk_conflict = false;
                 self.status = "Saved. The controller reloads within a second.".into();
                 true
             }
-            Err(e) => {
-                self.status = format!("Save failed: {e}");
+            saving::Outcome::Conflict => {
+                self.disk_conflict = true;
+                false
+            }
+            saving::Outcome::Refused(message) => {
+                self.status = message;
                 false
             }
         }
@@ -624,7 +617,7 @@ impl eframe::App for Editor {
             } else {
                 ui.label(self.status.as_str());
             }
-            let problems = self.session.profile.problems();
+            let problems = profile_rules::save_problems(&self.session.profile);
             if !problems.is_empty() {
                 ui.collapsing(
                     format!("{} problem(s) in the layout", problems.len()),

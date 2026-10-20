@@ -89,6 +89,33 @@ so no `brew install hidapi`.
 State is persisted to `~/.config/vibe-keyboard/state.toml`.
 Logs are written to `~/.config/vibe-keyboard/app.log`.
 
+### Desktop app (Tauri)
+
+`apps/desktop` is one app: a menu bar tray icon, the key editor window, and the
+device loop. Closing the window hides it. Quit from the tray.
+
+Needs Node 22+ and `pnpm`.
+
+```bash
+pnpm -C apps/desktop install
+pnpm -C apps/desktop tauri dev      # run with hot reload
+pnpm -C apps/desktop tauri build    # macOS app bundle (macOS 12+)
+```
+
+Set `VIBE_NO_DEVICE=1` to run the UI without the controller. The app then never
+opens the deck. Use it for every verification run, so a test cannot press keys
+on a deck another controller uses:
+
+```bash
+VIBE_NO_DEVICE=1 pnpm -C apps/desktop tauri dev
+```
+
+Typed bindings for the frontend go to `apps/desktop/src/bindings.ts` on every
+debug run. Commit the file when the Rust API changes.
+
+The desktop app replaces the TUI, `--headless` and the egui editor. Those are
+still in the repo. They go in a follow-up, once this app is verified.
+
 ## Customize
 
 All main-page keys come from `~/.config/vibe-keyboard/profile.toml` (or `$XDG_CONFIG_HOME/vibe-keyboard/profile.toml`).
