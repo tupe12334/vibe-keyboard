@@ -5,6 +5,8 @@
 
 use std::path::{Path, PathBuf};
 
+#[path = "app_icon/icns_render.rs"]
+mod icns_render;
 #[path = "app_icon/os.rs"]
 mod os;
 

@@ -33,8 +33,6 @@ rules:
     error: 164
   - pattern: "src/application/actions/profile.rs"
     error: 157
-  - pattern: "src/infrastructure/app_icon/os.rs"
-    error: 128
   - pattern: "src/application/pages/centy/issues.rs"
     error: 110
   - pattern: "src/application/pages/input_number.rs"
