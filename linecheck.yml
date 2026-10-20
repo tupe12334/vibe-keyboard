@@ -41,8 +41,6 @@ rules:
     error: 108
   - pattern: "src/presentation/tui/app_state.rs"
     error: 104
-  - pattern: "src/application/pages/session_actions.rs"
-    error: 102
   - pattern: "src/application/pages/main_page_tests.rs"
     error: 108
   - pattern: "**/*.rs"
