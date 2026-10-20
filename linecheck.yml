@@ -31,8 +31,6 @@ rules:
     error: 147
   - pattern: "src/infrastructure/frontmost_tests.rs"
     error: 114
-  - pattern: "src/domain/hotkey.rs"
-    error: 167
   - pattern: "src/application/pages/claude_sessions.rs"
     error: 164
   - pattern: "src/application/actions/profile.rs"
