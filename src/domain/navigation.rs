@@ -1,65 +1,20 @@
 #[cfg(test)]
 use crate::domain::actions::{CentyIssue, CentyProject, ClaudeSession};
-use crate::domain::moadim::MoadimList;
 #[cfg(test)]
-use crate::domain::moadim::{Flash, Routine};
+use crate::domain::moadim::{Flash, MoadimList, Routine};
 #[cfg(test)]
 use std::time::Instant;
 
+mod back_target;
 mod input_digits;
+mod paging;
 mod screen;
+pub use back_target::{back_key_on, BackKey};
+use paging::moadim_len;
+pub use paging::{action_pages, prompt_index, PROMPTS_PER_PAGE};
 pub use screen::Screen;
 mod lists;
 mod moadim;
-
-/// Routines on one list page. Same page size as the other lists.
-const fn moadim_len(list: &MoadimList) -> usize {
-    match list {
-        MoadimList::Online(routines) => routines.len(),
-        MoadimList::Pending | MoadimList::Offline => 0,
-    }
-}
-
-/// Prompt keys on a session action page: keys 1 to 10. Ten prompts fit on one page.
-pub const PROMPTS_PER_PAGE: usize = 10;
-
-/// Number of action pages for `count` prompts. Always at least one.
-pub const fn action_pages(count: usize) -> usize {
-    if count == 0 {
-        1
-    } else {
-        count.div_ceil(PROMPTS_PER_PAGE)
-    }
-}
-
-/// Index into the prompt list for `key` on `page`. None for a key with no prompt on that page.
-pub const fn prompt_index(page: usize, key: u8, count: usize) -> Option<usize> {
-    if key < 1 || key > 10 {
-        return None;
-    }
-    let index = page * PROMPTS_PER_PAGE + (key as usize - 1);
-    if index < count {
-        Some(index)
-    } else {
-        None
-    }
-}
-
-/// What key 11 does on a screen. `Back` steps within the main pages. `Out` leaves a sub-screen,
-/// the same as key 12.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum BackKey {
-    Back,
-    Out,
-}
-
-/// The key 11 decision for `screen`. Main pages keep back. Every built-in sub-screen uses out.
-pub const fn back_key_on(screen: &Screen) -> BackKey {
-    match screen {
-        Screen::MainPage { .. } => BackKey::Back,
-        _ => BackKey::Out,
-    }
-}
 
 /// Which screen is shown: stack depth, screen kind, and its page (0 when it has none).
 pub type ScreenId = (usize, std::mem::Discriminant<Screen>, usize);
