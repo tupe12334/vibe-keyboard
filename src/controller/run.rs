@@ -23,7 +23,7 @@ pub struct RunOptions {
     pub headless: bool,
     /// Set this to stop the loop. Signal handlers set it too.
     pub shutdown: Arc<AtomicBool>,
-    /// UI state. The caller starts logging with it and loads the profile (`load_profile`).
+    /// UI state. Call `load_profile` on it only after `claim()` succeeds.
     pub state: Arc<Mutex<AppState>>,
     pub on_event: EventSink,
 }

@@ -7,7 +7,7 @@ use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::profile_store;
 use crate::infrastructure::usb::{device_init, wait_for_device, Device};
 use crate::presentation::tui::AppState;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing::{error, info};
 
@@ -37,6 +37,10 @@ pub fn load_profile_at(state: &Arc<Mutex<AppState>>, path: &std::path::Path) {
 
 /// Open the deck, waiting for it if needed. None when shutdown comes first.
 pub fn open_device(shutdown: &AtomicBool) -> Option<(Device, DeviceState)> {
+    // Stop first: a shutdown already requested must not probe the deck.
+    if shutdown.load(Ordering::Relaxed) {
+        return None;
+    }
     let state = DeviceState::load();
     let brightness = state.brightness;
     let dev = match Device::open() {

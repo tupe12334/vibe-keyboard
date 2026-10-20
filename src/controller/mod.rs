@@ -11,6 +11,9 @@ mod side;
 mod stop;
 mod tick;
 
+#[cfg(test)]
+mod run_tests;
+
 use crate::infrastructure::controller_lock::{self, AcquireError, ControllerLock};
 use std::path::Path;
 
