@@ -13,18 +13,18 @@ use crate::infrastructure::process::run;
 mod summary;
 mod tab_scripts;
 mod terminal;
+mod tmux_disk;
 mod tty_age;
 use summary::summary_for;
 use tab_scripts::{ITERM_TITLES, TERMINAL_TITLES};
 pub use terminal::{focus_session, open_new_session, send_prompt};
+use tmux_disk::tmux_panes;
 use tty_age::tty_age;
 
 /// Budgets for one discovery pass, which takes at most about 0.9 s: ps, then one lsof, then
 /// the two terminal apps in parallel.
 const PS_TIMEOUT: Duration = Duration::from_millis(150);
 const LSOF_TIMEOUT: Duration = Duration::from_millis(250);
-const TMUX_TIMEOUT: Duration = Duration::from_millis(250);
-const TMUX_PANES: &[&str] = &["list-panes", "-a", "-F", "#{session_name} #{pane_tty}"];
 // ponytail: iTerm2 took about 380 ms live. Runs off the device loop, so a generous budget is safe.
 const TITLE_TIMEOUT: Duration = Duration::from_millis(1500);
 
@@ -53,7 +53,7 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
     .map(|out| cwds_from_lsof(&out))
     .unwrap_or_default();
     // Moadim routines are not user sessions. They stay on the Routines page. No tmux means no panes.
-    let tmux = run("tmux", TMUX_PANES, TMUX_TIMEOUT).unwrap_or_default();
+    let tmux = tmux_panes();
     let procs = drop_routines(procs, &cwds, &tmux);
     if procs.is_empty() {
         return Vec::new();

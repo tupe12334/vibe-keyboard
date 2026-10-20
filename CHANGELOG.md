@@ -33,3 +33,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Replaced all `unwrap`/`expect` calls to eliminate crash risks (#3)
+- Moadim routine sessions stay hidden at login: tmux is found outside PATH (Homebrew, MacPorts, `/usr/local`)

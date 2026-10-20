@@ -11,6 +11,7 @@ mod session_list;
 mod session_status;
 mod terminal_scripts;
 mod titles;
+mod tmux_binary;
 mod vscode_owner;
 
 pub use focus_check::{focused_bundle, is_frontmost, ITERM_BUNDLE, TERMINAL_BUNDLE};
