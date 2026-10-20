@@ -31,17 +31,43 @@ export const events = {
 
 /* Types */
 /**  What a key does when pressed. TOML: `type = "open_url"`, etc. */
-export type Action = { type: "none" } | { type: "open_url"; url: string } | 
+export type Action = Action_Serialize | Action_Deserialize;
+
+/**  What a key does when pressed. TOML: `type = "open_url"`, etc. */
+export type Action_Deserialize = ({ type: "none" }) & { command?: never; key?: never; keys?: never; name?: never; page?: never; url?: never } | ({ type: "open_url"; url: string }) & { command?: never; key?: never; keys?: never; name?: never; page?: never } | 
 /**  Run through `sh -c`, detached. */
-{ type: "run_command"; command: string } | 
+({ type: "run_command"; command: string }) & { key?: never; keys?: never; name?: never; page?: never; url?: never } | 
 /**  Run `open -a <name>`. */
-{ type: "open_app"; name: string } | 
+({ type: "open_app"; name: string }) & { command?: never; key?: never; keys?: never; page?: never; url?: never } | 
 /**  Send a shortcut such as `cmd+shift+4` through System Events. */
-{ type: "hotkey"; keys: string } | 
+({ type: "hotkey"; keys: string }) & { command?: never; key?: never; name?: never; page?: never; url?: never } | 
 /**  Jump to a main page by its 0-based index. */
-{ type: "go_to_page"; page: number } | 
+({ type: "go_to_page"; page: number }) & { command?: never; key?: never; keys?: never; name?: never; url?: never } | 
 /**  A built-in action from `BUILTIN_NAMES`. */
-{ type: "builtin"; name: string };
+({ type: "builtin"; name: string }) & { command?: never; key?: never; keys?: never; page?: never; url?: never } | 
+/**
+ *  Claude Code push-to-talk. As a hold: key down at hold start, key up at hold end.
+ *  As a tap: one press and release. `key` defaults to `Space`.
+ */
+({ type: "push_to_talk"; key?: string | null }) & { command?: never; keys?: never; name?: never; page?: never; url?: never };
+
+/**  What a key does when pressed. TOML: `type = "open_url"`, etc. */
+export type Action_Serialize = ({ type: "none" }) & { command?: never; key?: never; keys?: never; name?: never; page?: never; url?: never } | ({ type: "open_url"; url: string }) & { command?: never; key?: never; keys?: never; name?: never; page?: never } | 
+/**  Run through `sh -c`, detached. */
+({ type: "run_command"; command: string }) & { key?: never; keys?: never; name?: never; page?: never; url?: never } | 
+/**  Run `open -a <name>`. */
+({ type: "open_app"; name: string }) & { command?: never; key?: never; keys?: never; page?: never; url?: never } | 
+/**  Send a shortcut such as `cmd+shift+4` through System Events. */
+({ type: "hotkey"; keys: string }) & { command?: never; key?: never; name?: never; page?: never; url?: never } | 
+/**  Jump to a main page by its 0-based index. */
+({ type: "go_to_page"; page: number }) & { command?: never; key?: never; keys?: never; name?: never; url?: never } | 
+/**  A built-in action from `BUILTIN_NAMES`. */
+({ type: "builtin"; name: string }) & { command?: never; key?: never; keys?: never; page?: never; url?: never } | 
+/**
+ *  Claude Code push-to-talk. As a hold: key down at hold start, key up at hold end.
+ *  As a tap: one press and release. `key` defaults to `Space`.
+ */
+({ type: "push_to_talk"; key?: string | null }) & { command?: never; keys?: never; name?: never; page?: never; url?: never };
 
 /**  Device came up. Sent by the controller. */
 export type DeviceConnected = Record<string, never>;
@@ -73,6 +99,12 @@ export type DisplaySettings_Serialize = {
 	side_inset?: SideInset,
 };
 
+/**  The `[input]` table of `profile.toml`. */
+export type InputConfig = {
+	/**  Milliseconds a key must stay down before its `hold` action starts. */
+	hold_ms?: number,
+};
+
 export type KeyConfig = KeyConfig_Serialize | KeyConfig_Deserialize;
 
 export type KeyConfig_Deserialize = {
@@ -81,7 +113,9 @@ export type KeyConfig_Deserialize = {
 	fg?: string,
 	/**  Shown instead of the label when set. Also drawn for `Builtin` keys without it. */
 	image?: string | null,
-	action?: Action,
+	action?: Action_Deserialize,
+	/**  Runs while the key is held, for at least `[input] hold_ms`. A short press still runs `action`. */
+	hold?: Action_Deserialize | null,
 };
 
 export type KeyConfig_Serialize = {
@@ -90,7 +124,9 @@ export type KeyConfig_Serialize = {
 	fg: string,
 	/**  Shown instead of the label when set. Also drawn for `Builtin` keys without it. */
 	image?: string | null,
-	action: Action,
+	action: Action_Serialize,
+	/**  Runs while the key is held, for at least `[input] hold_ms`. A short press still runs `action`. */
+	hold?: Action_Serialize | null,
 };
 
 /**  Key margins. The default hides the top 8 px of each key. */
@@ -139,6 +175,8 @@ export type Profile_Deserialize = {
 	prompts?: Prompt[],
 	/**  Device-wide display settings: the band the bezel hides, in pixels. */
 	display?: DisplaySettings_Deserialize,
+	/**  Timing of key holds. Absent means the defaults, so older files still load. */
+	input?: InputConfig,
 };
 
 /**  The whole user layout: an ordered list of main pages, and the prompts a session action sends. */
@@ -148,6 +186,8 @@ export type Profile_Serialize = {
 	prompts?: Prompt[],
 	/**  Device-wide display settings: the band the bezel hides, in pixels. */
 	display?: DisplaySettings_Serialize,
+	/**  Timing of key holds. Absent means the defaults, so older files still load. */
+	input?: InputConfig,
 };
 
 /**  A prompt a session action types into a Claude Code session, followed by Enter. */

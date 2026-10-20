@@ -18,6 +18,7 @@ const ACTION_LABELS: Record<Action["type"], string> = {
   hotkey: "Hotkey",
   go_to_page: "Go to page",
   builtin: "Built-in",
+  push_to_talk: "Push to talk",
 };
 
 function blankAction(type: Action["type"], firstBuiltin: string): Action {
@@ -36,6 +37,8 @@ function blankAction(type: Action["type"], firstBuiltin: string): Action {
       return { type, page: 0 };
     case "builtin":
       return { type, name: firstBuiltin };
+    case "push_to_talk":
+      return { type };
   }
 }
 
