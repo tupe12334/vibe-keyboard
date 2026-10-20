@@ -3,24 +3,60 @@
 use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
 use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
-    focus_scripts, is_session_on_tty, new_session_script, send_text_scripts,
+    focus_scripts, focused_bundle, is_frontmost, is_session_on_tty, new_session_script,
+    send_text_scripts,
 };
+use crate::infrastructure::frontmost::frontmost_bundle_id;
 use crate::infrastructure::process::run;
+use std::time::{Duration, Instant};
+
+/// How long to wait for a terminal to become frontmost after `open -b`.
+const FRONT_WAIT: Duration = Duration::from_millis(500);
+const FRONT_POLL: Duration = Duration::from_millis(50);
 
 /// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab
-/// (VS Code and other terminals), it activates VS Code. Returns true only when a tab was found.
-/// Blocks until done, so call it from a thread.
+/// (VS Code and other terminals), it activates VS Code and returns false. Returns true only when
+/// the tab was found and its terminal is verified frontmost. Blocks until done, so call it from a
+/// thread.
 pub fn focus_session(tty: &str) -> bool {
     let Some(scripts) = focus_scripts(tty) else {
         return false;
     };
-    let found = scripts.iter().any(|script| {
-        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
+    let found = scripts.iter().enumerate().find_map(|(index, script)| {
+        let out = run("osascript", &["-e", script], FOCUS_TIMEOUT)?;
+        (out.trim() == "found").then_some(index)
     });
-    if !found {
+    let Some(bundle) = found.and_then(focused_bundle) else {
         run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
+        return false;
+    };
+    ensure_frontmost(bundle)
+}
+
+/// True when `bundle` is frontmost. If not, asks `LaunchServices` to open it (works from a
+/// background app) and polls for up to `FRONT_WAIT`. Logs the frontmost app when it fails.
+fn ensure_frontmost(bundle: &str) -> bool {
+    let mut front = frontmost_bundle_id();
+    if is_frontmost(front.as_deref(), bundle) {
+        return true;
     }
-    found
+    run("open", &["-b", bundle], FOCUS_TIMEOUT);
+    let deadline = Instant::now() + FRONT_WAIT;
+    loop {
+        front = frontmost_bundle_id();
+        if is_frontmost(front.as_deref(), bundle) {
+            return true;
+        }
+        if Instant::now() >= deadline {
+            break;
+        }
+        std::thread::sleep(FRONT_POLL);
+    }
+    tracing::warn!(
+        "claude sessions: {bundle} not frontmost after focus; frontmost is {}",
+        front.as_deref().unwrap_or("unknown")
+    );
+    false
 }
 
 /// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Skips when `pid`
