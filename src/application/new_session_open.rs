@@ -60,7 +60,7 @@ pub fn poll_new_session(
     let Some(session) = take_result() else {
         return;
     };
-    if !matches!(nav.current(), Screen::ClaudeSessions { .. }) {
+    if !opens_on(nav) {
         return;
     }
     info!(
@@ -72,6 +72,11 @@ pub fn poll_new_session(
         std::thread::spawn(move || focus_session(&tty));
     });
     render_screen(nav, handle, state, dev_state);
+}
+
+/// True while the deck shows the sessions list. A user who moved on stays where they are.
+fn opens_on(nav: &NavigationStack) -> bool {
+    matches!(nav.current(), Screen::ClaudeSessions { .. })
 }
 
 fn take_result() -> Option<ClaudeSession> {
