@@ -1,10 +1,4 @@
 rules:
-  - pattern: "src/main.rs"
-    error: 284
-  - pattern: "src/application/pages/centy/issues.rs"
-    error: 110
-  - pattern: "src/presentation/tui/app_state.rs"
-    error: 104
   - pattern: "**/*.rs"
     error: 100
     error_message: "Over 100 lines: split this file. Caps only go down."
