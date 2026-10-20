@@ -71,3 +71,7 @@ pub fn render_main_page(
 #[cfg(test)]
 #[path = "main_page_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "main_page_profile_tests.rs"]
+mod profile_tests;
