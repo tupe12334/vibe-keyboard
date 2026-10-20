@@ -2,7 +2,7 @@
 
 use serde::Serialize;
 use specta::Type;
-use vibe_keyboard::domain::profile::Profile;
+use vibe_keyboard::domain::profile::{InputConfig, Profile};
 use vibe_keyboard::domain::profile_rules;
 
 /// The editor's rules, read once when the editor opens.
@@ -12,6 +12,8 @@ pub struct EditorRules {
     pub nav_keys: Vec<u8>,
     /// A layout keeps at least this many pages.
     pub min_pages: u32,
+    /// The hold time a layout without `[input]` uses, in milliseconds.
+    pub default_hold_ms: u32,
 }
 
 #[tauri::command]
@@ -20,6 +22,7 @@ pub fn editor_rules() -> EditorRules {
     EditorRules {
         nav_keys: profile_rules::nav_keys(),
         min_pages: profile_rules::MIN_PAGES as u32,
+        default_hold_ms: InputConfig::default().hold_ms as u32,
     }
 }
 

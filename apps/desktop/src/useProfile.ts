@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { commands } from "./bindings";
-import type { Profile } from "./types";
+import type { KeyConfig, Page, Profile } from "./types";
 
 /** The saved layout, the editor draft, the page shown, and the messages above the grid. */
 export function useProfile() {
@@ -49,5 +49,32 @@ export function useProfile() {
     setNotice(null);
   };
 
-  return { draft, setDraft, page, setPage, dirty, error, setError, notice, load, onReload, save };
+  // Edits the page on screen. Every other field of the draft stays as it was.
+  const updatePage = (change: (p: Page) => Page) =>
+    setDraft((d) => d && { ...d, pages: d.pages.map((p, i) => (i === page ? change(p) : p)) });
+  const setKey = (key: number, config: KeyConfig | undefined) =>
+    updatePage((p) => {
+      const keys = { ...p.keys };
+      if (config) keys[key] = config;
+      else delete keys[key];
+      return { ...p, keys };
+    });
+  const setHoldMs = (hold_ms: number) => setDraft((d) => d && { ...d, input: { ...d.input, hold_ms } });
+
+  return {
+    draft,
+    setDraft,
+    page,
+    setPage,
+    dirty,
+    error,
+    setError,
+    notice,
+    load,
+    onReload,
+    save,
+    updatePage,
+    setKey,
+    setHoldMs,
+  };
 }

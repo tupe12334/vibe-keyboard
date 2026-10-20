@@ -1,7 +1,9 @@
 import type { Action, KeyConfig_Serialize as KeyConfig } from "./bindings";
 import { ACTION_LABELS, blankAction } from "./actions";
 import { ActionFields } from "./ActionFields";
+import { ActionProblem } from "./ActionProblem";
 import { Field } from "./Field";
+import { HoldFields } from "./HoldFields";
 
 // Used when a key has no config yet. The first edit writes it into the layout.
 const BLANK_KEY: KeyConfig = {
@@ -18,11 +20,13 @@ interface Props {
   keyNumber: number;
   builtins: string[];
   pageCount: number;
+  holdMs: number;
+  onHoldMsChange: (ms: number) => void;
   onChange: (config: KeyConfig) => void;
   onClear: () => void;
 }
 
-export function KeyPanel({ config, keyNumber, builtins, pageCount, onChange, onClear }: Props) {
+export function KeyPanel({ config, keyNumber, builtins, pageCount, holdMs, onHoldMsChange, onChange, onClear }: Props) {
   const value = config ?? BLANK_KEY;
   const set = (patch: Partial<KeyConfig>) => onChange({ ...value, ...patch });
   const setAction = (action: Action) => set({ action });
@@ -59,6 +63,15 @@ export function KeyPanel({ config, keyNumber, builtins, pageCount, onChange, onC
         </Field>
       </div>
       <ActionFields action={value.action} builtins={builtins} pageCount={pageCount} onChange={setAction} />
+      <ActionProblem action={value.action} pageCount={pageCount} />
+      <HoldFields
+        hold={value.hold ?? null}
+        holdMs={holdMs}
+        builtins={builtins}
+        pageCount={pageCount}
+        onChange={(hold) => set({ hold })}
+        onHoldMsChange={onHoldMsChange}
+      />
       <div>
         <button className="danger" onClick={onClear}>
           Clear key

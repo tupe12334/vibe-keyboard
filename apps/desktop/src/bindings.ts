@@ -18,6 +18,11 @@ export const commands = {
 	 */
 	keyPreview: (profile: Profile_Deserialize, page: number, key: number) => typedError<string, string>(__TAURI_INVOKE("key_preview", { profile, page, key })),
 	listBuiltins: () => __TAURI_INVOKE<string[]>("list_builtins"),
+	/**
+	 *  Why an action cannot run, from the core rule. `None` when it can. `page_count` is the
+	 *  number of pages in the layout being edited.
+	 */
+	actionProblem: (action: Action_Deserialize, pageCount: number) => __TAURI_INVOKE<string | null>("action_problem", { action, pageCount }),
 	deviceStatus: () => __TAURI_INVOKE<DeviceStatus>("device_status"),
 	editorRules: () => __TAURI_INVOKE<EditorRules>("editor_rules"),
 	/**  The layout with one more page, named by the core rule. */
@@ -112,6 +117,8 @@ export type EditorRules = {
 	nav_keys: number[],
 	/**  A layout keeps at least this many pages. */
 	min_pages: number,
+	/**  The hold time a layout without `[input]` uses, in milliseconds. */
+	default_hold_ms: number,
 };
 
 /**  The `[input]` table of `profile.toml`. */
@@ -205,7 +212,6 @@ export type Profile_Serialize = {
 	input?: InputConfig,
 };
 
-/**  A prompt a session action types into a Claude Code session, followed by Enter. */
 export type Prompt = {
 	label: string,
 	text: string,

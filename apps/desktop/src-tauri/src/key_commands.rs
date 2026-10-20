@@ -4,7 +4,7 @@ use std::io::Cursor;
 
 use base64::Engine as _;
 use image::RgbImage;
-use vibe_keyboard::domain::profile::{Profile, BUILTIN_NAMES};
+use vibe_keyboard::domain::profile::{Action, Profile, BUILTIN_NAMES};
 use vibe_keyboard::infrastructure::images::key_image;
 use vibe_keyboard::infrastructure::profile_store;
 
@@ -20,6 +20,14 @@ pub fn key_preview(profile: Profile, page: u32, key: u8) -> Result<String, Strin
         &profile.display.key_inset,
     );
     png_data_url(&image)
+}
+
+/// Why an action cannot run, from the core rule. `None` when it can. `page_count` is the
+/// number of pages in the layout being edited.
+#[tauri::command]
+#[specta::specta]
+pub fn action_problem(action: Action, page_count: u32) -> Option<String> {
+    action.problem(page_count as usize)
 }
 
 #[tauri::command]

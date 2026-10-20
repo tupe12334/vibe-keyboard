@@ -5,6 +5,8 @@
 
 mod app;
 mod bindings;
+#[cfg(test)]
+mod command_harness;
 mod commands;
 mod events;
 mod key_commands;
@@ -26,17 +28,15 @@ use vibe_keyboard::presentation::tui::AppState;
 
 use app::App;
 
-fn main() {
-    // Held for the whole run: dropping it stops the file log.
-    let state = Arc::new(Mutex::new(AppState::new(0)));
-    let _log_guard = vibe_keyboard::logging::init(Arc::clone(&state));
-
-    let builder = Builder::<Wry>::new()
+/// The command and event list the frontend binds to. Also the source of the TypeScript bindings.
+fn specta_builder() -> Builder<Wry> {
+    Builder::<Wry>::new()
         .commands(collect_commands![
             commands::get_profile,
             commands::save_profile,
             key_commands::key_preview,
             key_commands::list_builtins,
+            key_commands::action_problem,
             commands::device_status,
             layout_commands::editor_rules,
             layout_commands::add_page,
@@ -47,7 +47,15 @@ fn main() {
             events::DeviceDisconnected,
             events::KeyPressed,
             events::ProfileReloaded,
-        ]);
+        ])
+}
+
+fn main() {
+    // Held for the whole run: dropping it stops the file log.
+    let state = Arc::new(Mutex::new(AppState::new(0)));
+    let _log_guard = vibe_keyboard::logging::init(Arc::clone(&state));
+
+    let builder = specta_builder();
 
     #[cfg(debug_assertions)]
     bindings::export_bindings(&builder);
