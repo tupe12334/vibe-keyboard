@@ -13,6 +13,7 @@ use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
 use super::gestures::run_gestures;
+use super::voice::holds_voice;
 
 /// Longest wait for a device event. Shorter while a key is due to become a hold.
 pub const READ_TIMEOUT: Duration = Duration::from_millis(500);
@@ -64,10 +65,9 @@ pub fn install_panic_release() {
 /// Remember a press whose action waits for the hold decision. Covers main page keys with `hold`,
 /// and session keys (focus still runs at press, the hold adds dictation).
 pub(super) fn track_press(key: u8, nav: &NavigationStack, state: &Arc<Mutex<tui::AppState>>) {
-    if is_nav_key(key) {
-        return;
-    }
     let held = match nav.current() {
+        _ if holds_voice(nav.current(), key) => Some(Held::Voice),
+        _ if is_nav_key(key) => None,
         Screen::MainPage { page } => state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)

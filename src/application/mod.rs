@@ -2,6 +2,7 @@ mod actions;
 mod moadim_keys;
 mod pages;
 pub mod prompt_return;
+mod voice;
 
 pub use pages::{refresh_side_widgets, render_screen};
 pub use refresh::Refresh;
@@ -17,6 +18,7 @@ pub use frontmost::handle_frontmost;
 use gestures::end_press;
 use holds::track_press;
 pub use holds::{install_panic_release, poll_holds, read_wait, release_all_holds};
+pub use voice::expire_flash;
 
 use crate::domain::actions::{NewSessionTerminal, TerminalApp};
 use crate::domain::navigation::prompt_index;
@@ -99,7 +101,12 @@ pub fn handle_key_event(
         _ if nav.is_moadim() => {
             moadim_keys::handle_key(key, nav, handle, state, dev_state, &mut refresh.moadim);
         }
-        13 if !is_input_number && !matches!(nav.current(), Screen::ClaudeSessions { .. }) => {
+        13 if !is_input_number
+            && !matches!(
+                nav.current(),
+                Screen::ClaudeSessions { .. } | Screen::SessionActions { .. }
+            ) =>
+        {
             nav.forward();
             render_screen(nav, handle, state, dev_state);
         }

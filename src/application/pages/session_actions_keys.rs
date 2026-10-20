@@ -18,6 +18,25 @@ pub fn open_session_actions(
     nav.push(Screen::SessionActions { session, page: 0 });
 }
 
+/// The Voice key (13): its tile and its action. Muted for apps that take no typed text.
+pub fn voice_key(typed: bool, inset: &KeyInset) -> (RgbImage, ButtonAction) {
+    let tile = if typed {
+        label_image("VOICE", inset)
+    } else {
+        muted_image("VOICE", inset)
+    };
+    let action = ButtonAction {
+        name: "Voice".into(),
+        title: "Voice".into(),
+        description: if typed {
+            "Hold to talk to this session. A tap only shows HOLD".into()
+        } else {
+            "Voice: this app takes no typed text".into()
+        },
+    };
+    (tile, action)
+}
+
 /// The Recap key (14): its tile and its action. Muted for apps that take no typed text.
 pub fn recap_key(typed: bool, inset: &KeyInset) -> (RgbImage, ButtonAction) {
     let tile = if typed {
