@@ -20,3 +20,6 @@ mod scripts;
 
 #[path = "claude_sessions_tests/vscode.rs"]
 mod vscode;
+
+#[path = "claude_sessions_tests/routines.rs"]
+mod routines;

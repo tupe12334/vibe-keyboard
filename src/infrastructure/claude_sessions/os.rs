@@ -4,7 +4,9 @@
 use std::collections::HashMap;
 use std::time::Duration;
 
-use super::{build_sessions, claude_processes, cwds_from_lsof, is_valid_tty, parse_tab_titles};
+use super::{
+    build_sessions, claude_processes, cwds_from_lsof, drop_routines, is_valid_tty, parse_tab_titles,
+};
 use crate::domain::actions::{ClaudeSession, TerminalApp};
 use crate::infrastructure::process::run;
 
@@ -21,6 +23,8 @@ use tty_age::tty_age;
 /// the two terminal apps in parallel.
 const PS_TIMEOUT: Duration = Duration::from_millis(150);
 const LSOF_TIMEOUT: Duration = Duration::from_millis(250);
+const TMUX_TIMEOUT: Duration = Duration::from_millis(250);
+const TMUX_PANES: &[&str] = &["list-panes", "-a", "-F", "#{session_name} #{pane_tty}"];
 // ponytail: iTerm2 took about 380 ms live. Runs off the device loop, so a generous budget is safe.
 const TITLE_TIMEOUT: Duration = Duration::from_millis(1500);
 
@@ -48,6 +52,12 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
     )
     .map(|out| cwds_from_lsof(&out))
     .unwrap_or_default();
+    // Moadim routines are not user sessions. They stay on the Routines page. No tmux means no panes.
+    let tmux = run("tmux", TMUX_PANES, TMUX_TIMEOUT).unwrap_or_default();
+    let procs = drop_routines(procs, &cwds, &tmux);
+    if procs.is_empty() {
+        return Vec::new();
+    }
 
     let iterm = std::thread::spawn(|| run("osascript", &["-e", ITERM_TITLES], TITLE_TIMEOUT));
     let terminal_titles = run("osascript", &["-e", TERMINAL_TITLES], TITLE_TIMEOUT)
