@@ -6,11 +6,9 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, Color32, Vec2};
+use eframe::egui::{self, Color32};
 use vibe_keyboard::domain::profile_rules;
-use vibe_keyboard::infrastructure::images::{
-    app_icon_generation, key_image, SIDE_HEIGHT, SIDE_WIDTH,
-};
+use vibe_keyboard::infrastructure::images::{app_icon_generation, key_image, SIDE_HEIGHT};
 #[path = "editor/app_picker.rs"]
 mod app_picker;
 #[path = "editor/app_rules.rs"]
@@ -27,12 +25,20 @@ mod image_picker;
 mod key_grid;
 #[path = "editor/key_panel.rs"]
 mod key_panel;
+#[path = "editor/layout.rs"]
+mod layout;
 #[path = "editor/page_list.rs"]
 mod page_list;
 #[path = "editor/prompts.rs"]
 mod prompts;
+#[path = "editor/running_apps.rs"]
+mod running_apps;
+use layout::{cell_size, side_strip_size};
 #[cfg(test)]
 use prompts::{apply_prompt_op, PromptOp};
+#[cfg(test)]
+use running_apps::parse_lsappinfo;
+use running_apps::running_apps;
 #[path = "editor/side_panel.rs"]
 mod side_panel;
 #[path = "editor/side_strip.rs"]
@@ -225,49 +231,6 @@ impl Editor {
 mod action_form;
 #[path = "editor/widgets.rs"]
 mod widgets;
-
-/// Size of the side strip for `avail_height`: at most the device render height, 100:480 ratio.
-fn side_strip_size(avail_height: f32) -> Vec2 {
-    let height = (avail_height - GRID_MARGIN).clamp(1.0, SIDE_STRIP_MAX);
-    Vec2::new(height * SIDE_WIDTH as f32 / SIDE_HEIGHT as f32, height)
-}
-
-/// Largest square cell that fits the 3x5 grid in `avail`, never below `CELL_MIN`.
-fn cell_size(avail: Vec2) -> f32 {
-    let by_width = (avail.x - GRID_MARGIN - 4.0 * GAP) / 5.0;
-    let by_height = (avail.y - GRID_MARGIN - 2.0 * GAP) / 3.0;
-    by_width.min(by_height).clamp(CELL_MIN, CELL_MAX)
-}
-
-/// Running apps as (name, bundle id), from `lsappinfo list`. Empty if it fails.
-fn running_apps() -> Vec<(String, String)> {
-    std::process::Command::new("lsappinfo")
-        .arg("list")
-        .output()
-        .map(|out| parse_lsappinfo(&String::from_utf8_lossy(&out.stdout)))
-        .unwrap_or_default()
-}
-
-/// Parse `lsappinfo list`. Each app starts with `N) "Name"` and has a `bundleID="..."` line.
-fn parse_lsappinfo(text: &str) -> Vec<(String, String)> {
-    let mut apps = Vec::new();
-    let mut name: Option<String> = None;
-    for line in text.lines() {
-        let trimmed = line.trim_start();
-        if let Some((number, rest)) = trimmed.split_once(") \"") {
-            if number.chars().all(|c| c.is_ascii_digit()) {
-                name = rest.split('"').next().map(str::to_string);
-            }
-        } else if let Some(rest) = trimmed.strip_prefix("bundleID=\"") {
-            if let (Some(app), Some(id)) = (name.take(), rest.split('"').next()) {
-                if id != "[ NULL ]" && !id.is_empty() {
-                    apps.push((app, id.to_string()));
-                }
-            }
-        }
-    }
-    apps
-}
 
 impl eframe::App for Editor {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
