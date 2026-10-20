@@ -20,11 +20,34 @@ Environment variables:
 | --- | --- | --- |
 | `CARGO_TARGET_DIR` | `<repo>/target` | Build output root |
 | `DEST` | `~/Applications` | Install folder |
+| `VK_SIGN_IDENTITY` | `Vibe Keyboard Local` | Code-signing identity. See [Keep the Accessibility grant](#keep-the-accessibility-grant-across-rebuilds) |
 
 ## Permissions
 
 Push-to-talk needs System Settings → Privacy & Security → Accessibility →
 Vibe Keyboard. Start at login is in the tray menu.
+
+## Keep the Accessibility grant across rebuilds
+
+Without a stable signing identity, macOS drops the Accessibility grant on
+every reinstall. Push-to-talk then stops silently. Create one local identity
+once:
+
+1. Open Keychain Access. Choose Keychain Access → Certificate Assistant →
+   Create a Certificate….
+2. Name: `Vibe Keyboard Local`. Identity type: Self Signed Root. Certificate
+   type: Code Signing. Click Create.
+3. Run `packaging/macos/build-app.sh`. The script signs with that identity.
+4. Grant Accessibility once to the installed app. Later rebuilds keep the grant.
+
+To use another identity (for example an Apple Development certificate), set
+`VK_SIGN_IDENTITY` to its name:
+
+```sh
+VK_SIGN_IDENTITY="Apple Development: you@example.com (TEAMID)" packaging/macos/build-app.sh
+```
+
+If the identity is missing, the script warns and signs ad-hoc.
 
 ## Legacy
 
