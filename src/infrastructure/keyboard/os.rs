@@ -26,6 +26,8 @@ use post::{trusted, CgPoster};
 
 /// Gap between repeated key downs while held. Terminal key repeat is about 30 ms.
 const REPEAT_EVERY: Duration = Duration::from_millis(30);
+/// How often a hold re-checks the frontmost app and Accessibility.
+const PROBE_EVERY: Duration = Duration::from_millis(250);
 
 /// The one push-to-talk hold of this process. A `static` never drops, so every exit path
 /// calls `release_all`, and the panic hook covers panics.
@@ -55,11 +57,21 @@ pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey) {
     if !lock().start(generation, key, code, flags, probe, Instant::now()) {
         return;
     }
-    thread::spawn(move || loop {
-        thread::sleep(REPEAT_EVERY);
-        let probe = read_probe();
-        if !lock().pump(generation, probe, Instant::now()) {
-            break;
+    // Steady beat: a late repeat reads as a release and ends dictation. Probe only every PROBE_EVERY.
+    thread::spawn(move || {
+        let mut probe = probe;
+        let mut probed = Instant::now();
+        let mut next = Instant::now() + REPEAT_EVERY;
+        loop {
+            thread::sleep(next.saturating_duration_since(Instant::now()));
+            next += REPEAT_EVERY;
+            if probed.elapsed() >= PROBE_EVERY {
+                probe = read_probe();
+                probed = Instant::now();
+            }
+            if !lock().pump(generation, probe, Instant::now()) {
+                break;
+            }
         }
     });
 }
