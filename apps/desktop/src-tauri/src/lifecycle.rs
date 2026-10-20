@@ -3,8 +3,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::thread::JoinHandle;
 
-use crate::app::App;
-
 /// A running controller thread and the flag that stops it.
 pub struct Running {
     pub(crate) shutdown: Arc<AtomicBool>,
@@ -35,18 +33,15 @@ pub fn start_with(
     Ok(())
 }
 
-impl App {
-    /// Stop the controller and wait for it. The controller clears the deck on the way out.
-    pub fn stop(&self) {
-        let running = self
-            .running
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-        if let Some(running) = running {
-            running.shutdown.store(true, Ordering::Relaxed);
-            let _ = running.thread.join();
-        }
+/// Stop the thread behind `running` and wait for it. Takes the slot, then joins outside the lock.
+pub fn stop_running(running: &Mutex<Option<Running>>) {
+    let taken = running
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .take();
+    if let Some(running) = taken {
+        running.shutdown.store(true, Ordering::Relaxed);
+        let _ = running.thread.join();
     }
 }
 

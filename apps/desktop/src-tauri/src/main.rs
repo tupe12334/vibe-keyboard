@@ -12,6 +12,7 @@ mod layout_commands;
 mod lifecycle;
 mod login_item;
 mod status;
+mod supervise;
 mod thread;
 mod tray;
 

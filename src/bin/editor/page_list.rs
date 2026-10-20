@@ -1,6 +1,7 @@
 use eframe::egui;
 
 use super::PageOp;
+use vibe_keyboard::domain::profile_rules;
 
 impl super::Editor {
     pub(super) fn page_list(&mut self, ui: &mut egui::Ui) -> Option<PageOp> {
@@ -55,8 +56,7 @@ impl super::Editor {
                 self.key = None;
             }
             PageOp::Add => {
-                let name = format!("Page {}", self.session.profile.pages.len() + 1);
-                self.page = self.session.profile.add_page(&name);
+                self.page = profile_rules::add_page(&mut self.session.profile);
                 self.key = None;
             }
             PageOp::Up(index) => {

@@ -10,7 +10,7 @@ use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::presentation::tui::AppState;
 
-use crate::lifecycle::{start_with, Running};
+use crate::lifecycle::{start_with, stop_running, Running};
 use crate::thread::spawn;
 
 /// Managed by Tauri. One controller thread at most.
@@ -69,6 +69,11 @@ impl App {
             );
             Ok(Running { shutdown, thread })
         })
+    }
+
+    /// Stop the controller and wait for it. The controller clears the deck on the way out.
+    pub fn stop(&self) {
+        stop_running(&self.running);
     }
 
     pub fn record_profile_mtime(&self) {
