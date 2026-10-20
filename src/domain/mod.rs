@@ -1,5 +1,6 @@
 pub mod actions;
 pub mod button;
+pub mod claude_session;
 pub mod hold;
 pub mod hotkey;
 pub mod keys;
