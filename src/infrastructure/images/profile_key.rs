@@ -206,6 +206,7 @@ fn builtin_icon(name: &str) -> Option<RgbImage> {
         "numpad" => generate_numpad_entry_image(),
         "log_file" => generate_log_file_image(),
         "vscode_config" => generate_vscode_config_image(),
+        "moadim" => label_tile("MOADIM", [28, 44, 84], [230, 230, 230]),
         _ => return None,
     })
 }
