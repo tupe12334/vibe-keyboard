@@ -6,9 +6,8 @@ use std::path::PathBuf;
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
-use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
-use vibe_keyboard::domain::profile::{format_color, inner_rect, parse_color, Action, ActionKind};
-use vibe_keyboard::domain::{keys::is_nav_key, profile_rules};
+use eframe::egui::{self, Color32, Vec2};
+use vibe_keyboard::domain::profile_rules;
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, key_image, SIDE_HEIGHT, SIDE_WIDTH,
 };
@@ -22,6 +21,10 @@ mod dialogs;
 mod icon_grid;
 #[path = "editor/image_picker.rs"]
 mod image_picker;
+#[path = "editor/key_grid.rs"]
+mod key_grid;
+#[path = "editor/key_panel.rs"]
+mod key_panel;
 #[path = "editor/page_list.rs"]
 mod page_list;
 #[path = "editor/prompts.rs"]
@@ -34,7 +37,6 @@ mod side_panel;
 mod side_strip;
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::system_metrics::{self, Shared};
-use vibe_keyboard::infrastructure::usb::DECK_IMAGE_SIZE;
 
 /// Physical layout as seen from the front. Matches `device.md`.
 const GRID: [[u8; 5]; 3] = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]];
@@ -84,7 +86,7 @@ mod previews;
 #[path = "editor/saving.rs"]
 mod saving;
 use image_kind::ImageKind;
-use previews::{shade_hidden, Preview, SidePreview};
+use previews::{Preview, SidePreview};
 
 #[path = "editor/session.rs"]
 mod session;
@@ -285,167 +287,12 @@ impl Editor {
         );
         texture
     }
-
-    fn grid(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> Option<u8> {
-        let mut clicked = None;
-        let cell = cell_size(ui.available_size());
-        egui::Grid::new("keys").spacing([GAP, GAP]).show(ui, |ui| {
-            for row in GRID {
-                for key in row {
-                    let response = self.key_cell(ui, ctx, key, cell);
-                    if response.clicked() && !is_nav_key(key) {
-                        clicked = Some(key);
-                    }
-                }
-                ui.end_row();
-            }
-        });
-        clicked
-    }
-
-    fn key_cell(
-        &mut self,
-        ui: &mut egui::Ui,
-        ctx: &egui::Context,
-        key: u8,
-        cell: f32,
-    ) -> egui::Response {
-        let size = Vec2::splat(cell);
-        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-        let texture = self.preview(ctx, key);
-        let painter = ui.painter_at(rect);
-        let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-        painter.image(texture.id(), rect, uv, Color32::WHITE);
-        let inset = self.session.profile.display.key_inset;
-        let visible = inner_rect(
-            DECK_IMAGE_SIZE,
-            DECK_IMAGE_SIZE,
-            inset.top,
-            inset.bottom,
-            inset.left,
-            inset.right,
-        );
-        shade_hidden(&painter, rect, (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE), visible);
-        // Key number in a small dark box, so it reads over any image.
-        let number =
-            egui::Rect::from_min_size(rect.left_top() + Vec2::new(2.0, 2.0), Vec2::new(18.0, 14.0));
-        painter.rect_filled(number, 3.0, Color32::from_black_alpha(160));
-        painter.text(
-            number.center(),
-            Align2::CENTER_CENTER,
-            key.to_string(),
-            FontId::monospace(10.0),
-            Color32::WHITE,
-        );
-        if self.key == Some(key) {
-            painter.rect_stroke(
-                rect,
-                4.0,
-                Stroke::new(2.0, Color32::LIGHT_BLUE),
-                StrokeKind::Inside,
-            );
-        }
-        response
-    }
-
-    fn key_panel(&mut self, ui: &mut egui::Ui) {
-        if self.side_open {
-            self.side_panel(ui);
-            return;
-        }
-        let Some(key) = self.key else {
-            ui.label("Click a key to edit it.");
-            return;
-        };
-        let page_count = self.session.profile.pages.len();
-        let original = self
-            .session
-            .profile
-            .key_at(self.page, key)
-            .cloned()
-            .unwrap_or_default();
-        let mut edited = original.clone();
-        let mut clear = false;
-
-        ui.heading(format!("Key {key}"));
-        ui.horizontal(|ui| {
-            ui.label("Label");
-            ui.text_edit_singleline(&mut edited.label);
-        });
-        ui.horizontal(|ui| {
-            ui.label("Background");
-            let mut rgb = parse_color(&edited.bg).unwrap_or([20, 20, 20]);
-            if egui::color_picker::color_edit_button_srgb(ui, &mut rgb).changed() {
-                edited.bg = format_color(rgb);
-            }
-            ui.label("Text");
-            let mut rgb = parse_color(&edited.fg).unwrap_or([230, 230, 230]);
-            if egui::color_picker::color_edit_button_srgb(ui, &mut rgb).changed() {
-                edited.fg = format_color(rgb);
-            }
-        });
-        let ctx = ui.ctx().clone();
-        self.image_picker(ui, &ctx, &mut edited.image);
-
-        let mut kind = edited.action.kind();
-        egui::ComboBox::from_label("Action")
-            .selected_text(kind.label())
-            .show_ui(ui, |ui| {
-                for option in ActionKind::ALL {
-                    ui.selectable_value(&mut kind, option, option.label());
-                }
-            });
-        if kind != edited.action.kind() {
-            edited.action = Action::default_of(kind);
-        }
-        action_fields(ui, &mut edited.action, page_count);
-        if let Some(problem) = edited.action.problem(page_count) {
-            ui.colored_label(RED, problem);
-        }
-
-        // The hold action runs while the key is held past `[input] hold_ms`.
-        let held_kind = edited.hold.as_ref().map_or(ActionKind::None, Action::kind);
-        let mut hold_kind = held_kind;
-        egui::ComboBox::from_label("Hold action")
-            .selected_text(hold_kind.label())
-            .show_ui(ui, |ui| {
-                for option in ActionKind::ALL {
-                    ui.selectable_value(&mut hold_kind, option, option.label());
-                }
-            });
-        if hold_kind != held_kind {
-            edited.hold = (hold_kind != ActionKind::None).then(|| Action::default_of(hold_kind));
-        }
-        if let Some(hold) = edited.hold.as_mut() {
-            action_fields(ui, hold, page_count);
-        }
-        if let Some(problem) = edited
-            .hold
-            .as_ref()
-            .and_then(|hold| hold.problem(page_count))
-        {
-            ui.colored_label(RED, problem);
-        }
-
-        ui.separator();
-        if ui.button("Clear key").clicked() {
-            clear = true;
-        }
-
-        // Write only real changes, so an untouched panel never dirties the profile.
-        if clear {
-            self.session.profile.clear_key(self.page, key);
-        } else if edited != original {
-            self.session.profile.set_key(self.page, key, edited);
-        }
-    }
 }
 
 #[path = "editor/action_form.rs"]
 mod action_form;
 #[path = "editor/widgets.rs"]
 mod widgets;
-use action_form::action_fields;
 
 /// Size of the side strip for `avail_height`: at most the device render height, 100:480 ratio.
 fn side_strip_size(avail_height: f32) -> Vec2 {
