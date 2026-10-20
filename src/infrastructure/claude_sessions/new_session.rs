@@ -2,18 +2,19 @@
 
 use crate::domain::actions::NewSessionTerminal;
 
-/// `AppleScript` that opens a new window running `claude` in the home folder. iTerm2 types the
-/// command into the new window's shell, so the user's own PATH and profile apply.
+/// `AppleScript` that opens a new window running `claude` in `~/dev/git/github`. The home folder
+/// is never trusted, so Claude Code would stop at its trust prompt and need the keyboard. iTerm2
+/// types the command into the new window's shell, so the user's own PATH and profile apply.
 const ITERM_NEW_SESSION: &str = r#"tell application "iTerm2"
   activate
   create window with default profile
-  tell current session of current window to write text "claude"
+  tell current session of current window to write text "cd ~/dev/git/github && claude"
 end tell"#;
 
 /// `AppleScript` for Terminal.app. `do script` opens a new window and runs `claude` in it.
 const TERMINAL_NEW_SESSION: &str = r#"tell application "Terminal"
   activate
-  do script "claude"
+  do script "cd ~/dev/git/github && claude"
 end tell"#;
 
 /// The script that opens a new Claude Code window in `app`. Fixed text, so no user input is
@@ -34,11 +35,11 @@ mod tests {
     fn new_session_script_runs_claude_in_the_chosen_app() {
         let iterm = new_session_script(NewSessionTerminal::ITerm);
         assert!(iterm.contains(r#"tell application "iTerm2""#));
-        assert!(iterm.contains(r#"write text "claude""#));
+        assert!(iterm.contains(r#"write text "cd ~/dev/git/github && claude""#));
         assert!(!iterm.contains("Terminal"));
         let terminal = new_session_script(NewSessionTerminal::Terminal);
         assert!(terminal.contains(r#"tell application "Terminal""#));
-        assert!(terminal.contains(r#"do script "claude""#));
+        assert!(terminal.contains(r#"do script "cd ~/dev/git/github && claude""#));
         assert!(!terminal.contains("iTerm2"));
     }
 }
