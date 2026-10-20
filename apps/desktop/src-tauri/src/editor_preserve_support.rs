@@ -72,7 +72,7 @@ pub fn assert_untouched(name: &str, edit: impl FnOnce(Profile) -> Profile, targe
     let edited = edit(loaded);
     get_ipc_response(
         &webview,
-        request("save_profile", json!({ "profile": edited })),
+        request("save_profile", json!({ "profile": edited, "force": false })),
     )
     .expect("save accepted");
     let saved = std::fs::read_to_string(&path).expect("read saved file");
