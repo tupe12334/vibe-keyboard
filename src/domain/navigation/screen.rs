@@ -39,6 +39,9 @@ pub enum Screen {
         session: ClaudeSession,
         page: usize,
     },
+    ConfirmExit {
+        session: ClaudeSession,
+    },
     MoadimList {
         list: MoadimList,
         page: usize,
@@ -61,6 +64,7 @@ impl Screen {
             | Self::InputNumber { .. }
             | Self::ClaudeSessions { .. }
             | Self::SessionActions { .. }
+            | Self::ConfirmExit { .. }
             | Self::MoadimList { .. }
             | Self::MoadimRoutine { .. }
             | Self::NewSessionChoice => None,

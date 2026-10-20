@@ -53,6 +53,9 @@ pub enum ScreenView {
     SessionActions {
         label: String,
     },
+    ConfirmExit {
+        label: String,
+    },
     MoadimList(usize, usize),
     MoadimRoutine(String),
 }

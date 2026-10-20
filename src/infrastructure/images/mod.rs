@@ -27,7 +27,8 @@ pub use numpad::{
     generate_numpad_entry_image,
 };
 pub use profile_key::{
-    app_icon_generation, key_image, label_image, muted_image, page_images, session_image,
+    app_icon_generation, danger_image, key_image, label_image, muted_image, page_images,
+    session_image,
 };
 pub use project_item::generate_project_item_image;
 pub use search::generate_search_image;

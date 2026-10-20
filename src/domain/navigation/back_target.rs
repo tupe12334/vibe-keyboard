@@ -8,10 +8,11 @@ pub enum BackKey {
     Out,
 }
 
-/// The key 11 decision for `screen`. Main pages keep back. Every built-in sub-screen uses out.
+/// The key 11 decision for `screen`. Main pages and the exit confirm (cancel) keep back.
+/// Every other sub-screen uses out.
 pub const fn back_key_on(screen: &Screen) -> BackKey {
     match screen {
-        Screen::MainPage { .. } => BackKey::Back,
+        Screen::MainPage { .. } | Screen::ConfirmExit { .. } => BackKey::Back,
         _ => BackKey::Out,
     }
 }

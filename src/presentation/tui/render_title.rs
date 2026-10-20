@@ -69,6 +69,7 @@ pub(super) fn render_title(frame: &mut Frame, area: Rect, state: &AppState) {
             ScreenView::SessionActions { label } => format!(
                 " {label}    [1-10] prompts  [11] out  [12] back  [14] recap  [15] more  [q] quit ",
             ),
+            ScreenView::ConfirmExit { label } => format!(" Exit {label}?  [13] confirm  [11] cancel "),
             ScreenView::NewSessionChoice => {
                 " New Claude session    [1] iTerm  [2] Terminal    [11] out  [q] quit ".into()
             }

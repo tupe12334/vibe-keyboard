@@ -9,7 +9,7 @@ use crate::presentation::tui;
 
 use super::input_modes::{self, NumberEdit};
 use super::key_action::Action;
-use super::pages::{open_session_actions, show_focus_only};
+use super::pages::{open_confirm_exit, open_session_actions, show_focus_only};
 use super::{prompt_return, render_screen, DeviceState};
 
 /// Claude session keys, sorting, paging and number entry.
@@ -34,6 +34,11 @@ pub(super) fn session_action(
                 // Off the device loop: osascript can take a while to answer.
                 std::thread::spawn(move || focus_session(&tty));
             });
+            render_screen(nav, handle, state, dev_state);
+        }
+        Action::OpenConfirmExit { session } => {
+            info!("claude sessions: confirm exit for {}", session.tty);
+            open_confirm_exit(nav, session);
             render_screen(nav, handle, state, dev_state);
         }
         Action::SendPrompt { pid, tty, text } => {

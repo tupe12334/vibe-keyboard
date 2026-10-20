@@ -21,6 +21,10 @@ pub const fn may_send(app: TerminalApp) -> bool {
 
 /// Back to the sessions list. Key 12 and a prompt that reached its session both come here.
 pub fn back_to_sessions(nav: &mut NavigationStack) {
+    // The exit confirm sits above its session page, so leave that first.
+    if matches!(nav.current(), Screen::ConfirmExit { .. }) {
+        nav.out();
+    }
     nav.back();
 }
 
@@ -63,7 +67,10 @@ fn take_result() -> Option<(String, bool)> {
 /// True when a delivered send for `tty` should leave the page. Only that session's action page
 /// counts, so a user who already left stays where they are.
 pub fn leave_after_send(nav: &NavigationStack, tty: &str, sent: bool) -> bool {
-    sent && matches!(nav.current(), Screen::SessionActions { session, .. } if session.tty == tty)
+    sent && matches!(
+        nav.current(),
+        Screen::SessionActions { session, .. } | Screen::ConfirmExit { session } if session.tty == tty
+    )
 }
 
 #[cfg(test)]

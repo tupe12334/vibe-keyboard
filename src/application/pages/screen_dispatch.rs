@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use super::{
     claude_sessions, input_number, issue_actions, issue_list, key_tiles, main_page, moadim,
-    new_session, project_actions, project_list, session_actions,
+    new_session, project_actions, project_list, render_confirm_exit, session_actions,
 };
 use crate::application::lock;
 use crate::domain::navigation::{back_key_on, BackKey, NavigationStack, Screen};
@@ -77,6 +77,7 @@ pub fn render_screen(
         Screen::SessionActions { session, page } => {
             session_actions::render_session_actions(session, *page, handle, state);
         }
+        Screen::ConfirmExit { session } => render_confirm_exit(session, handle, state),
         _ => moadim::render(screen, handle, state),
     }
     // Every sub-screen shows OUT on key 11. Drawn last, so a page cannot cover it.

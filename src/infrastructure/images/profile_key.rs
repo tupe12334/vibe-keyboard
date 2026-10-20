@@ -17,6 +17,7 @@ pub use app_icon_cache::app_icon_generation;
 pub use session_tile::session_image;
 use sources::builtin_icon;
 pub(super) use sources::source_image;
+pub use tiles::danger_image;
 pub(super) use tiles::label_tile;
 use tiles::nav_image;
 pub use tiles::{label_image, muted_image};

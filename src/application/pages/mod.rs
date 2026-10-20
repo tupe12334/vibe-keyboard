@@ -1,5 +1,7 @@
 mod centy;
 mod claude_sessions;
+pub mod confirm_exit;
+mod confirm_exit_render;
 mod input_number;
 mod issue_actions;
 mod issue_list;
@@ -14,6 +16,8 @@ mod session_actions;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
+pub use confirm_exit::{confirm_action, exit_action, open_confirm_exit};
+pub use confirm_exit_render::render_confirm_exit;
 pub use key_tiles::show_focus_only;
 pub use main_page::refresh_side_widgets;
 pub use screen_dispatch::render_screen;
