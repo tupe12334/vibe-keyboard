@@ -1,5 +1,6 @@
-use super::*;
-use crate::domain::actions::SessionStatus;
+use super::keys::voice_key;
+use super::open_session_actions;
+use crate::domain::actions::{ClaudeSession, SessionStatus, TerminalApp};
 use crate::domain::navigation::{NavigationStack, Screen};
 
 #[test]
