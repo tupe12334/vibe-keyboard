@@ -2,7 +2,10 @@
 //!
 //! Run: `cargo run --example app_icon`
 
-#![allow(clippy::print_stderr)]
+#![allow(
+    clippy::print_stderr,
+    reason = "example reports progress to the terminal"
+)]
 // The app is a bin-only crate, so the module is included by path.
 #[path = "../src/infrastructure/app_icon.rs"]
 mod app_icon;

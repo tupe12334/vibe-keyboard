@@ -62,7 +62,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(clippy::expect_used)]
+    #[allow(clippy::expect_used, reason = "test: setup failures should panic")]
     fn second_acquire_reports_held_until_first_is_dropped() {
         let dir = std::env::temp_dir().join(format!(
             "vibe-keyboard-lock-test-{}-{}",

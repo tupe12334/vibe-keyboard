@@ -1,4 +1,7 @@
-#![allow(clippy::expect_used)]
+#![allow(
+    clippy::expect_used,
+    reason = "test module: setup failures should panic"
+)]
 use super::*;
 use crate::domain::profile::Profile;
 use std::sync::PoisonError;

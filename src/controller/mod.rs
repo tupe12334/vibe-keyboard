@@ -42,7 +42,10 @@ pub fn held_message(path: &Path) -> String {
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used)]
+#[allow(
+    clippy::expect_used,
+    reason = "test module: setup failures should panic"
+)]
 mod tests {
     use super::*;
 

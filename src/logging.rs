@@ -49,7 +49,10 @@ fn log_dir() -> std::path::PathBuf {
 
 /// Initialize the global tracing subscriber with a file appender and TUI layer.
 /// The returned `WorkerGuard` must be kept alive for the duration of the program.
-#[allow(clippy::print_stderr)]
+#[allow(
+    clippy::print_stderr,
+    reason = "reports to the user when app.log cannot be created"
+)]
 pub fn init(state: Arc<Mutex<AppState>>) -> tracing_appender::non_blocking::WorkerGuard {
     let dir = log_dir();
     let _ = std::fs::create_dir_all(&dir);

@@ -12,7 +12,10 @@
 mod os;
 
 // Public API for the app-aware PR. Unused until a caller exists.
-#[allow(unused_imports)]
+#[allow(
+    unused_imports,
+    reason = "re-export keeps the module surface stable across platforms"
+)]
 pub use os::{frontmost_bundle_id, watch};
 
 /// Parses `"CFBundleIdentifier"="com.googlecode.iterm2"` into the bundle id.
