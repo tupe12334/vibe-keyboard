@@ -71,7 +71,7 @@ pub(super) fn run_gestures(
             } => start_voice(key, nav),
             Gesture::Tap {
                 held: Held::Voice, ..
-            } => voice::flash(handle, state),
+            } => voice::tap(handle, nav, state, dev_state),
             _ => {}
         }
     }

@@ -30,7 +30,7 @@ pub fn voice_key(typed: bool, inset: &KeyInset) -> (RgbImage, ButtonAction) {
         name: "Voice".into(),
         title: "Voice".into(),
         description: if typed {
-            "Hold to talk to this session. A tap only shows HOLD".into()
+            "Hold: dictate. Tap: send (Enter)".into()
         } else {
             "Voice: this app takes no typed text".into()
         },
