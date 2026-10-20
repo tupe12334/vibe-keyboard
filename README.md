@@ -245,7 +245,7 @@ widgets = [
 ]
 ```
 
-Widget types: `cpu_percent`, `cpu_bar` (0-100 %, green below 60, amber below 85, red above), `temperature` (hottest CPU die, `N/A` if none), `disk_free` (free space on the user volume), and `text` with `value = "..."`.
+Widget types: `cpu_percent`, `cpu_bar` (0-100 %, green below 60, amber below 85, red above), `mem_bar` (used / total physical RAM, same colors), `cpu_mem_bar` (one bar split in two: CPU on the left half, memory on the right half, each half filled to its own percent), `temperature` (hottest CPU die, `N/A` if none), `disk_free` (free space on the user volume), and `text` with `value = "..."`.
 Values refresh every 2 seconds. Only a changed frame is sent to the device.
 
 #### Bar style

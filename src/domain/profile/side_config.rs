@@ -35,6 +35,10 @@ pub enum Widget {
     CpuPercent,
     /// Global CPU use as a bar from 0 to 100 %.
     CpuBar,
+    /// Global memory use as a bar from 0 to 100 %.
+    MemBar,
+    /// CPU and memory in one bar: the left half is CPU use, the right half is memory use.
+    CpuMemBar,
     /// Hottest CPU sensor in degrees Celsius, or `N/A`.
     Temperature,
     /// Free space on the user volume.

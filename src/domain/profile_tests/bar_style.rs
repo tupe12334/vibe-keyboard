@@ -84,3 +84,10 @@ fn the_real_layout_writes_no_bar_style() {
     let text = toml::to_string_pretty(&profile).unwrap_or_default();
     assert!(!text.contains("bar_style"), "text was:\n{text}");
 }
+
+#[test]
+fn the_memory_widgets_parse_from_toml() {
+    let text = "widgets = [{ type = \"mem_bar\" }, { type = \"cpu_mem_bar\" }]";
+    let side: SideConfig = toml::from_str(text).unwrap_or_default();
+    assert_eq!(side.widgets, vec![Widget::MemBar, Widget::CpuMemBar]);
+}

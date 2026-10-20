@@ -7,6 +7,7 @@ use super::text::draw_label;
 use crate::domain::profile::{inner_rect, parse_color, PixelRect, SideConfig, SideInset};
 use crate::infrastructure::system_metrics::Metrics;
 
+mod bars;
 mod cpu_bar;
 mod value_text;
 pub(super) mod widgets;
@@ -17,7 +18,6 @@ use widgets::draw_widgets;
 use crate::domain::profile::Widget;
 #[cfg(test)]
 use crate::infrastructure::system_metrics::Disk;
-#[cfg(test)]
 #[cfg(test)]
 use value_text::{free_text, percent, temperature_text};
 

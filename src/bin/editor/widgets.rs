@@ -39,6 +39,8 @@ pub(super) fn widget_editor(ui: &mut egui::Ui, widgets: &mut Vec<Widget>) {
         for (label, widget) in [
             ("+ CPU %", Widget::CpuPercent),
             ("+ CPU bar", Widget::CpuBar),
+            ("+ Mem bar", Widget::MemBar),
+            ("+ CPU|Mem bar", Widget::CpuMemBar),
             ("+ Temp", Widget::Temperature),
             ("+ Disk", Widget::DiskFree),
             (
@@ -59,6 +61,8 @@ pub(super) const fn widget_name(widget: &Widget) -> &'static str {
     match widget {
         Widget::CpuPercent => "CPU %",
         Widget::CpuBar => "CPU bar",
+        Widget::MemBar => "Mem bar",
+        Widget::CpuMemBar => "CPU|Mem bar",
         Widget::Temperature => "Temperature",
         Widget::DiskFree => "Disk free",
         Widget::Text { .. } => "Text",
