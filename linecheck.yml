@@ -35,8 +35,6 @@ rules:
     error: 167
   - pattern: "src/application/pages/claude_sessions.rs"
     error: 164
-  - pattern: "src/infrastructure/usb/image.rs"
-    error: 162
   - pattern: "src/application/actions/profile.rs"
     error: 157
   - pattern: "src/infrastructure/app_icon/os.rs"
