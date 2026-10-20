@@ -26,7 +26,7 @@ pub struct KeyEvent {
 /// What the OS reported just before a decision. Read outside the guard's lock.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Probe {
-    /// Pid of the app that owns the topmost normal window.
+    /// Pid of the frontmost app, the one that gets typed keys.
     pub front: Option<i32>,
     /// Whether this process may post key events.
     pub trusted: bool,

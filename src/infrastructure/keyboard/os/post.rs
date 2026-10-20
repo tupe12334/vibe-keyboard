@@ -1,12 +1,12 @@
 //! CoreGraphics key posting and the Accessibility check. Excluded from the coverage gate.
 
 use std::ffi::c_void;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 use core_graphics::event::{CGEvent, CGEventFlags, CGEventTapLocation, EventField};
 use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use foreign_types::ForeignType;
-use tracing::{error, warn};
+use tracing::{error, info, warn};
 
 use super::accessibility::accessibility_trusted;
 use super::panic::{HELD_CODE, HELD_FLAGS, HELD_PID};
@@ -18,6 +18,9 @@ extern "C" {
     fn CGEventPostToPid(pid: i32, event: *mut c_void);
 }
 
+/// Repeats sent for the current hold, for the key-up log line.
+static REPEATS: AtomicU32 = AtomicU32::new(0);
+
 /// The OS side of `KeyPoster`: CoreGraphics posts, and it records the key down it sent so the
 /// panic hook can lift it.
 pub struct CgPoster;
@@ -28,10 +31,18 @@ impl KeyPoster for CgPoster {
             HELD_CODE.store(event.code, Ordering::SeqCst);
             HELD_FLAGS.store(event.flags, Ordering::SeqCst);
             HELD_PID.store(pid, Ordering::SeqCst);
+            REPEATS.store(0, Ordering::SeqCst);
+            info!("push to talk: key down for pid {pid}");
+        } else if event.repeat {
+            REPEATS.fetch_add(1, Ordering::SeqCst);
         } else if !event.down {
             HELD_PID.store(0, Ordering::SeqCst);
+            let repeats = REPEATS.swap(0, Ordering::SeqCst);
+            info!("push to talk: key up after {repeats} repeats");
         }
-        post_event(Some(pid), event.code, event.flags, event.down, event.repeat);
+        // The HID tap reaches the frontmost app like a real keyboard, repeats included. Focus
+        // already verified that the session's terminal is frontmost (#220).
+        post_event(None, event.code, event.flags, event.down, event.repeat);
     }
 }
 
