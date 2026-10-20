@@ -7107,7 +7107,6 @@ name = "vibe-keyboard"
 version = "0.1.0"
 dependencies = [
  "cargo-husky",
- "core-foundation 0.9.4",
  "core-graphics 0.23.2",
  "crossterm 0.28.1",
  "dirs 5.0.1",
