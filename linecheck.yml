@@ -6,7 +6,9 @@ rules:
   - pattern: "src/domain/profile.rs"
     error: 880
   - pattern: "src/infrastructure/claude_sessions.rs"
-    error: 769
+    error: 388
+  - pattern: "src/infrastructure/claude_sessions_tests.rs"
+    error: 380
   - pattern: "src/application/mod.rs"
     error: 639
   - pattern: "src/infrastructure/profile_store.rs"

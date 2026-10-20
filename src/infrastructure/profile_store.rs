@@ -40,15 +40,14 @@ pub fn ensure_default(path: &Path) -> Result<Profile, String> {
     if let Err(e) = path.parent().map_or(Ok(()), write_guide) {
         warn!("could not write config guide: {e}");
     }
-    match read(path)? {
-        Some(profile) => Ok(profile),
-        None => {
-            let profile = Profile::default_from_legacy();
-            if let Err(e) = save(path, &profile) {
-                warn!("could not write default profile: {e}");
-            }
-            Ok(profile)
+    if let Some(profile) = read(path)? {
+        Ok(profile)
+    } else {
+        let profile = Profile::default_from_legacy();
+        if let Err(e) = save(path, &profile) {
+            warn!("could not write default profile: {e}");
         }
+        Ok(profile)
     }
 }
 

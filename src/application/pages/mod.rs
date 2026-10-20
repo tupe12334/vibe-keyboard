@@ -3,7 +3,9 @@ mod claude_sessions;
 mod input_number;
 mod issue_actions;
 mod issue_list;
+pub mod key_tiles;
 mod main_page;
+pub mod moadim;
 mod new_session;
 mod project_actions;
 mod project_list;
@@ -11,16 +13,17 @@ mod session_actions;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
+pub use key_tiles::show_focus_only;
 pub use main_page::refresh_side_widgets;
 use main_page::render_side;
-pub use session_actions::{open_session_actions, show_focus_only, RECAP_TEXT};
+pub use session_actions::{open_session_actions, RECAP_TEXT};
 
 use crate::infrastructure::usb::Device;
 use std::sync::{Arc, Mutex};
 
 use crate::domain::navigation::{back_key_on, BackKey, NavigationStack, Screen};
 use crate::infrastructure::persistence::DeviceState;
-use crate::infrastructure::usb::{clear_all, send_button_image};
+use crate::infrastructure::usb::clear_all;
 use crate::presentation::tui;
 
 /// Render the given screen to both the TUI state and the hardware device.
@@ -31,9 +34,7 @@ pub fn render_screen(
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     {
-        let mut s = state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut s = super::lock(state);
         s.nav_can_back = NavigationStack::can_back();
         s.nav_can_out = nav.can_out();
         s.nav_can_forward = nav.can_forward();
@@ -89,14 +90,11 @@ pub fn render_screen(
         Screen::SessionActions { session, page } => {
             session_actions::render_session_actions(session, *page, handle, state);
         }
+        _ => moadim::render(screen, handle, state),
     }
     // Every sub-screen shows OUT on key 11. Drawn last, so a page cannot cover it.
     if back_key_on(screen) == BackKey::Out {
-        send_button_image(
-            handle,
-            11,
-            image::DynamicImage::ImageRgb8(crate::infrastructure::images::label_image("OUT")),
-        );
+        key_tiles::show_out(handle, state);
     }
     render_side(handle, state, nav);
 }

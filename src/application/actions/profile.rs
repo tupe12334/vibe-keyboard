@@ -53,11 +53,7 @@ pub fn run_action(
             Err(e) => error!("profile: bad hotkey '{keys}': {e}"),
         },
         Action::GoToPage { page } => {
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .auto_page
-                .on_manual_page();
+            crate::application::lock(state).auto_page.on_manual_page();
             nav.go_to_page(*page);
             render_screen(nav, handle, state, dev_state);
         }
@@ -74,15 +70,9 @@ fn run_builtin(
 ) {
     match name {
         "centy_projects" => {
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = true;
+            crate::application::lock(state).loading = true;
             let projects: Vec<CentyProject> = fetch_centy_projects();
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = false;
+            crate::application::lock(state).loading = false;
             if !projects.is_empty() {
                 nav.push(Screen::CentyProjectList {
                     projects,
@@ -120,19 +110,14 @@ fn run_builtin(
             open_config_in_vscode();
         }
         "claude_sessions" => {
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = true;
+            crate::application::lock(state).loading = true;
             let sessions = list_sessions();
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = false;
+            crate::application::lock(state).loading = false;
             info!("claude sessions: {} found", sessions.len());
             nav.push(Screen::ClaudeSessions { sessions, page: 0 });
             render_screen(nav, handle, state, dev_state);
         }
+        "moadim" => crate::application::pages::moadim::open_routines(nav, handle, state, dev_state),
         other => error!("profile: unknown built-in '{other}'"),
     }
 }

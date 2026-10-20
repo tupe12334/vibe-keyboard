@@ -1,15 +1,37 @@
 mod actions;
+mod moadim_keys;
 mod pages;
 
 pub use pages::{refresh_side_widgets, render_screen, SessionsRefresh};
+
+#[derive(Default)]
+pub struct Refresh {
+    pub sessions: SessionsRefresh,
+    pub moadim: MoadimRefresh,
+}
+
+impl Refresh {
+    pub fn tick(
+        &mut self,
+        nav: &mut NavigationStack,
+        handle: &Device,
+        state: &Arc<Mutex<tui::AppState>>,
+        dev_state: &Arc<Mutex<DeviceState>>,
+    ) {
+        self.sessions.tick(nav, handle, state, dev_state);
+        self.moadim.tick(nav, handle, state, dev_state);
+    }
+}
 
 use crate::domain::actions::{NewSessionTerminal, TerminalApp};
 use crate::domain::navigation::prompt_index;
 use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
-use pages::{fetch_centy_issues, open_session_actions, show_focus_only, RECAP_TEXT};
-use std::sync::{Arc, Mutex};
+use pages::{
+    fetch_centy_issues, moadim::MoadimRefresh, open_session_actions, show_focus_only, RECAP_TEXT,
+};
+use std::sync::{Arc, Mutex, MutexGuard};
 use tracing::info;
 
 use crate::domain::keys::raw_to_logical;
@@ -17,12 +39,19 @@ use crate::domain::navigation::{back_key_on, BackKey, NavigationStack, Screen};
 use crate::infrastructure::persistence::DeviceState;
 use crate::presentation::tui;
 
+fn lock(state: &Arc<Mutex<tui::AppState>>) -> MutexGuard<'_, tui::AppState> {
+    state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 pub fn handle_key_event(
     buf: &[u8],
     handle: &Device,
     nav: &mut NavigationStack,
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
+    refresh: &mut Refresh,
 ) {
     let raw_id = buf[9];
     let state_byte = buf[10];
@@ -39,33 +68,19 @@ pub fn handle_key_event(
     };
     // Release always clears the highlight, even while loading.
     if state_byte != 1 {
-        state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .pressed_key = None;
+        lock(state).pressed_key = None;
         return;
     }
-    if state
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .loading
-    {
+    if lock(state).loading {
         return;
     }
-    state
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .pressed_key = Some(key);
+    lock(state).pressed_key = Some(key);
     info!("key {:2} {state_str}", key);
 
     let is_input_number = matches!(nav.current(), Screen::InputNumber { .. });
     if matches!(key, 11 | 13) && nav.main_page().is_some() {
         // Paging by hand on a main page makes it manual, so app switches stop fighting it.
-        state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .auto_page
-            .on_manual_page();
+        lock(state).auto_page.on_manual_page();
     }
 
     match key {
@@ -86,6 +101,9 @@ pub fn handle_key_event(
             render_screen(nav, handle, state, dev_state);
         }
         // On the InputNumber screen key 13 maps to digit 7, not "forward".
+        _ if nav.is_moadim() => {
+            moadim_keys::handle_key(key, nav, handle, state, dev_state, &mut refresh.moadim);
+        }
         13 if !is_input_number && !matches!(nav.current(), Screen::ClaudeSessions { .. }) => {
             nav.forward();
             render_screen(nav, handle, state, dev_state);
@@ -176,12 +194,7 @@ fn handle_action_key(
     // Main page keys come from the user's profile, not from code.
     if let Screen::MainPage { page } = nav.current() {
         let page = *page;
-        let configured = state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .profile
-            .action_at(page, key)
-            .cloned();
+        let configured = lock(state).profile.action_at(page, key).cloned();
         if let Some(action) = configured {
             actions::run_action(&action, nav, handle, state, dev_state);
         }
@@ -189,7 +202,10 @@ fn handle_action_key(
     }
 
     let action = match nav.current() {
-        Screen::MainPage { .. } => Action::None,
+        // Moadim pages are handled by `moadim_keys` before this match.
+        Screen::MainPage { .. } | Screen::MoadimList { .. } | Screen::MoadimRoutine { .. } => {
+            Action::None
+        }
         Screen::CentyProjectList { projects, page, .. } => {
             if key == 15 {
                 Action::Search
@@ -288,11 +304,7 @@ fn handle_action_key(
             _ => Action::None,
         },
         Screen::SessionActions { session, page } => {
-            let prompts = state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .profile
-                .session_prompts();
+            let prompts = lock(state).profile.session_prompts();
             let text = match key {
                 1..=10 => {
                     prompt_index(*page, key, prompts.len()).map(|index| prompts[index].text.clone())
@@ -362,15 +374,9 @@ fn handle_action_key(
             open_in_chrome(&url);
         }
         Action::FetchIssues { project_name, org } => {
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = true;
+            lock(state).loading = true;
             let issues = fetch_centy_issues(&project_name);
-            state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .loading = false;
+            lock(state).loading = false;
             if !issues.is_empty() {
                 nav.push(Screen::CentyIssueList {
                     issues,
@@ -442,7 +448,7 @@ fn handle_action_key(
         }
         Action::PromptUnsupported { key } => {
             info!("claude sessions: key {key} needs iTerm2 or Terminal; focus only");
-            show_focus_only(handle, key);
+            show_focus_only(handle, key, state);
         }
         Action::OpenNewSessionChoice => {
             info!("claude sessions: choose a terminal for a new session");
@@ -484,9 +490,7 @@ fn handle_action_key(
         }
         Action::Search => {
             info!("activating filter input mode");
-            let mut s = state
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let mut s = lock(state);
             s.text_input_mode = true;
             s.text_input_value = String::new();
             s.text_input_confirmed = false;
@@ -508,9 +512,7 @@ pub fn handle_frontmost(
         return;
     };
     let decision = {
-        let mut s = state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut s = lock(state);
         let target = s.profile.page_for_app(bundle_id);
         s.auto_page.on_frontmost(true, current, target)
     };

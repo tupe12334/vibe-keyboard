@@ -1,9 +1,9 @@
-use image::{DynamicImage, RgbImage};
+use image::RgbImage;
 
 use crate::domain::actions::{ButtonAction, ClaudeSession};
 use crate::domain::navigation::{NavigationStack, Screen};
+use crate::domain::profile::KeyInset;
 use crate::infrastructure::images::{label_image, muted_image};
-use crate::infrastructure::usb::{send_button_image, Device};
 
 use super::RECAP_TEXT;
 
@@ -18,22 +18,12 @@ pub fn open_session_actions(
     nav.push(Screen::SessionActions { session, page: 0 });
 }
 
-/// Shows a short message on a prompt key that the session's app cannot take. It stays until the
-/// user leaves the page.
-pub fn show_focus_only(handle: &Device, key: u8) {
-    send_button_image(
-        handle,
-        key,
-        DynamicImage::ImageRgb8(label_image("FOCUS ONLY")),
-    );
-}
-
 /// The Recap key (14): its tile and its action. Muted for apps that take no typed text.
-pub fn recap_key(typed: bool) -> (RgbImage, ButtonAction) {
+pub fn recap_key(typed: bool, inset: &KeyInset) -> (RgbImage, ButtonAction) {
     let tile = if typed {
-        label_image("RECAP")
+        label_image("RECAP", inset)
     } else {
-        muted_image("RECAP")
+        muted_image("RECAP", inset)
     };
     let action = ButtonAction {
         name: "Recap".into(),

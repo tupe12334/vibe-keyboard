@@ -23,6 +23,7 @@ pub fn render_session_actions(
     handle: &Device,
     state: &Arc<Mutex<tui::AppState>>,
 ) {
+    let inset = super::key_tiles::key_inset(state);
     let prompts = state
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
@@ -30,7 +31,7 @@ pub fn render_session_actions(
         .session_prompts();
     let typed = session.app != TerminalApp::Other;
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-    let mut tiles = vec![(12, label_image("BACK"))];
+    let mut tiles = vec![(12, label_image("BACK", &inset))];
     for key in 1..=(PROMPTS_PER_PAGE as u8) {
         let Some(index) = prompt_index(page, key, prompts.len()) else {
             continue;
@@ -53,17 +54,17 @@ pub fn render_session_actions(
         tiles.push((
             key,
             if typed {
-                label_image(&label)
+                label_image(&label, &inset)
             } else {
-                muted_image(&label)
+                muted_image(&label, &inset)
             },
         ));
     }
-    let (recap_tile, recap) = recap_key(typed);
+    let (recap_tile, recap) = recap_key(typed, &inset);
     tiles.push((14, recap_tile));
     actions.insert(14, recap);
     if action_pages(prompts.len()) > 1 {
-        tiles.push((15, label_image("MORE")));
+        tiles.push((15, label_image("MORE", &inset)));
     }
     actions.insert(
         12,
@@ -89,8 +90,8 @@ pub fn render_session_actions(
 
 #[path = "session_actions_keys.rs"]
 mod keys;
+pub use keys::open_session_actions;
 use keys::recap_key;
-pub use keys::{open_session_actions, show_focus_only};
 
 #[cfg(test)]
 #[path = "session_actions_tests.rs"]

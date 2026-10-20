@@ -10,7 +10,7 @@ use super::keys::is_nav_key;
 pub const KEY_COUNT: u8 = 15;
 
 /// Names accepted by `Action::Builtin`. Each one maps to hard-coded code in the app.
-pub const BUILTIN_NAMES: [&str; 8] = [
+pub const BUILTIN_NAMES: [&str; 9] = [
     "centy_projects",
     "terminal",
     "claude",
@@ -19,6 +19,7 @@ pub const BUILTIN_NAMES: [&str; 8] = [
     "log_file",
     "vscode_config",
     "claude_sessions",
+    "moadim",
 ];
 
 const DEFAULT_BG: &str = "#141414";
@@ -32,6 +33,9 @@ pub struct Profile {
     /// Text typed into a Claude Code session by its action page. Empty means the built-in pair.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub prompts: Vec<Prompt>,
+    /// Device-wide display settings: the band the bezel hides, in pixels.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub display: DisplaySettings,
 }
 
 /// A prompt a session action types into a Claude Code session, followed by Enter.
@@ -46,6 +50,92 @@ pub const PROMPT_MAX_CHARS: usize = 2000;
 
 /// Longest prompt label the profile accepts. Labels print on a key image.
 pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
+
+/// Bands the bezel hides. Content goes inside them; the background fills them.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DisplaySettings {
+    /// Per-key margins, in px of the 85x85 key canvas.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub key_inset: KeyInset,
+    /// Side screen margins, in px of the 100x480 portrait canvas.
+    #[serde(default, skip_serializing_if = "is_default")]
+    pub side_inset: SideInset,
+}
+
+/// Key margins. The default hides the top 8 px of each key.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct KeyInset {
+    pub top: u32,
+    pub bottom: u32,
+    pub left: u32,
+    pub right: u32,
+}
+
+impl Default for KeyInset {
+    fn default() -> Self {
+        Self {
+            top: 8,
+            bottom: 0,
+            left: 0,
+            right: 0,
+        }
+    }
+}
+
+/// Side screen margins. The defaults keep the old safe area, y 30..440.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct SideInset {
+    pub top: u32,
+    pub bottom: u32,
+}
+
+impl Default for SideInset {
+    fn default() -> Self {
+        Self {
+            top: 30,
+            bottom: 40,
+        }
+    }
+}
+
+/// Skips a field in TOML when it holds the default value, so old files stay byte-stable.
+pub fn is_default<T: Default + PartialEq>(value: &T) -> bool {
+    *value == T::default()
+}
+
+/// A pixel rectangle inside a canvas.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PixelRect {
+    pub x: u32,
+    pub y: u32,
+    pub w: u32,
+    pub h: u32,
+}
+
+/// The part of a `width` x `height` canvas that the insets leave visible. Insets larger than
+/// the canvas leave an empty rect, never a panic.
+pub fn inner_rect(
+    width: u32,
+    height: u32,
+    top: u32,
+    bottom: u32,
+    left: u32,
+    right: u32,
+) -> PixelRect {
+    PixelRect {
+        x: left.min(width),
+        y: top.min(height),
+        w: width.saturating_sub(left).saturating_sub(right),
+        h: height.saturating_sub(top).saturating_sub(bottom),
+    }
+}
+
+#[cfg(test)]
+#[path = "profile_display_tests.rs"]
+mod display_tests;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Page {
@@ -293,6 +383,7 @@ impl Profile {
                     ]),
                 },
             ],
+            display: DisplaySettings::default(),
         }
     }
 
@@ -493,375 +584,5 @@ pub fn format_color(rgb: [u8; 3]) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn prompts_round_trip_and_stay_out_of_files_when_empty() {
-        let mut profile = Profile::default_from_legacy();
-        assert!(profile.prompts.is_empty(), "first run writes no prompts");
-        profile.prompts = vec![Prompt {
-            label: "Ask".into(),
-            text: "Ask me".into(),
-        }];
-        let text = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert!(text.contains("[[prompts]]"));
-        let back: Profile = toml::from_str(&text).unwrap_or_default();
-        assert_eq!(back, profile);
-        assert_eq!(profile.session_prompts(), profile.prompts);
-
-        profile.prompts.clear();
-        let text = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert!(!text.contains("prompts"));
-        let back: Profile = toml::from_str(&text).unwrap_or_default();
-        assert_eq!(back, profile);
-        assert!(profile.session_prompts().is_empty());
-    }
-
-    #[test]
-    fn profile_without_prompts_has_no_session_prompts() {
-        let old: Profile = toml::from_str("[[pages]]\nname = \"Main\"\n").unwrap_or_default();
-        assert!(old.prompts.is_empty());
-        assert!(old.session_prompts().is_empty());
-    }
-
-    #[test]
-    fn prompt_problems_flag_empty_multiline_and_long_text() {
-        let prompt = |label: &str, text: &str| Prompt {
-            label: label.into(),
-            text: text.into(),
-        };
-        let profile = Profile {
-            pages: Vec::new(),
-            prompts: vec![
-                prompt("", "/a"),
-                prompt("B", "  "),
-                prompt("C", "line\nbreak"),
-                prompt("D", &"x".repeat(PROMPT_MAX_CHARS + 1)),
-                prompt("E", "/ok"),
-                prompt("F\nG", "/f"),
-                prompt(&"L".repeat(PROMPT_LABEL_MAX_CHARS + 1), "/l"),
-            ],
-        };
-        let problems = profile.problems();
-        assert_eq!(problems.len(), 6, "{problems:?}");
-        assert!(problems[0].contains("label is empty"));
-        assert!(problems[1].contains("text is empty"));
-        assert!(problems[2].contains("one line"));
-        assert!(problems[3].contains("over"));
-        assert!(problems[4].contains("label must be one line"));
-        assert!(problems[5].contains("label is over"));
-    }
-
-    #[test]
-    fn toml_round_trip_keeps_every_action() {
-        let mut profile = Profile::default_from_legacy();
-        let page = profile.add_page("Extra");
-        let actions = [
-            Action::OpenUrl {
-                url: "https://example.com".into(),
-            },
-            Action::RunCommand {
-                command: "echo hi".into(),
-            },
-            Action::OpenApp {
-                name: "Notes".into(),
-            },
-            Action::Hotkey {
-                keys: "cmd+shift+4".into(),
-            },
-            Action::GoToPage { page: 0 },
-        ];
-        for (i, action) in actions.into_iter().enumerate() {
-            let cfg = KeyConfig {
-                label: "x".into(),
-                action,
-                image: Some(PathBuf::from("/tmp/a.png")),
-                ..KeyConfig::default()
-            };
-            profile.set_key(page, u8::try_from(i + 1).unwrap_or(1), cfg);
-        }
-        let text = toml::to_string_pretty(&profile).unwrap_or_default();
-        let back: Profile = toml::from_str(&text).unwrap_or_default();
-        assert_eq!(back, profile, "text was:\n{text}");
-    }
-
-    #[test]
-    fn missing_fields_take_defaults() {
-        let text = "[[pages]]\nname = \"A\"\n\n[pages.keys.2]\nlabel = \"Hi\"\n";
-        let profile: Profile = toml::from_str(text).unwrap_or_default();
-        let key = profile.key_at(0, 2);
-        assert_eq!(key.map(|k| k.bg.as_str()), Some(DEFAULT_BG));
-        assert_eq!(key.map(|k| &k.action), Some(&Action::None));
-    }
-
-    #[test]
-    fn action_parses_each_variant_from_toml() {
-        let cases = [
-            ("type = \"none\"", Action::None),
-            (
-                "type = \"open_url\"\nurl = \"u\"",
-                Action::OpenUrl { url: "u".into() },
-            ),
-            (
-                "type = \"run_command\"\ncommand = \"c\"",
-                Action::RunCommand {
-                    command: "c".into(),
-                },
-            ),
-            (
-                "type = \"open_app\"\nname = \"n\"",
-                Action::OpenApp { name: "n".into() },
-            ),
-            (
-                "type = \"hotkey\"\nkeys = \"cmd+a\"",
-                Action::Hotkey {
-                    keys: "cmd+a".into(),
-                },
-            ),
-            (
-                "type = \"go_to_page\"\npage = 1",
-                Action::GoToPage { page: 1 },
-            ),
-            (
-                "type = \"builtin\"\nname = \"terminal\"",
-                Action::Builtin {
-                    name: "terminal".into(),
-                },
-            ),
-        ];
-        for (text, expected) in cases {
-            let parsed: Action = toml::from_str(text).unwrap_or_default();
-            assert_eq!(parsed, expected, "input: {text}");
-        }
-    }
-
-    #[test]
-    fn legacy_profile_is_valid() {
-        assert!(Profile::default_from_legacy().problems().is_empty());
-    }
-
-    #[test]
-    fn problems_flag_reserved_keys_colors_and_actions() {
-        let mut profile = Profile::default_from_legacy();
-        profile.set_key(
-            0,
-            12,
-            KeyConfig {
-                bg: "red".into(),
-                action: Action::GoToPage { page: 9 },
-                ..KeyConfig::default()
-            },
-        );
-        assert_eq!(profile.problems().len(), 3);
-    }
-
-    #[test]
-    fn color_parsing_round_trips() {
-        assert_eq!(parse_color("#1A2B3C"), Some([0x1A, 0x2B, 0x3C]));
-        assert_eq!(parse_color("1A2B3C"), None);
-        assert_eq!(parse_color("#+A2B3C"), None);
-        assert_eq!(format_color([0x1A, 0x2B, 0x3C]), "#1A2B3C");
-    }
-
-    #[test]
-    fn delete_keeps_at_least_one_page_and_move_reorders() {
-        let mut profile = Profile::default_from_legacy();
-        assert!(profile.move_page(0, 1));
-        assert_eq!(profile.pages[0].name, "Tools");
-        assert!(profile.delete_page(0));
-        assert!(!profile.delete_page(0));
-    }
-
-    #[test]
-    fn edit_methods_update_pages_and_keys() {
-        let mut profile = Profile::default();
-        profile.ensure_one_page();
-        assert_eq!(profile.pages.len(), 1);
-        let second = profile.add_page("Two");
-        assert_eq!(second, 1);
-        profile.set_key(
-            1,
-            3,
-            KeyConfig {
-                label: "x".into(),
-                ..KeyConfig::default()
-            },
-        );
-        profile.set_key(9, 3, KeyConfig::default());
-        assert_eq!(profile.key_at(1, 3).map(|k| k.label.as_str()), Some("x"));
-        assert!(profile.action_at(1, 3).is_some());
-        assert!(profile.key_at(9, 3).is_none());
-        profile.clear_key(1, 3);
-        profile.clear_key(9, 3);
-        assert!(profile.key_at(1, 3).is_none());
-        assert!(!profile.move_page(0, 5));
-        assert!(!profile.move_page(5, 0));
-        assert!(!profile.delete_page(7));
-    }
-
-    #[test]
-    fn action_problems_cover_each_variant() {
-        assert_eq!(Action::None.problem(1), None);
-        assert!(Action::OpenUrl { url: " ".into() }.problem(1).is_some());
-        assert_eq!(Action::OpenUrl { url: "u".into() }.problem(1), None);
-        assert!(Action::RunCommand {
-            command: String::new()
-        }
-        .problem(1)
-        .is_some());
-        assert!(Action::OpenApp {
-            name: String::new()
-        }
-        .problem(1)
-        .is_some());
-        assert_eq!(
-            Action::OpenApp {
-                name: "Notes".into()
-            }
-            .problem(1),
-            None
-        );
-        assert!(Action::Hotkey {
-            keys: "hyper+a".into()
-        }
-        .problem(1)
-        .is_some());
-        assert!(Action::GoToPage { page: 3 }.problem(2).is_some());
-        assert_eq!(Action::GoToPage { page: 1 }.problem(2), None);
-        assert!(Action::Builtin {
-            name: "nope".into()
-        }
-        .problem(1)
-        .is_some());
-    }
-
-    #[test]
-    fn action_kinds_match_defaults_and_labels() {
-        for kind in ActionKind::ALL {
-            assert_eq!(Action::default_of(kind).kind(), kind);
-            assert!(!kind.label().is_empty());
-        }
-    }
-
-    #[test]
-    fn invalid_foreground_color_is_reported() {
-        let mut profile = Profile::default_from_legacy();
-        profile.set_key(
-            0,
-            2,
-            KeyConfig {
-                fg: "white".into(),
-                ..KeyConfig::default()
-            },
-        );
-        assert_eq!(profile.problems().len(), 1);
-    }
-
-    #[test]
-    fn empty_image_path_is_reported() {
-        let mut profile = Profile::default_from_legacy();
-        profile.set_key(
-            0,
-            2,
-            KeyConfig {
-                image: Some(PathBuf::new()),
-                ..KeyConfig::default()
-            },
-        );
-        let problems = profile.problems();
-        assert_eq!(problems.len(), 1);
-        assert!(problems[0].contains("image is empty"));
-    }
-
-    #[test]
-    fn non_numeric_key_is_rejected() {
-        let text = "[[pages]]\nname = \"A\"\n\n[pages.keys.x]\nlabel = \"Hi\"\n";
-        assert!(toml::from_str::<Profile>(text).is_err());
-    }
-
-    #[test]
-    fn page_for_app_picks_first_match() {
-        let mut profile = Profile::default_from_legacy();
-        profile.pages[1].apps = vec!["com.google.Chrome".into()];
-        profile.pages[0].apps = vec!["com.google.Chrome".into()];
-        assert_eq!(profile.page_for_app("com.google.Chrome"), Some(0));
-        assert_eq!(profile.page_for_app("com.apple.Notes"), None);
-    }
-
-    #[test]
-    fn apps_field_is_omitted_when_empty() {
-        let text = toml::to_string_pretty(&Profile::default_from_legacy()).unwrap_or_default();
-        assert!(!text.contains("apps"));
-        let mut profile = Profile::default_from_legacy();
-        profile.pages[0].apps = vec!["com.google.Chrome".into()];
-        let with = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert!(with.contains("apps = [\"com.google.Chrome\"]"));
-        let back: Profile = toml::from_str(&with).unwrap_or_default();
-        assert_eq!(back, profile);
-    }
-
-    #[test]
-    fn side_round_trip_and_absent_side_is_byte_stable() {
-        let plain = Profile::default_from_legacy();
-        let plain_text = toml::to_string_pretty(&plain).unwrap_or_default();
-        assert!(!plain_text.contains("side"));
-
-        let mut profile = plain.clone();
-        profile.set_side(
-            0,
-            Some(SideConfig {
-                label: "Build ok".into(),
-                bg: "#102030".into(),
-                fg: "#FFFFFF".into(),
-                image: Some(PathBuf::from("icon:back")),
-                widgets: Vec::new(),
-            }),
-        );
-        let text = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert!(text.contains("[pages.side]"), "text was:\n{text}");
-        let back: Profile = toml::from_str(&text).unwrap_or_default();
-        assert_eq!(back, profile);
-        // Clearing the side returns the exact bytes of the plain layout.
-        profile.set_side(0, None);
-        let cleared = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert_eq!(cleared, plain_text);
-    }
-
-    #[test]
-    fn widgets_round_trip_and_empty_list_is_omitted() {
-        let mut profile = Profile::default_from_legacy();
-        profile.set_side(
-            0,
-            Some(SideConfig {
-                widgets: vec![
-                    Widget::CpuBar,
-                    Widget::CpuPercent,
-                    Widget::Temperature,
-                    Widget::DiskFree,
-                    Widget::Text {
-                        value: "BUILD".into(),
-                    },
-                ],
-                ..SideConfig::default()
-            }),
-        );
-        let text = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert!(text.contains("type = \"cpu_bar\""), "text was:\n{text}");
-        assert!(text.contains("type = \"text\""), "text was:\n{text}");
-        let back: Profile = toml::from_str(&text).unwrap_or_default();
-        assert_eq!(back, profile);
-        // A side with no widgets writes no `widgets` key, so old profiles stay byte-identical.
-        profile.set_side(0, Some(SideConfig::default()));
-        let plain = toml::to_string_pretty(&profile).unwrap_or_default();
-        assert!(!plain.contains("widgets"), "text was:\n{plain}");
-    }
-
-    #[test]
-    fn bundle_id_detection() {
-        assert!(is_bundle_id("com.apple.Terminal"));
-        assert!(!is_bundle_id("Terminal"));
-        assert!(!is_bundle_id("My App.app"));
-        assert!(!is_bundle_id("Chrome.app"));
-    }
-}
+#[path = "profile_tests.rs"]
+mod tests;

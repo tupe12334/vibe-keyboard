@@ -4,7 +4,7 @@ mod presentation;
 
 use application::{
     handle_filter_query, handle_frontmost, handle_key_event, refresh_side_widgets, render_screen,
-    SessionsRefresh,
+    Refresh,
 };
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -15,12 +15,12 @@ use vibe_keyboard::domain::navigation::NavigationStack;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::frontmost;
-use vibe_keyboard::infrastructure::images::{app_icon_generation, calibration_image};
+use vibe_keyboard::infrastructure::images::app_icon_generation;
 use vibe_keyboard::infrastructure::persistence::DeviceState;
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::system_metrics;
 use vibe_keyboard::infrastructure::usb::{
-    clear_all, device_init, keep_alive, read_event, send_button_image, wait_for_device, Device,
+    clear_all, device_init, keep_alive, read_event, wait_for_device, Device,
 };
 use vibe_keyboard::{domain, infrastructure};
 
@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     // Hidden: draw each logical key number on its key, then exit. Checks key positions.
     if std::env::args().any(|arg| arg == "--calibrate") {
-        return calibrate();
+        return vibe_keyboard::infrastructure::usb::calibrate::calibrate();
     }
     // Startup is the only place that may write the default profile.
     let (profile, profile_error) =
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let frontmost_rx = frontmost::watch(FRONTMOST_POLL);
     let mut was_on_main_page = nav.main_page().is_some();
     let mut icon_generation = app_icon_generation();
-    let mut sessions_refresh = SessionsRefresh::default();
+    let mut pages = Refresh::default();
     let metrics = system_metrics::start();
     let mut last_side_tick = Instant::now();
 
@@ -174,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let read_lost = match read_event(&handle, Duration::from_millis(500)) {
             Ok(Some(data)) => {
                 if data.len() >= 11 {
-                    handle_key_event(&data, &handle, &mut nav, &app_state, &dev_state);
+                    handle_key_event(&data, &handle, &mut nav, &app_state, &dev_state, &mut pages);
                 }
                 false
             }
@@ -209,7 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         was_on_main_page = on_main_page;
 
-        sessions_refresh.tick(&mut nav, &handle, &app_state, &dev_state);
+        pages.tick(&mut nav, &handle, &app_state, &dev_state);
 
         if read_lost || handle.has_failed() {
             warn!("device disconnected");
@@ -230,18 +230,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    Ok(())
-}
-
-/// Draw logical keys 1–15 (their numbers) on the deck, then return.
-fn calibrate() -> Result<(), Box<dyn std::error::Error>> {
-    let dev = Device::open()?;
-    let brightness = DeviceState::load().brightness;
-    device_init(&dev, brightness);
-    for key in 1..=15u8 {
-        let tile = calibration_image(key);
-        send_button_image(&dev, key, image::DynamicImage::ImageRgb8(tile));
-    }
     Ok(())
 }
 

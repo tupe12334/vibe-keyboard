@@ -3,6 +3,7 @@ pub mod claude_sessions;
 pub mod controller_lock;
 pub mod frontmost;
 pub mod images;
+pub mod moadim;
 pub mod persistence;
 pub mod profile_store;
 pub mod system_metrics;

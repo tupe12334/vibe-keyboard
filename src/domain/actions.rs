@@ -1,10 +1,6 @@
 use std::time::Duration;
 
-pub struct ButtonAction {
-    pub name: String,
-    pub title: String,
-    pub description: String,
-}
+pub use super::button::ButtonAction;
 
 #[derive(Clone)]
 pub struct CentyProject {
@@ -56,6 +52,8 @@ pub enum ScreenView {
     SessionActions {
         label: String,
     },
+    MoadimList(usize, usize),
+    MoadimRoutine(String),
 }
 
 /// The terminal app that opens a new Claude Code window.
