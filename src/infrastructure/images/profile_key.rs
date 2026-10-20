@@ -6,6 +6,7 @@ use std::sync::{Mutex, OnceLock};
 use image::imageops::{self, FilterType};
 use image::{ImageBuffer, Rgb, RgbImage};
 
+use super::fit;
 use super::icon_image;
 use super::text::{draw_label, draw_tag, draw_title};
 use super::{
@@ -44,21 +45,11 @@ pub fn key_image(key: u8, config: Option<&KeyConfig>, root: &Path, inset: &KeyIn
     }
 }
 
-/// The one place key insets apply. `picture` is the full key render. It shrinks to a square
-/// that fits the visible rect and sits centered in it. The hidden band keeps the key color `bg`.
+/// The one place key insets apply. `picture` is the full key render. Its own uniform border is
+/// trimmed, then the content scales to the largest size that fits the visible rect, centered.
+/// The hidden band keeps the key color `bg`.
 pub(super) fn inset_key(picture: &RgbImage, inset: &KeyInset, bg: [u8; 3]) -> RgbImage {
-    let size = DECK_IMAGE_SIZE;
-    let mut canvas = ImageBuffer::from_pixel(size, size, Rgb(bg));
-    let rect = inner_rect(size, size, inset.top, inset.bottom, inset.left, inset.right);
-    let side = rect.w.min(rect.h);
-    if side == 0 {
-        return canvas;
-    }
-    let fitted = imageops::resize(picture, side, side, FilterType::Triangle);
-    let x = rect.x + (rect.w - side) / 2;
-    let y = rect.y + (rect.h - side) / 2;
-    imageops::replace(&mut canvas, &fitted, i64::from(x), i64::from(y));
-    canvas
+    fit::fit_into_key(picture, inset, bg, true)
 }
 
 /// Every key 1–15 of one page, in key order. This is exactly what the controller sends.
