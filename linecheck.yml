@@ -4,7 +4,7 @@ rules:
   - pattern: "src/domain/profile.rs"
     error: 120
   - pattern: "src/infrastructure/profile_store_tests.rs"
-    error: 316
+    error: 245
   - pattern: "src/main.rs"
     error: 284
   - pattern: "src/infrastructure/images/profile_key.rs"
