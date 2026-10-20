@@ -26,3 +26,8 @@ fn a_create_only_save_keeps_a_file_another_writer_made() {
     );
     assert_eq!(std::fs::read_to_string(&path).expect("read"), "");
 }
+
+#[test]
+fn a_directory_in_place_of_the_file_fails_to_load() {
+    assert!(load_with_version(&std::env::temp_dir()).is_err());
+}

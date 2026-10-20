@@ -7,7 +7,7 @@ use tracing::warn;
 use crate::domain::profile::Profile;
 use crate::infrastructure::persistence::config_dir;
 
-use super::profile_save::{self, SaveRefusal};
+use super::profile_save;
 
 #[path = "profile_images.rs"]
 mod profile_images;
@@ -59,10 +59,8 @@ pub fn ensure_default(path: &Path) -> Result<Profile, String> {
     } else {
         // Expects "missing": if another editor created the file since the read, keep theirs.
         let profile = Profile::default_from_legacy();
-        match profile_save::save_if_unchanged(path, &profile, None) {
-            Err(SaveRefusal::Changed) => warn!("profile.toml appeared; kept it"),
-            Err(SaveRefusal::Failed(e)) => warn!("could not write default profile: {e}"),
-            Ok(_) => {}
+        if let Err(e) = profile_save::save_if_unchanged(path, &profile, None) {
+            warn!("could not write default profile: {e}");
         }
         Ok(profile)
     }
