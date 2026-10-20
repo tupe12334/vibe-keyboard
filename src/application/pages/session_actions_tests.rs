@@ -1,7 +1,9 @@
 use super::keys::voice_key;
 use super::open_session_actions;
+use crate::application::voice::{tap_log, VOICE_LABEL};
 use crate::domain::actions::{ClaudeSession, SessionStatus, TerminalApp};
 use crate::domain::navigation::{NavigationStack, Screen};
+use crate::infrastructure::images::label_image;
 
 #[test]
 fn voice_key_never_names_the_voice_command() {
@@ -41,4 +43,18 @@ fn selecting_a_session_focuses_its_tab_then_opens_actions() {
         nav.current(),
         Screen::SessionActions { page: 0, .. }
     ));
+}
+
+#[test]
+fn voice_key_tile_draws_the_tap_label_not_bare_voice() {
+    let inset = crate::domain::profile::KeyInset::default();
+    let (tile, _) = voice_key(true, &inset);
+    assert_eq!(VOICE_LABEL, "VOICE TAP=SEND");
+    assert_ne!(tile, label_image("VOICE", &inset));
+    assert_eq!(tile, label_image(VOICE_LABEL, &inset));
+}
+
+#[test]
+fn tap_log_names_the_pid_that_got_enter() {
+    assert_eq!(tap_log(4242), "push to talk: tap sent Enter to pid 4242");
 }
