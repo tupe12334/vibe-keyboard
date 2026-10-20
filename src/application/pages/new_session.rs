@@ -46,7 +46,7 @@ pub fn render_new_session_choice(handle: &Device, state: &Arc<Mutex<tui::AppStat
         (2, app_tile("com.apple.Terminal", "Terminal", &inset)),
     ];
     for (key, img) in tiles {
-        send_button_image(handle, key, DynamicImage::ImageRgb8(img));
+        send_button_image(handle, key, &DynamicImage::ImageRgb8(img));
     }
 }
 

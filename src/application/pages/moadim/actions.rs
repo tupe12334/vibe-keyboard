@@ -76,6 +76,6 @@ pub fn render_moadim_routine(
         s.screen = ScreenView::MoadimRoutine(routine.title.clone());
     }
     for (key, img) in tiles {
-        send_button_image(handle, key, DynamicImage::ImageRgb8(img));
+        send_button_image(handle, key, &DynamicImage::ImageRgb8(img));
     }
 }

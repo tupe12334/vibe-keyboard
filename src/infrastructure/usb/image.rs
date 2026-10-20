@@ -15,7 +15,7 @@ pub const DECK_IMAGE_SIZE: u32 = 85;
 /// Encode `img` as JPEG and send it to logical key `key` (1–15, same numbering as the
 /// editor grid and input events). The device wants the physical id in `BAT`, and it shows
 /// images turned 90° clockwise, so the image is pre-rotated counter-clockwise.
-pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
+pub fn send_button_image(handle: &Device, key: u8, img: &DynamicImage) {
     let Some(raw) = logical_to_raw(key) else {
         error!("send_button_image: logical key {key} is out of range 1..=15");
         return;
@@ -62,7 +62,7 @@ pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
 /// Send `img` (portrait side render) to the side screen as one stream: header, then JPEG,
 /// cut into output reports. Never send a taller image: it spills onto keys 5, 10 and 15.
 /// Returns `false` when the frame did not reach the device, so the caller can retry it.
-pub fn send_side_image(handle: &Device, img: DynamicImage) -> bool {
+pub fn send_side_image(handle: &Device, img: &DynamicImage) -> bool {
     let rgb = side_upload(img).to_rgb8();
     let mut jpeg = Vec::new();
     if let Err(e) = JpegEncoder::new_with_quality(&mut jpeg, 90).encode(

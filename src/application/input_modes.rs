@@ -11,6 +11,7 @@ use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
 /// A number-pad key: append a digit, clear, or delete the last digit.
+#[derive(Clone, Copy)]
 pub(super) enum NumberEdit {
     Digit(char),
     Clear,

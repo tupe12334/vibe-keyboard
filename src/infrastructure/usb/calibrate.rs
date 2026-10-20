@@ -23,7 +23,7 @@ pub fn calibrate() -> Result<(), Box<dyn std::error::Error>> {
     };
     for key in 1..=15u8 {
         let tile = calibration_image(key, &inset);
-        send_button_image(&dev, key, image::DynamicImage::ImageRgb8(tile));
+        send_button_image(&dev, key, &image::DynamicImage::ImageRgb8(tile));
     }
     Ok(())
 }

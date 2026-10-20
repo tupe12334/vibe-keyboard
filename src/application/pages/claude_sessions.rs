@@ -151,7 +151,7 @@ pub fn render_claude_sessions(
     }
 
     for (key, img) in tiles {
-        send_button_image(handle, key, DynamicImage::ImageRgb8(img));
+        send_button_image(handle, key, &DynamicImage::ImageRgb8(img));
     }
 }
 

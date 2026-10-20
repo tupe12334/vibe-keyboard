@@ -54,7 +54,7 @@ pub fn run(opts: RunOptions) -> Result<(), Box<dyn std::error::Error>> {
     } else {
         let s = Arc::clone(&app_state);
         let q = Arc::clone(&shutdown);
-        std::thread::spawn(move || presentation::tui::run(s, q));
+        std::thread::spawn(move || presentation::tui::run(&s, &q));
     }
 
     let initial_page = dev_state
