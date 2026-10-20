@@ -37,8 +37,11 @@ once:
    Create a Certificate….
 2. Name: `Vibe Keyboard Local`. Identity type: Self Signed Root. Certificate
    type: Code Signing. Click Create.
-3. Run `packaging/macos/build-app.sh`. The script signs with that identity.
-4. Grant Accessibility once to the installed app. Later rebuilds keep the grant.
+3. Check it. Run `security find-identity -v -p codesigning`. The output must list
+   `Vibe Keyboard Local`. If it is missing, open the certificate and set Trust →
+   Code Signing to Always Trust.
+4. Run `packaging/macos/build-app.sh`. The script signs with that identity.
+5. Grant Accessibility once to the installed app. Later rebuilds keep the grant.
 
 To use another identity (for example an Apple Development certificate), set
 `VK_SIGN_IDENTITY` to its name:
