@@ -31,8 +31,6 @@ rules:
     error: 224
   - pattern: "src/infrastructure/claude_sessions/os.rs"
     error: 217
-  - pattern: "src/infrastructure/images/text.rs"
-    error: 202
   - pattern: "src/infrastructure/frontmost.rs"
     error: 180
   - pattern: "src/domain/hotkey.rs"
