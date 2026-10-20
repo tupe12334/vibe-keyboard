@@ -16,14 +16,13 @@ use tracing::error;
 mod accessibility;
 mod panic;
 mod post;
-mod window;
 
 pub use accessibility::accessibility_trusted;
 pub use panic::install_panic_release;
 pub use post::tap;
 
+use crate::infrastructure::frontmost::frontmost_pid;
 use post::{trusted, CgPoster};
-use window::front_window_pid;
 
 /// Gap between repeated key downs while held. Terminal key repeat is about 30 ms.
 const REPEAT_EVERY: Duration = Duration::from_millis(30);
@@ -83,7 +82,7 @@ fn lock() -> MutexGuard<'static, PttGuard<CgPoster>> {
 /// What the guard needs from the OS. Read outside the lock.
 fn read_probe() -> Probe {
     Probe {
-        front: front_window_pid(),
+        front: frontmost_pid(),
         trusted: trusted(),
     }
 }

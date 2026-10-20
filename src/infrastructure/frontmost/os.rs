@@ -1,7 +1,7 @@
 //! Process spawns for `lsappinfo`. Excluded from the coverage gate; the
 //! logic that decides what to do with the output lives in `frontmost.rs`.
 
-use super::{parse_bundle_id, Watcher};
+use super::{parse_bundle_id, parse_pid, Watcher};
 use std::sync::mpsc::{self, Receiver};
 use std::time::Duration;
 
@@ -12,6 +12,16 @@ const TIMEOUT: Duration = Duration::from_secs(1);
 /// Bundle id of the frontmost app, e.g. `com.google.Chrome`. None if unknown.
 pub fn frontmost_bundle_id() -> Option<String> {
     bundle_of(&lsappinfo(&["front"])?)
+}
+
+/// Pid of the frontmost app: the app that gets typed keys. None if unknown.
+pub fn frontmost_pid() -> Option<i32> {
+    parse_pid(&lsappinfo(&[
+        "info",
+        "-only",
+        "pid",
+        &lsappinfo(&["front"])?,
+    ])?)
 }
 
 /// Spawn a thread that polls every `interval` and sends the bundle id on each

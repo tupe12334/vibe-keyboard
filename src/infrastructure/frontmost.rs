@@ -16,7 +16,7 @@ mod os;
     unused_imports,
     reason = "re-export keeps the module surface stable across platforms"
 )]
-pub use os::{frontmost_bundle_id, watch};
+pub use os::{frontmost_bundle_id, frontmost_pid, watch};
 
 /// Parses `"CFBundleIdentifier"="com.googlecode.iterm2"` into the bundle id.
 fn parse_bundle_id(output: &str) -> Option<String> {
@@ -25,6 +25,11 @@ fn parse_bundle_id(output: &str) -> Option<String> {
         .strip_prefix("\"CFBundleIdentifier\"=\"")?
         .strip_suffix('"')?;
     (!value.is_empty()).then(|| value.to_string())
+}
+
+/// Parses `"pid"=751` into the pid.
+fn parse_pid(output: &str) -> Option<i32> {
+    output.trim().strip_prefix("\"pid\"=")?.parse().ok()
 }
 
 /// Poll state. Each tick costs one `lsappinfo front` call. The bundle lookup
