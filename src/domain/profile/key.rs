@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::{default_bg, default_fg};
+use super::color::{default_bg, default_fg};
 
 mod action_kind;
 pub use action_kind::ActionKind;
