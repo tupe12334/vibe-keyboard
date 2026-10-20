@@ -1,0 +1,155 @@
+[[pages]]
+name = "Main"
+
+[pages.keys.1]
+label = "List Projects"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.1.action]
+type = "builtin"
+name = "centy_projects"
+
+[pages.keys.14]
+label = ""
+bg = "#141414"
+fg = "#E6E6E6"
+image = "app:com.googlecode.iterm2"
+
+[pages.keys.14.action]
+type = "open_app"
+name = "Item"
+
+[pages.keys.15]
+label = ""
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.15.action]
+type = "none"
+
+[pages.keys.2]
+label = "Open Terminal"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.2.action]
+type = "builtin"
+name = "terminal"
+
+[pages.keys.3]
+label = "Open Claude"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.3.action]
+type = "builtin"
+name = "claude"
+
+[pages.keys.4]
+label = "Open Centy"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.4.action]
+type = "builtin"
+name = "centy_web"
+
+[pages.keys.5]
+label = "Sessions"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.5.action]
+type = "builtin"
+name = "claude_sessions"
+
+[pages.keys.6]
+label = "Voice"
+bg = "#3A1A5C"
+fg = "#E6E6E6"
+
+[pages.keys.6.action]
+type = "none"
+
+[pages.keys.6.hold]
+type = "push_to_talk"
+
+[pages.keys.7]
+label = "Routines"
+bg = "#1C2C54"
+fg = "#E6E6E6"
+
+[pages.keys.7.action]
+type = "builtin"
+name = "moadim"
+
+[pages.keys.9]
+label = ""
+bg = "#000000"
+fg = "#E6E6E6"
+
+[pages.keys.9.action]
+type = "none"
+
+[pages.side]
+label = ""
+bg = "#101018"
+fg = "#E6E6E6"
+
+[[pages.side.widgets]]
+type = "cpu_bar"
+
+[[pages.side.widgets]]
+type = "temperature"
+
+[[pages.side.widgets]]
+type = "disk_free"
+
+[[pages]]
+name = "Tools"
+
+[pages.keys.1]
+label = "Input Number"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.1.action]
+type = "builtin"
+name = "numpad"
+
+[pages.keys.14]
+label = "Open Log"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.14.action]
+type = "builtin"
+name = "log_file"
+
+[pages.keys.15]
+label = "Open Config"
+bg = "#141414"
+fg = "#E6E6E6"
+
+[pages.keys.15.action]
+type = "builtin"
+name = "vscode_config"
+
+[[prompts]]
+label = "Keep looking"
+text = "/goal Keep looking for next tasks that reach >=0.85 "
+
+[[prompts]]
+label = "Execute"
+text = "/goal do what you suggeting"
+
+[display.key_inset]
+top = 10
+bottom = 0
+left = 0
+right = 0
+
+[display.side_inset]
+top = 45
+bottom = 0
