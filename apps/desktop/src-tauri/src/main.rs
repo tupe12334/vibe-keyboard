@@ -18,6 +18,8 @@ mod layout_commands;
 mod lifecycle;
 mod login_item;
 mod profile_io;
+#[cfg(test)]
+mod profile_roundtrip_tests;
 mod prompt_commands;
 mod status;
 mod supervise;
