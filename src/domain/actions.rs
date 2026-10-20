@@ -81,8 +81,7 @@ pub enum Glyph {
     Spinner,
 }
 
-/// The app that owns a session's tab. Only iTerm2 and Terminal.app accept typed text. Other apps
-/// (VS Code, unknown terminals) only support focus.
+/// Owner of a session's tab. Only iTerm2 and Terminal.app take typed text; others only focus.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TerminalApp {
     ITerm,
@@ -100,4 +99,5 @@ pub struct ClaudeSession {
     pub label: String,
     pub status: SessionStatus,
     pub age: Option<Duration>,
+    pub focused: bool,
 }

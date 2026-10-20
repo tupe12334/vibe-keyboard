@@ -1,10 +1,11 @@
 //! osascript calls that focus a session tab, type a prompt into it, or open a new session window.
 
-use super::{run, FOCUS_TIMEOUT, PS_TIMEOUT};
+use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
 use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
     focus_scripts, is_session_on_tty, new_session_script, send_text_scripts,
 };
+use crate::infrastructure::process::run;
 
 /// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab
 /// (VS Code and other terminals), it activates VS Code. Blocks until done, so call it from a thread.

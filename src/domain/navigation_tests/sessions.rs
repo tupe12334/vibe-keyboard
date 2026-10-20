@@ -10,6 +10,7 @@ fn set_sessions_replaces_the_list_and_keeps_the_page_in_range() {
         label: format!("s{i}"),
         status: SessionStatus::Active,
         age: None,
+        focused: false,
     };
     let mut nav = NavigationStack::new(0, 1);
     nav.push(Screen::ClaudeSessions {
@@ -31,6 +32,7 @@ fn claude_sessions_page_forward_back_and_stop_at_edges() {
             app: TerminalApp::Other,
             status: SessionStatus::Stale,
             age: None,
+            focused: false,
             tty: format!("ttys{i:03}"),
             label: format!("s{i}"),
         })
