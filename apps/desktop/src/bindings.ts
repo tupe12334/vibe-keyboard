@@ -46,6 +46,8 @@ export const commands = {
 	checkBundleId: (text: string) => __TAURI_INVOKE<boolean>("check_bundle_id", { text }),
 	/**  The built-in insets. The layout file omits a value that equals its default. */
 	displayDefaults: () => __TAURI_INVOKE<DisplayDefaults>("display_defaults"),
+	/**  The editor allows the quit: nothing unsaved, or Save or Discard was chosen. */
+	confirmQuit: () => __TAURI_INVOKE<void>("confirm_quit"),
 };
 
 /** Events */
@@ -54,6 +56,7 @@ export const events = {
 	deviceDisconnected: makeEvent<DeviceDisconnected>("device-disconnected"),
 	keyPressed: makeEvent<KeyPressed>("key-pressed"),
 	profileReloaded: makeEvent<ProfileReloaded>("profile-reloaded"),
+	quitRequested: makeEvent<QuitRequested>("quit-requested"),
 };
 
 /* Types */
@@ -293,6 +296,9 @@ export type Prompt = {
 	label: string,
 	text: string,
 };
+
+/**  The app wants to quit. The editor answers with `confirm_quit` once unsaved edits are settled. */
+export type QuitRequested = Record<string, never>;
 
 export type RunningApp = {
 	name: string,

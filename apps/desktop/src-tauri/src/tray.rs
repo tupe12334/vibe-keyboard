@@ -56,17 +56,14 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
             "pause" => toggle_controller(app),
             "autostart" => crate::login_item::toggle_autostart(app),
             crate::accessibility::MENU_ID => crate::accessibility::open_settings(),
-            "quit" => {
-                app.state::<App>().stop();
-                app.exit(0);
-            }
+            "quit" => app.exit(0),
             _ => {}
         })
         .build(app)?;
     Ok(())
 }
 
-fn show_editor(app: &AppHandle) {
+pub fn show_editor(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();

@@ -34,6 +34,7 @@ mod profile_io;
 #[cfg(test)]
 mod profile_roundtrip_tests;
 mod prompt_commands;
+mod quit;
 mod side_commands;
 #[cfg(test)]
 mod side_tests;
@@ -44,7 +45,7 @@ mod tray;
 
 use std::sync::{Arc, Mutex};
 
-use tauri::{Manager, WindowEvent};
+use tauri::{Manager, RunEvent, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
 use vibe_keyboard::infrastructure::login_path::apply_login_path;
 use vibe_keyboard::presentation::tui::AppState;
@@ -70,6 +71,7 @@ fn main() {
             None,
         ))
         .manage(App::new(state))
+        .manage(quit::QuitGuard::default())
         .invoke_handler(builder.invoke_handler())
         .setup(move |app| {
             builder.mount_events(app);
@@ -85,6 +87,11 @@ fn main() {
                 let _ = window.hide();
             }
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Vibe Keyboard");
+        .build(tauri::generate_context!())
+        .expect("error while building Vibe Keyboard")
+        .run(|app, event| {
+            if let RunEvent::ExitRequested { api, .. } = event {
+                quit::on_exit_requested(app, &api);
+            }
+        });
 }

@@ -22,6 +22,8 @@ pub struct App {
     pub(crate) error: Mutex<Option<String>>,
     /// Profile file version (content hash) when the editor last loaded or saved it. Save refuses when it differs.
     pub loaded_version: Mutex<Option<Version>>,
+    /// The editor asked for the layout at least once. Before that no edit can exist.
+    pub(crate) editor_loaded: AtomicBool,
 }
 
 impl App {
@@ -32,6 +34,7 @@ impl App {
             device_connected: AtomicBool::new(false),
             error: Mutex::new(None),
             loaded_version: Mutex::new(None),
+            editor_loaded: AtomicBool::new(false),
         }
     }
 

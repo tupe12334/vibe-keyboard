@@ -4,19 +4,18 @@ import { Inspector } from "./Inspector";
 import type { InspectorTab } from "./InspectorTabs";
 import { KeyGrid } from "./KeyGrid";
 import { PageList } from "./PageList";
+import { QuitPrompt } from "./QuitPrompt";
 import { Toolbar } from "./Toolbar";
 import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
 import { usePageActions } from "./usePageActions";
 import { usePreviews } from "./usePreviews";
 import { useProfile } from "./useProfile";
-import { useSaveShortcut } from "./useSaveShortcut";
 
 export function App() {
   const { draft, setDraft, page, setPage, dirty, error, setError, notice, conflict, load, onReload, save, updatePage, setKey, setHoldMs, setDisplay } =
     useProfile();
   const { deck, pressed } = useDeckEvents(onReload);
-  useSaveShortcut(() => void save());
   const previews = usePreviews(draft, page);
   const [selected, setSelected] = useState<number | null>(null);
   const [tab, setTab] = useState<InspectorTab>("key");
@@ -79,6 +78,7 @@ export function App() {
         )}
         <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={pickKey} />
       </main>
+      <QuitPrompt dirty={dirty} save={save} />
       <Inspector
         draft={draft}
         page={page}

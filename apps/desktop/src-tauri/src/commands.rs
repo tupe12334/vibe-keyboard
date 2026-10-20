@@ -2,6 +2,7 @@
 
 use serde::Serialize;
 use specta::Type;
+use std::sync::atomic::Ordering;
 use tauri::State;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::profile_store;
@@ -21,6 +22,7 @@ pub struct DeviceStatus {
 #[tauri::command]
 #[specta::specta]
 pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
+    app.editor_loaded.store(true, Ordering::SeqCst);
     load_layout(&app.loaded_version, &profile_store::profile_path())
 }
 
