@@ -40,8 +40,8 @@ pub enum Screen {
     },
 }
 
-/// Prompt keys on a session action page: keys 2 to 10. Nine prompts fit on one page.
-pub const PROMPTS_PER_PAGE: usize = 9;
+/// Prompt keys on a session action page: keys 1 to 10. Ten prompts fit on one page.
+pub const PROMPTS_PER_PAGE: usize = 10;
 
 /// Number of action pages for `count` prompts. Always at least one.
 pub const fn action_pages(count: usize) -> usize {
@@ -54,10 +54,10 @@ pub const fn action_pages(count: usize) -> usize {
 
 /// Index into the prompt list for `key` on `page`. None for a key with no prompt on that page.
 pub const fn prompt_index(page: usize, key: u8, count: usize) -> Option<usize> {
-    if key < 2 || key > 10 {
+    if key < 1 || key > 10 {
         return None;
     }
-    let index = page * PROMPTS_PER_PAGE + (key as usize - 2);
+    let index = page * PROMPTS_PER_PAGE + (key as usize - 1);
     if index < count {
         Some(index)
     } else {
@@ -247,14 +247,14 @@ impl NavigationStack {
         }
     }
 
-    /// Turn the page of a session action page. `count` is the number of prompts.
+    /// Turn the page of a session action page. Forward wraps to the first page.
     pub fn turn_action_page(&mut self, forward: bool, count: usize) {
         if let Some(Screen::SessionActions { page, .. }) = self.stack.last_mut() {
-            if forward && *page + 1 < action_pages(count) {
-                *page += 1;
-            } else if !forward && *page > 0 {
-                *page -= 1;
-            }
+            *page = if forward {
+                (*page + 1) % action_pages(count)
+            } else {
+                page.saturating_sub(1)
+            };
         }
     }
 
@@ -401,19 +401,18 @@ mod tests {
     }
 
     #[test]
-    fn prompt_keys_page_through_nine_prompts_each() {
-        assert_eq!(prompt_index(0, 2, 3), Some(0));
-        assert_eq!(prompt_index(0, 4, 3), Some(2));
-        assert_eq!(prompt_index(0, 5, 3), None);
-        assert_eq!(prompt_index(0, 1, 3), None);
+    fn prompt_keys_page_through_ten_prompts_each() {
+        assert_eq!(prompt_index(0, 1, 3), Some(0));
+        assert_eq!(prompt_index(0, 3, 3), Some(2));
+        assert_eq!(prompt_index(0, 4, 3), None);
         assert_eq!(prompt_index(0, 11, 3), None);
-        assert_eq!(prompt_index(1, 2, 12), Some(9));
-        assert_eq!(prompt_index(1, 10, 18), Some(17));
-        assert_eq!(prompt_index(1, 10, 12), None);
-        assert_eq!(prompt_index(1, 4, 11), None);
+        assert_eq!(prompt_index(0, 12, 3), None);
+        assert_eq!(prompt_index(1, 1, 12), Some(10));
+        assert_eq!(prompt_index(1, 10, 20), Some(19));
+        assert_eq!(prompt_index(1, 3, 12), None);
         assert_eq!(action_pages(0), 1);
-        assert_eq!(action_pages(9), 1);
-        assert_eq!(action_pages(10), 2);
+        assert_eq!(action_pages(10), 1);
+        assert_eq!(action_pages(11), 2);
     }
 
     #[test]
@@ -428,7 +427,13 @@ mod tests {
         };
         let mut nav = NavigationStack::new(0, 1);
         nav.push(Screen::SessionActions { session, page: 0 });
-        nav.turn_action_page(false, 12);
+        nav.turn_action_page(true, 12);
+        assert!(matches!(
+            nav.current(),
+            Screen::SessionActions { page: 1, .. }
+        ));
+        // Forward wraps from the last page to the first.
+        nav.turn_action_page(true, 12);
         assert!(matches!(
             nav.current(),
             Screen::SessionActions { page: 0, .. }
@@ -442,11 +447,6 @@ mod tests {
         assert!(matches!(
             nav.current(),
             Screen::SessionActions { page: 0, .. }
-        ));
-        nav.turn_action_page(true, 12);
-        assert!(matches!(
-            nav.current(),
-            Screen::SessionActions { page: 1, .. }
         ));
         // Other screens ignore the turn.
         let mut main = NavigationStack::new(0, 2);
@@ -466,12 +466,12 @@ mod tests {
         };
         let mut nav = NavigationStack::new(0, 1);
         nav.push(Screen::SessionActions { session, page: 1 });
-        nav.set_action_prompts(10);
+        nav.set_action_prompts(11);
         assert!(matches!(
             nav.current(),
             Screen::SessionActions { page: 1, .. }
         ));
-        nav.set_action_prompts(9);
+        nav.set_action_prompts(10);
         assert!(matches!(
             nav.current(),
             Screen::SessionActions { page: 0, .. }

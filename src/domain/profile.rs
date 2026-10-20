@@ -47,17 +47,6 @@ pub const PROMPT_MAX_CHARS: usize = 2000;
 /// Longest prompt label the profile accepts. Labels print on a key image.
 pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
 
-/// Prompts used when the profile has none: Recap and Voice.
-pub fn default_prompts() -> Vec<Prompt> {
-    [("Recap", "/recap"), ("Voice", "/voice")]
-        .into_iter()
-        .map(|(label, text)| Prompt {
-            label: label.into(),
-            text: text.into(),
-        })
-        .collect()
-}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Page {
     pub name: String,
@@ -374,13 +363,9 @@ impl Profile {
         }
     }
 
-    /// The prompts a session action can send: the profile's own, else the built-in pair.
+    /// The prompts a session action can send. Empty when the profile has none.
     pub fn session_prompts(&self) -> Vec<Prompt> {
-        if self.prompts.is_empty() {
-            default_prompts()
-        } else {
-            self.prompts.clone()
-        }
+        self.prompts.clone()
     }
 
     /// Human-readable problems in the layout. Empty when the profile is valid.
@@ -515,7 +500,10 @@ mod tests {
     fn prompts_round_trip_and_stay_out_of_files_when_empty() {
         let mut profile = Profile::default_from_legacy();
         assert!(profile.prompts.is_empty(), "first run writes no prompts");
-        profile.prompts = default_prompts();
+        profile.prompts = vec![Prompt {
+            label: "Ask".into(),
+            text: "Ask me".into(),
+        }];
         let text = toml::to_string_pretty(&profile).unwrap_or_default();
         assert!(text.contains("[[prompts]]"));
         let back: Profile = toml::from_str(&text).unwrap_or_default();
@@ -527,15 +515,14 @@ mod tests {
         assert!(!text.contains("prompts"));
         let back: Profile = toml::from_str(&text).unwrap_or_default();
         assert_eq!(back, profile);
-        assert_eq!(profile.session_prompts(), default_prompts());
+        assert!(profile.session_prompts().is_empty());
     }
 
     #[test]
-    fn profile_without_prompts_falls_back_to_recap_and_voice() {
+    fn profile_without_prompts_has_no_session_prompts() {
         let old: Profile = toml::from_str("[[pages]]\nname = \"Main\"\n").unwrap_or_default();
         assert!(old.prompts.is_empty());
-        let labels: Vec<String> = old.session_prompts().into_iter().map(|p| p.label).collect();
-        assert_eq!(labels, ["Recap", "Voice"]);
+        assert!(old.session_prompts().is_empty());
     }
 
     #[test]

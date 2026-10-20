@@ -602,7 +602,7 @@ impl Editor {
         ui.separator();
         ui.heading("Prompts");
         if self.session.profile.prompts.is_empty() {
-            ui.label("None set. Session actions use Recap and Voice.");
+            ui.label("None set. Session actions show no prompt keys.");
         }
         let count = self.session.profile.prompts.len();
         let mut op = None;

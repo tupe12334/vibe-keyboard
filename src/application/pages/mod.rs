@@ -13,7 +13,7 @@ pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
 pub use main_page::refresh_side_widgets;
 use main_page::render_side;
-pub use session_actions::show_focus_only;
+pub use session_actions::{open_session_actions, show_focus_only, RECAP_TEXT};
 
 use crate::infrastructure::usb::Device;
 use std::sync::{Arc, Mutex};

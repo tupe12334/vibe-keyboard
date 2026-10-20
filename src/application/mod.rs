@@ -8,7 +8,7 @@ use crate::domain::navigation::prompt_index;
 use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
-use pages::{fetch_centy_issues, show_focus_only};
+use pages::{fetch_centy_issues, open_session_actions, show_focus_only, RECAP_TEXT};
 use std::sync::{Arc, Mutex};
 use tracing::info;
 
@@ -141,9 +141,6 @@ fn handle_action_key(
             issue_number: u64,
         },
         SortList,
-        FocusSession {
-            tty: String,
-        },
         OpenNewSessionChoice,
         OpenSessionActions {
             session: crate::domain::actions::ClaudeSession,
@@ -296,26 +293,27 @@ fn handle_action_key(
                 .unwrap_or_else(std::sync::PoisonError::into_inner)
                 .profile
                 .session_prompts();
-            match key {
-                1 => Action::FocusSession {
-                    tty: session.tty.clone(),
-                },
-                2..=10 => prompt_index(*page, key, prompts.len()).map_or(Action::None, |index| {
-                    if session.app == TerminalApp::Other {
-                        Action::PromptUnsupported { key }
-                    } else {
-                        Action::SendPrompt {
-                            pid: session.pid,
-                            tty: session.tty.clone(),
-                            text: prompts[index].text.clone(),
-                        }
-                    }
-                }),
-                14 | 15 => Action::TurnActionPage {
-                    forward: key == 15,
+            let text = match key {
+                1..=10 => {
+                    prompt_index(*page, key, prompts.len()).map(|index| prompts[index].text.clone())
+                }
+                14 => Some(RECAP_TEXT.into()),
+                _ => None,
+            };
+            match (key, text) {
+                (15, _) => Action::TurnActionPage {
+                    forward: true,
                     count: prompts.len(),
                 },
-                _ => Action::None,
+                (_, None) => Action::None,
+                (_, Some(_)) if session.app == TerminalApp::Other => {
+                    Action::PromptUnsupported { key }
+                }
+                (_, Some(text)) => Action::SendPrompt {
+                    pid: session.pid,
+                    tty: session.tty.clone(),
+                    text,
+                },
             }
         }
         Screen::NewSessionChoice => match key {
@@ -423,14 +421,14 @@ fn handle_action_key(
             nav.toggle_sort();
             render_screen(nav, handle, state, dev_state);
         }
-        Action::FocusSession { tty } => {
-            info!("claude sessions: focus {tty}");
-            // Off the device loop: osascript can take a while to answer.
-            std::thread::spawn(move || focus_session(&tty));
-        }
         Action::OpenSessionActions { session } => {
             info!("claude sessions: actions for {}", session.tty);
-            nav.push(Screen::SessionActions { session, page: 0 });
+            // Selecting a session focuses its tab first, then opens the action page.
+            open_session_actions(nav, session, |tty| {
+                let tty = tty.to_string();
+                // Off the device loop: osascript can take a while to answer.
+                std::thread::spawn(move || focus_session(&tty));
+            });
             render_screen(nav, handle, state, dev_state);
         }
         Action::SendPrompt { pid, tty, text } => {
