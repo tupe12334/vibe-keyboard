@@ -154,6 +154,7 @@ single_match_else = "deny"
 needless_pass_by_value = "deny"
 explicit_iter_loop = "deny"
 if_not_else = "deny"
+implicit_clone = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
