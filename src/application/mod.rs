@@ -1,36 +1,19 @@
 mod actions;
 mod moadim_keys;
 mod pages;
+pub mod prompt_return;
 
-pub use pages::{refresh_side_widgets, render_screen, SessionsRefresh};
+pub use pages::{refresh_side_widgets, render_screen};
+pub use refresh::Refresh;
 
-#[derive(Default)]
-pub struct Refresh {
-    pub sessions: SessionsRefresh,
-    pub moadim: MoadimRefresh,
-}
+mod refresh;
 
-impl Refresh {
-    pub fn tick(
-        &mut self,
-        nav: &mut NavigationStack,
-        handle: &Device,
-        state: &Arc<Mutex<tui::AppState>>,
-        dev_state: &Arc<Mutex<DeviceState>>,
-    ) {
-        self.sessions.tick(nav, handle, state, dev_state);
-        self.moadim.tick(nav, handle, state, dev_state);
-    }
-}
-
-use crate::domain::actions::{NewSessionTerminal, TerminalApp};
+use crate::domain::actions::NewSessionTerminal;
 use crate::domain::navigation::prompt_index;
 use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
 use crate::infrastructure::usb::Device;
 use actions::{open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path};
-use pages::{
-    fetch_centy_issues, moadim::MoadimRefresh, open_session_actions, show_focus_only, RECAP_TEXT,
-};
+use pages::{fetch_centy_issues, open_session_actions, show_focus_only, RECAP_TEXT};
 use std::sync::{Arc, Mutex, MutexGuard};
 use tracing::info;
 
@@ -94,7 +77,7 @@ pub fn handle_key_event(
         12 => {
             // On an action page, key 12 goes back to the session list. Elsewhere it goes out.
             if matches!(nav.current(), Screen::SessionActions { .. }) {
-                nav.back();
+                prompt_return::back_to_sessions(nav);
             } else {
                 nav.out();
             }
@@ -318,7 +301,7 @@ fn handle_action_key(
                     count: prompts.len(),
                 },
                 (_, None) => Action::None,
-                (_, Some(_)) if session.app == TerminalApp::Other => {
+                (_, Some(_)) if !prompt_return::may_send(session.app) => {
                     Action::PromptUnsupported { key }
                 }
                 (_, Some(text)) => Action::SendPrompt {
@@ -439,8 +422,8 @@ fn handle_action_key(
         }
         Action::SendPrompt { pid, tty, text } => {
             info!("claude sessions: send prompt to {tty}");
-            // Off the device loop: osascript can take a while to answer.
-            std::thread::spawn(move || send_prompt(pid, &tty, &text));
+            // Off the device loop: osascript can take a while. Leaves the page once it is sent.
+            prompt_return::start_prompt(tty.clone(), move || send_prompt(pid, &tty, &text));
         }
         Action::TurnActionPage { forward, count } => {
             nav.turn_action_page(forward, count);

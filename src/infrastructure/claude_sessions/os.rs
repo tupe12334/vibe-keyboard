@@ -8,10 +8,13 @@ use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 
 use super::{
-    build_sessions, claude_processes, cwds_from_lsof, focus_scripts, is_session_on_tty,
-    is_valid_tty, new_session_script, parse_tab_titles, send_text_scripts, summary_from_jsonl,
+    build_sessions, claude_processes, cwds_from_lsof, is_valid_tty, parse_tab_titles,
+    summary_from_jsonl,
 };
-use crate::domain::actions::{ClaudeSession, NewSessionTerminal, TerminalApp};
+use crate::domain::actions::{ClaudeSession, TerminalApp};
+
+mod terminal;
+pub use terminal::{focus_session, open_new_session, send_prompt};
 
 /// Budgets for one discovery pass, which takes at most about 0.9 s: ps, then one lsof, then
 /// the two terminal apps in parallel.
@@ -142,48 +145,6 @@ fn summary_for(cwd: &str, home: &str) -> Option<String> {
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "jsonl"))
         .max_by_key(|entry| entry.metadata().and_then(|meta| meta.modified()).ok())?;
     summary_from_jsonl(&std::fs::read_to_string(newest.path()).ok()?)
-}
-
-/// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab
-/// (VS Code and other terminals), it activates VS Code. Blocks until done, so call it from a thread.
-pub fn focus_session(tty: &str) {
-    let Some(scripts) = focus_scripts(tty) else {
-        return;
-    };
-    let found = scripts.iter().any(|script| {
-        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
-    });
-    if !found {
-        run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
-    }
-}
-
-/// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Skips when `pid`
-/// no longer runs `claude` on `tty`, because the tty may have been reused. Logs when no app
-/// confirms the send. Blocks until done, so call it from a thread.
-pub fn send_prompt(pid: u32, tty: &str, text: &str) {
-    let Some(scripts) = send_text_scripts(tty, text) else {
-        return;
-    };
-    let still_there = run("ps", &["-Ao", "pid=,tty=,comm="], PS_TIMEOUT)
-        .is_some_and(|ps| is_session_on_tty(&ps, pid, tty));
-    if !still_there {
-        tracing::warn!("claude sessions: pid {pid} no longer on {tty}; prompt skipped");
-        return;
-    }
-    let sent = scripts.iter().any(|script| {
-        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
-    });
-    if !sent {
-        tracing::warn!(
-            "claude sessions: no iTerm2 or Terminal tab confirmed on {tty}; send may not have completed"
-        );
-    }
-}
-
-/// Open a new window in `app` that runs `claude`. Blocks until done, so call it from a thread.
-pub fn open_new_session(app: NewSessionTerminal) {
-    run("osascript", &["-e", new_session_script(app)], FOCUS_TIMEOUT);
 }
 
 /// Run a program with no shell. Returns its stdout when it ends within `timeout`. The exit
