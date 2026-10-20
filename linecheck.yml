@@ -4,8 +4,6 @@ rules:
     error_message: "Over 100 lines: split this file. Caps only go down."
 
   # Desktop UI: 100 lines per file. Generated bindings.ts is excluded below.
-  - pattern: "apps/desktop/src/App.tsx"
-    error: 218
   - pattern: "apps/desktop/src/KeyPanel.tsx"
     error: 168
   - pattern: "apps/desktop/src/**/*.ts"
