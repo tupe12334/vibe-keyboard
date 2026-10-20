@@ -9,15 +9,15 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, inner_rect, parse_color, Action, ActionKind, KeyConfig, KeyInset, PixelRect,
-    Prompt, SideConfig, SideInset, Widget, BUILTIN_NAMES,
+    format_color, inner_rect, parse_color, Action, ActionKind, Prompt, SideConfig, Widget,
+    BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, icon_image, key_image, safe_rect, side_image, ICON_NAMES, SIDE_HEIGHT,
     SIDE_WIDTH,
 };
 use vibe_keyboard::infrastructure::profile_store;
-use vibe_keyboard::infrastructure::system_metrics::{self, Metrics, Shared};
+use vibe_keyboard::infrastructure::system_metrics::{self, Shared};
 use vibe_keyboard::infrastructure::usb::DECK_IMAGE_SIZE;
 
 /// Physical layout as seen from the front. Matches `device.md`.
@@ -61,96 +61,12 @@ enum PageOp {
     Delete(usize),
 }
 
-/// Where a key's image comes from, read from the stored text.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum ImageKind {
-    None,
-    File,
-    Icon,
-    App,
-}
-
-impl ImageKind {
-    const ALL: [Self; 4] = [Self::None, Self::File, Self::Icon, Self::App];
-
-    fn label(self) -> &'static str {
-        match self {
-            Self::None => "None",
-            Self::File => "File",
-            Self::Icon => "Icon",
-            Self::App => "App icon",
-        }
-    }
-
-    fn of(image: Option<&std::path::Path>) -> Self {
-        let Some(path) = image else {
-            return Self::None;
-        };
-        let text = path.to_string_lossy();
-        if text.starts_with("icon:") {
-            Self::Icon
-        } else if text.starts_with("app:") {
-            Self::App
-        } else {
-            Self::File
-        }
-    }
-}
-
-/// Upload an RGB image as an egui texture, fully opaque.
-fn texture_from(ctx: &egui::Context, name: &str, img: &image::RgbImage) -> egui::TextureHandle {
-    let size = [img.width() as usize, img.height() as usize];
-    let rgba: Vec<u8> = img
-        .pixels()
-        .flat_map(|p| [p.0[0], p.0[1], p.0[2], 255])
-        .collect();
-    let color = egui::ColorImage::from_rgba_unmultiplied(size, &rgba);
-    ctx.load_texture(name.to_string(), color, egui::TextureOptions::LINEAR)
-}
-
-/// A rendered key preview.
-struct Preview {
-    config: Option<KeyConfig>,
-    inset: KeyInset,
-    /// `app_icon_generation()` when rendered, so finished app lookups show up.
-    generation: u64,
-    texture: egui::TextureHandle,
-}
-
-/// Rendered side preview, with the config and insets it was rendered from.
-struct SidePreview {
-    config: Option<SideConfig>,
-    inset: SideInset,
-    metrics: Metrics,
-    texture: egui::TextureHandle,
-}
-
-/// Shades the bands the bezel hides. `area` shows a canvas of `canvas` pixels, and `visible`
-/// is the part left after the insets, in the same pixels.
-fn shade_hidden(painter: &egui::Painter, area: Rect, canvas: (u32, u32), visible: PixelRect) {
-    let (width, height) = canvas;
-    let scale = Vec2::new(area.width() / width as f32, area.height() / height as f32);
-    let bottom = visible.y + visible.h;
-    let right = visible.x + visible.w;
-    let bands = [
-        (0, 0, width, visible.y),
-        (0, bottom, width, height.saturating_sub(bottom)),
-        (0, visible.y, visible.x, visible.h),
-        (right, visible.y, width.saturating_sub(right), visible.h),
-    ];
-    for (x, y, band_w, band_h) in bands {
-        if band_w == 0 || band_h == 0 {
-            continue;
-        }
-        let min = area.min + Vec2::new(x as f32 * scale.x, y as f32 * scale.y);
-        let size = Vec2::new(band_w as f32 * scale.x, band_h as f32 * scale.y);
-        painter.rect_filled(
-            Rect::from_min_size(min, size),
-            0.0,
-            Color32::from_rgba_unmultiplied(230, 60, 60, 110),
-        );
-    }
-}
+#[path = "editor/image_kind.rs"]
+mod image_kind;
+#[path = "editor/previews.rs"]
+mod previews;
+use image_kind::ImageKind;
+use previews::{shade_hidden, texture_from, Preview, SidePreview};
 
 #[path = "editor/session.rs"]
 mod session;
