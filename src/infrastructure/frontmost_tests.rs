@@ -1,4 +1,4 @@
-use super::{detect_change, parse_bundle_id};
+use super::{detect_change, parse_bundle_id, parse_pid};
 
 #[test]
 fn parses_lsappinfo_bundle_line() {
@@ -55,4 +55,11 @@ fn new_app_after_none_is_a_change() {
         detect_change(&mut last, Some("com.b".into())),
         Some("com.b".into())
     );
+}
+
+#[test]
+fn parses_lsappinfo_pid_line() {
+    assert_eq!(parse_pid("\"pid\"=751\n"), Some(751));
+    assert_eq!(parse_pid(""), None);
+    assert_eq!(parse_pid("[ NULL ]"), None);
 }
