@@ -61,7 +61,7 @@ fn write_guide(root: &Path) -> Result<(), String> {
     fs::create_dir_all(root).map_err(|e| format!("create {}: {e}", root.display()))?;
     let readme = root.join("README.md");
     if fs::read(&readme).ok().as_deref() != Some(GUIDE_README.as_bytes()) {
-        fs::write(&readme, GUIDE_README).map_err(|e| format!("write {}: {e}", readme.display()))?;
+        write_atomic(&readme, GUIDE_README.as_bytes())?;
     }
     let ignore = root.join(".gitignore");
     if !ignore.exists() {
@@ -84,9 +84,16 @@ pub fn save(path: &Path, profile: &Profile) -> Result<(), String> {
         .parent()
         .ok_or_else(|| "profile path has no parent".to_string())?;
     fs::create_dir_all(parent).map_err(|e| format!("create {}: {e}", parent.display()))?;
-    // Temp file then rename, so a reader never sees a half-written profile.
-    let tmp = path.with_extension("toml.tmp");
-    fs::write(&tmp, text).map_err(|e| format!("write {}: {e}", tmp.display()))?;
+    write_atomic(path, text.as_bytes())
+}
+
+/// Write `bytes` to `path` through a sibling `<name>.tmp`, then rename it over `path`.
+/// A reader never sees a half-written file.
+fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let mut tmp = path.as_os_str().to_owned();
+    tmp.push(".tmp");
+    let tmp = PathBuf::from(tmp);
+    fs::write(&tmp, bytes).map_err(|e| format!("write {}: {e}", tmp.display()))?;
     fs::rename(&tmp, path).map_err(|e| format!("rename to {}: {e}", path.display()))
 }
 
@@ -146,6 +153,11 @@ mod tests {
     use super::*;
     use crate::domain::profile::{Action, KeyConfig};
     use std::os::unix::fs::PermissionsExt;
+
+    /// Root ignores file modes, so permission-denied cases cannot fail as expected.
+    fn running_as_root() -> bool {
+        std::env::var("USER").is_ok_and(|user| user == "root")
+    }
 
     struct TempDir(PathBuf);
 
@@ -399,6 +411,8 @@ mod tests {
         let file_root = dir.0.join("file");
         fs::write(&file_root, b"x").unwrap_or_default();
         assert!(write_guide(&file_root).is_err());
+        // Read-only cases: root ignores file modes, so they only apply to non-root users.
+        let root = running_as_root();
         // Read-only root: the profile and the guide both fail, startup still succeeds.
         let locked = dir.0.join("locked");
         fs::create_dir_all(&locked).unwrap_or_default();
@@ -406,7 +420,7 @@ mod tests {
         let refused = write_guide(&locked).is_err();
         let startup = ensure_default(&locked.join("profile.toml")).is_ok();
         let _ = fs::set_permissions(&locked, fs::Permissions::from_mode(0o755));
-        assert!(refused);
+        assert!(refused || root);
         assert!(startup);
         // README already current, read-only root: the .gitignore write fails.
         let current = dir.0.join("current");
@@ -415,7 +429,7 @@ mod tests {
         let _ = fs::set_permissions(&current, fs::Permissions::from_mode(0o500));
         let no_ignore = write_guide(&current).is_err();
         let _ = fs::set_permissions(&current, fs::Permissions::from_mode(0o755));
-        assert!(no_ignore);
+        assert!(no_ignore || root);
     }
 
     #[test]
@@ -428,7 +442,7 @@ mod tests {
         let _ = fs::set_permissions(&locked, fs::Permissions::from_mode(0o000));
         let refused = import_image(&root.0, &locked).is_err();
         let _ = fs::set_permissions(&locked, fs::Permissions::from_mode(0o644));
-        assert!(refused);
+        assert!(refused || running_as_root());
         assert!(import_image(&root.0, Path::new("/")).is_err());
         assert!(import_image(&root.0, &outside.0.join("missing.png")).is_err());
 
