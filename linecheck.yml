@@ -2,7 +2,7 @@ rules:
   - pattern: "src/domain/navigation.rs"
     error: 266
   - pattern: "src/domain/profile.rs"
-    error: 258
+    error: 142
   - pattern: "src/application/mod.rs"
     error: 202
   - pattern: "src/infrastructure/profile_store_tests.rs"
