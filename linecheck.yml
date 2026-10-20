@@ -13,8 +13,6 @@ rules:
     error: 194
   - pattern: "src/infrastructure/persistence_tests.rs"
     error: 164
-  - pattern: "src/infrastructure/app_icon_tests.rs"
-    error: 134
   - pattern: "src/application/pages/claude_sessions.rs"
     error: 164
   - pattern: "src/application/pages/centy/issues.rs"

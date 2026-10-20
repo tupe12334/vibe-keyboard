@@ -93,3 +93,7 @@ fn plist_string(xml: &str, key: &str) -> Option<String> {
 #[cfg(test)]
 #[path = "app_icon_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "app_icon_plist_tests.rs"]
+mod plist_tests;
