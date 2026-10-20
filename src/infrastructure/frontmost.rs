@@ -67,3 +67,7 @@ fn detect_change(last: &mut Option<String>, current: Option<String>) -> Option<S
 #[cfg(test)]
 #[path = "frontmost_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "frontmost_watcher_tests.rs"]
+mod watcher_tests;
