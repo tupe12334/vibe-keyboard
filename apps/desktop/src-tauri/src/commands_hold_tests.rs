@@ -29,7 +29,7 @@ fn a_hold_action_survives_a_save_from_the_editor() {
         .expect("json");
     get_ipc_response(
         &webview,
-        request("save_profile", json!({ "profile": loaded })),
+        request("save_profile", json!({ "profile": loaded, "force": false })),
     )
     .expect("save accepted");
 

@@ -2,11 +2,11 @@
 
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
 
 use tauri::AppHandle;
 use vibe_keyboard::controller;
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
+use vibe_keyboard::infrastructure::profile_save::Version;
 use vibe_keyboard::presentation::tui::AppState;
 
 use crate::lifecycle::{start_with, stop_running, Running};
@@ -20,8 +20,8 @@ pub struct App {
     pub(crate) device_connected: AtomicBool,
     /// Why the controller refused to start or stopped with an error. None when fine.
     pub(crate) error: Mutex<Option<String>>,
-    /// Profile file mtime when the editor last loaded or saved it. Save refuses when it differs.
-    pub loaded_mtime: Mutex<Option<SystemTime>>,
+    /// Profile file version (content hash) when the editor last loaded or saved it. Save refuses when it differs.
+    pub loaded_version: Mutex<Option<Version>>,
 }
 
 impl App {
@@ -31,7 +31,7 @@ impl App {
             running: Mutex::new(None),
             device_connected: AtomicBool::new(false),
             error: Mutex::new(None),
-            loaded_mtime: Mutex::new(None),
+            loaded_version: Mutex::new(None),
         }
     }
 

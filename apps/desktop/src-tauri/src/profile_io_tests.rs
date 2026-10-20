@@ -1,8 +1,6 @@
 #![allow(clippy::expect_used)]
 
 use super::*;
-use std::fs::File;
-use std::time::Duration;
 use vibe_keyboard::domain::profile::Page;
 use vibe_keyboard::infrastructure::profile_store;
 
@@ -17,15 +15,9 @@ fn seeded(name: &str) -> std::path::PathBuf {
     path
 }
 
-/// Another editor (or the user) writes the file and its time moves forward.
+/// Another editor (or the user) writes the file.
 fn external_edit(path: &Path) {
     std::fs::write(path, "[external]\n").expect("external edit");
-    let later = SystemTime::now() + Duration::from_secs(60);
-    File::options()
-        .write(true)
-        .open(path)
-        .and_then(|f| f.set_modified(later))
-        .expect("set mtime");
 }
 
 #[test]
@@ -34,40 +26,24 @@ fn load_then_save_round_trips_through_the_file() {
     let loaded = Mutex::new(None);
     let mut profile = load_layout(&loaded, &path).expect("load");
     profile.add_page("Second");
-    save_layout(&loaded, &path, &profile).expect("save");
+    save_layout(&loaded, &path, &profile, false).expect("save");
     let on_disk = profile_store::read(&path).expect("read").expect("present");
     assert_eq!(on_disk.pages.len(), 2);
 }
 
 #[test]
-fn an_external_edit_between_load_and_save_is_refused() {
-    let path = seeded("external");
+fn force_writes_over_an_external_edit() {
+    let path = seeded("force");
     let loaded = Mutex::new(None);
-    let profile = load_layout(&loaded, &path).expect("load");
+    let mut profile = load_layout(&loaded, &path).expect("load");
     external_edit(&path);
-    let refused = save_layout(&loaded, &path, &profile);
-    assert!(refused.expect_err("refused").contains("changed on disk"));
-    assert_eq!(
-        std::fs::read_to_string(&path).expect("read"),
-        "[external]\n"
-    );
-}
-
-#[test]
-fn a_second_window_with_an_old_load_is_refused_after_the_first_saves() {
-    let path = seeded("two-windows");
-    let first = Mutex::new(None);
-    let second = Mutex::new(None);
-    let mut a = load_layout(&first, &path).expect("load a");
-    let b = load_layout(&second, &path).expect("load b");
-    // Window A saves a real change, which moves the file time.
-    a.add_page("From A");
-    save_layout(&first, &path, &a).expect("A saves");
-    // Window B still holds the old time. Its save is refused, and A's layout stays on disk.
-    let refused = save_layout(&second, &path, &b);
-    assert!(refused.expect_err("B refused").contains("changed on disk"));
+    profile.add_page("Forced");
+    save_layout(&loaded, &path, &profile, true).expect("forced save");
     let on_disk = profile_store::read(&path).expect("read").expect("present");
-    assert_eq!(on_disk.pages.len(), 2);
+    assert_eq!(
+        on_disk.pages.last().map(|p| p.name.as_str()),
+        Some("Forced")
+    );
 }
 
 #[test]
@@ -77,6 +53,12 @@ fn a_layout_with_problems_is_refused_before_the_file_is_touched() {
     let loaded = Mutex::new(None);
     let mut profile = load_layout(&loaded, &path).expect("load");
     profile.pages.push(Page::new("   "));
-    assert!(save_layout(&loaded, &path, &profile).is_err());
+    assert!(matches!(
+        save_layout(&loaded, &path, &profile, false),
+        Err(SaveError::Refused { .. })
+    ));
     assert_eq!(std::fs::read_to_string(&path).expect("read"), before);
 }
+
+#[path = "profile_io_conflict_tests.rs"]
+mod conflict_tests;
