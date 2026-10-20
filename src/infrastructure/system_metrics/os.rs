@@ -82,7 +82,7 @@ mod tests {
 
     /// Prints one live snapshot. Run: `cargo test system_metrics -- --ignored --nocapture`.
     #[test]
-    #[allow(clippy::print_stdout)]
+    #[allow(clippy::print_stdout, reason = "manual hardware probe")]
     #[ignore = "reads real hardware sensors"]
     fn print_one_snapshot() {
         let mut probe = Probe::new();

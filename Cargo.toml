@@ -155,6 +155,7 @@ needless_pass_by_value = "deny"
 explicit_iter_loop = "deny"
 if_not_else = "deny"
 implicit_clone = "deny"
+allow_attributes_without_reason = "deny"
 print_stderr = "deny"
 
 [package.metadata.cargo-machete]

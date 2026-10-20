@@ -1,7 +1,10 @@
 use std::process::Command;
 use tracing::error;
 
-#[allow(clippy::zombie_processes)]
+#[allow(
+    clippy::zombie_processes,
+    reason = "the GUI launcher runs detached and is never waited on"
+)]
 pub fn open_config_in_vscode() {
     let config_path = {
         let mut p = if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME") {
@@ -25,7 +28,10 @@ pub fn open_config_in_vscode() {
         });
 }
 
-#[allow(clippy::zombie_processes)]
+#[allow(
+    clippy::zombie_processes,
+    reason = "the GUI launcher runs detached and is never waited on"
+)]
 pub fn open_vscode_in_path(path: &str) {
     Command::new("code").arg(path).spawn().unwrap_or_else(|e| {
         error!("Failed to open VS Code at {path}: {e}");

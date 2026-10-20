@@ -1,7 +1,10 @@
 use std::process::Command;
 use tracing::error;
 
-#[allow(clippy::zombie_processes)]
+#[allow(
+    clippy::zombie_processes,
+    reason = "the GUI launcher runs detached and is never waited on"
+)]
 pub fn open_log_file() {
     let log_path = {
         let mut p = if let Some(xdg) = std::env::var_os("XDG_CONFIG_HOME") {

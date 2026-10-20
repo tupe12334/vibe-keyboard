@@ -145,7 +145,10 @@ pub fn inner_rect(
 
 #[cfg(test)]
 #[path = "profile_display_tests.rs"]
-#[allow(clippy::expect_used)]
+#[allow(
+    clippy::expect_used,
+    reason = "test module: setup failures should panic"
+)]
 mod display_tests;
 
 /// The `[input]` table of `profile.toml`.
