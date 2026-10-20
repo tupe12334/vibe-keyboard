@@ -1,9 +1,12 @@
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use signal_hook::consts::{SIGINT, SIGTERM};
+use tracing::warn;
 use vibe_keyboard::controller::{self, ControllerEvent, RunOptions};
+use vibe_keyboard::domain::accessibility::{push_to_talk_warning, uses_push_to_talk};
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
+use vibe_keyboard::infrastructure::keyboard::accessibility_trusted;
 use vibe_keyboard::infrastructure::usb::calibrate::calibrate;
 use vibe_keyboard::logging;
 use vibe_keyboard::presentation::tui::AppState;
@@ -38,6 +41,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = Arc::new(Mutex::new(AppState::new(0)));
     let _log_guard = logging::init(Arc::clone(&state));
     controller::load_profile(&state);
+    // Push-to-talk does nothing without Accessibility. Say so once at startup.
+    let uses = uses_push_to_talk(&state.lock().unwrap_or_else(PoisonError::into_inner).profile);
+    if let Some(text) = push_to_talk_warning(accessibility_trusted(), uses) {
+        warn!("{text}");
+    }
 
     // One shutdown mechanism: SIGTERM and SIGINT set this flag.
     let shutdown = Arc::new(AtomicBool::new(false));

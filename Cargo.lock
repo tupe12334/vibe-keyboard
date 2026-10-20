@@ -7145,6 +7145,7 @@ dependencies = [
  "tauri-build",
  "tauri-plugin-autostart",
  "tauri-specta",
+ "tracing",
  "vibe-keyboard",
 ]
 
