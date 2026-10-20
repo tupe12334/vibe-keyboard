@@ -19,6 +19,11 @@ export const commands = {
 	keyPreview: (profile: Profile_Deserialize, page: number, key: number) => typedError<string, string>(__TAURI_INVOKE("key_preview", { profile, page, key })),
 	listBuiltins: () => __TAURI_INVOKE<string[]>("list_builtins"),
 	deviceStatus: () => __TAURI_INVOKE<DeviceStatus>("device_status"),
+	editorRules: () => __TAURI_INVOKE<EditorRules>("editor_rules"),
+	/**  The layout with one more page, named by the core rule. */
+	addPage: (profile: Profile_Deserialize) => __TAURI_INVOKE<Profile_Serialize>("add_page", { profile }),
+	/**  The layout without page `index`. Refused when the layout would have no pages left. */
+	deletePage: (profile: Profile_Deserialize, index: number) => typedError<Profile_Serialize, string>(__TAURI_INVOKE("delete_page", { profile, index })),
 };
 
 /** Events */
@@ -78,6 +83,8 @@ export type DeviceDisconnected = Record<string, never>;
 export type DeviceStatus = {
 	connected: boolean,
 	running: boolean,
+	/**  Why the controller refused to start or stopped with an error. Absent when fine. */
+	error: string | null,
 };
 
 /**  Bands the bezel hides. Content goes inside them; the background fills them. */
@@ -97,6 +104,14 @@ export type DisplaySettings_Serialize = {
 	key_inset?: KeyInset,
 	/**  Side screen margins, in px of the 100x480 portrait canvas. */
 	side_inset?: SideInset,
+};
+
+/**  The editor's rules, read once when the editor opens. */
+export type EditorRules = {
+	/**  Keys the deck reserves for navigation. A profile cannot bind them. */
+	nav_keys: number[],
+	/**  A layout keeps at least this many pages. */
+	min_pages: number,
 };
 
 /**  The `[input]` table of `profile.toml`. */

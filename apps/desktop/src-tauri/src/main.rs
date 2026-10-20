@@ -7,6 +7,11 @@ mod app;
 mod bindings;
 mod commands;
 mod events;
+mod key_commands;
+mod layout_commands;
+mod login_item;
+mod status;
+mod thread;
 mod tray;
 
 use std::sync::{Arc, Mutex};
@@ -27,9 +32,12 @@ fn main() {
         .commands(collect_commands![
             commands::get_profile,
             commands::save_profile,
-            commands::key_preview,
-            commands::list_builtins,
+            key_commands::key_preview,
+            key_commands::list_builtins,
             commands::device_status,
+            layout_commands::editor_rules,
+            layout_commands::add_page,
+            layout_commands::delete_page,
         ])
         .events(collect_events![
             events::DeviceConnected,
@@ -51,7 +59,8 @@ fn main() {
         .setup(move |app| {
             builder.mount_events(app);
             tray::setup_tray(app.handle())?;
-            app.state::<App>().start(app.handle());
+            // A refusal (another controller holds the deck) shows in the editor's device status.
+            let _ = app.state::<App>().start(app.handle());
             Ok(())
         })
         // Closing the window hides it. The controller keeps running until Quit.

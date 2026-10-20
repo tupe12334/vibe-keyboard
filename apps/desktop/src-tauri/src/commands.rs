@@ -1,14 +1,13 @@
-//! Commands the webview calls. Types come from the core crate, so bindings stay in sync.
+//! Profile and device commands the webview calls. Types come from the core crate.
 
-use std::io::Cursor;
+use std::sync::PoisonError;
 
-use base64::Engine as _;
-use image::RgbImage;
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
-use vibe_keyboard::domain::profile::{Profile, BUILTIN_NAMES};
-use vibe_keyboard::infrastructure::images::key_image;
+use vibe_keyboard::domain::profile::Profile;
+use vibe_keyboard::domain::profile_rules;
+use vibe_keyboard::infrastructure::profile_save::{save_if_unchanged, SaveRefusal};
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
@@ -17,6 +16,8 @@ use crate::app::App;
 pub struct DeviceStatus {
     pub connected: bool,
     pub running: bool,
+    /// Why the controller refused to start or stopped with an error. Absent when fine.
+    pub error: Option<String>,
 }
 
 /// The saved layout. Missing file gives the built-in layout.
@@ -34,7 +35,7 @@ pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
 #[tauri::command]
 #[specta::specta]
 pub fn save_profile(profile: Profile, app: State<'_, App>) -> Result<(), String> {
-    let problems = profile.problems();
+    let problems = profile_rules::save_problems(&profile);
     if !problems.is_empty() {
         return Err(format!(
             "{} problem(s): {}",
@@ -42,40 +43,21 @@ pub fn save_profile(profile: Profile, app: State<'_, App>) -> Result<(), String>
             problems.join("; ")
         ));
     }
-    if profile.pages.is_empty() {
-        return Err("the layout needs at least one page".into());
-    }
     let path = profile_store::profile_path();
     let loaded = *app
         .loaded_mtime
         .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if profile_store::modified_at(&path) != loaded {
-        return Err("profile.toml changed on disk. Discard your edits to load it.".into());
+        .unwrap_or_else(PoisonError::into_inner);
+    match save_if_unchanged(&path, &profile, loaded) {
+        Ok(()) => {
+            app.record_profile_mtime();
+            Ok(())
+        }
+        Err(SaveRefusal::Changed) => {
+            Err("profile.toml changed on disk. Discard your edits to load it.".into())
+        }
+        Err(SaveRefusal::Failed(e)) => Err(e),
     }
-    profile_store::save(&path, &profile)?;
-    app.record_profile_mtime();
-    Ok(())
-}
-
-/// PNG data URL of one key, drawn by the same `key_image` the deck uses.
-/// `profile` is the layout to preview, which may be unsaved.
-#[tauri::command]
-#[specta::specta]
-pub fn key_preview(profile: Profile, page: u32, key: u8) -> Result<String, String> {
-    let image = key_image(
-        key,
-        profile.key_at(page as usize, key),
-        &profile_store::root_dir(),
-        &profile.display.key_inset,
-    );
-    png_data_url(&image)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn list_builtins() -> Vec<String> {
-    BUILTIN_NAMES.iter().map(ToString::to_string).collect()
 }
 
 #[tauri::command]
@@ -84,16 +66,6 @@ pub fn device_status(app: State<'_, App>) -> DeviceStatus {
     DeviceStatus {
         connected: app.is_device_connected(),
         running: app.is_running(),
+        error: app.last_error(),
     }
-}
-
-fn png_data_url(image: &RgbImage) -> Result<String, String> {
-    let mut bytes = Vec::new();
-    image
-        .write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png)
-        .map_err(|e| e.to_string())?;
-    Ok(format!(
-        "data:image/png;base64,{}",
-        base64::engine::general_purpose::STANDARD.encode(bytes)
-    ))
 }

@@ -8,6 +8,7 @@ pub mod keyboard;
 pub mod moadim;
 pub mod persistence;
 pub mod process;
+pub mod profile_save;
 pub mod profile_store;
 pub mod system_metrics;
 pub mod usb;

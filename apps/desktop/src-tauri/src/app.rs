@@ -1,26 +1,25 @@
 //! App state shared by the commands, the tray and the controller thread.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, PoisonError};
-use std::thread::JoinHandle;
 use std::time::SystemTime;
 
 use tauri::AppHandle;
-use vibe_keyboard::controller::{self, RunOptions};
+use vibe_keyboard::controller;
+use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::presentation::tui::AppState;
 
-struct Running {
-    shutdown: Arc<AtomicBool>,
-    thread: JoinHandle<()>,
-}
+use crate::thread::{spawn, Running};
 
 /// Managed by Tauri. One controller thread at most.
 pub struct App {
     /// UI state shared with the logger. The controller loads the profile into it.
     state: Arc<Mutex<AppState>>,
-    running: Mutex<Option<Running>>,
+    pub(crate) running: Mutex<Option<Running>>,
     pub(crate) device_connected: AtomicBool,
+    /// Why the controller refused to start or stopped with an error. None when fine.
+    pub(crate) error: Mutex<Option<String>>,
     /// Profile file mtime when the editor last loaded or saved it. Save refuses when it differs.
     pub loaded_mtime: Mutex<Option<SystemTime>>,
 }
@@ -31,60 +30,51 @@ impl App {
             state,
             running: Mutex::new(None),
             device_connected: AtomicBool::new(false),
+            error: Mutex::new(None),
             loaded_mtime: Mutex::new(None),
         }
     }
 
-    pub fn is_running(&self) -> bool {
-        self.running
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .is_some()
-    }
-
-    pub fn is_device_connected(&self) -> bool {
-        self.device_connected.load(Ordering::Relaxed)
-    }
-
     /// Start the controller on a background thread. Does nothing when it already runs.
+    /// Refuses (and says why) when another controller holds the deck.
     /// `VIBE_NO_DEVICE` set: UI only, the controller never starts and never opens the deck.
-    pub fn start(&self, app: &AppHandle) {
+    pub fn start(&self, app: &AppHandle) -> Result<(), String> {
         if std::env::var_os("VIBE_NO_DEVICE").is_some() {
-            return;
+            return Ok(());
         }
         let mut slot = self.running.lock().unwrap_or_else(PoisonError::into_inner);
-        if slot.is_some() {
-            return;
+        if self.is_running() {
+            return Ok(());
         }
-        let shutdown = Arc::new(AtomicBool::new(false));
-        let flag = Arc::clone(&shutdown);
-        let handle = app.clone();
-        let state = Arc::clone(&self.state);
-        let thread = std::thread::spawn(move || {
-            let options = RunOptions {
-                headless: true,
-                shutdown: flag,
-                state,
-                on_event: Box::new(move |event| crate::events::on_event(&handle, event)),
-            };
-            if let Err(e) = controller::run(options) {
-                eprintln!("controller stopped: {e}");
+        // A thread that already ended: collect it before starting another.
+        if let Some(old) = slot.take() {
+            let _ = old.thread.join();
+        }
+        let lock = match controller::claim() {
+            Ok(lock) => lock,
+            Err(AcquireError::Held) => {
+                let message = controller::held_message(&controller_lock::default_lock_path());
+                self.set_error(Some(message.clone()));
+                return Err(message);
             }
-        });
+            Err(AcquireError::Io(e)) => {
+                let message = format!("controller lock: {e}");
+                self.set_error(Some(message.clone()));
+                return Err(message);
+            }
+        };
+        // The same profile load as `listen`. The controller needs the page count.
+        controller::load_profile(&self.state);
+        self.set_error(None);
+        let shutdown = Arc::new(AtomicBool::new(false));
+        let thread = spawn(
+            app.clone(),
+            Arc::clone(&self.state),
+            Arc::clone(&shutdown),
+            lock,
+        );
         *slot = Some(Running { shutdown, thread });
-    }
-
-    /// Stop the controller and wait for it. The controller clears the deck on the way out.
-    pub fn stop(&self) {
-        let running = self
-            .running
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-        if let Some(running) = running {
-            running.shutdown.store(true, Ordering::Relaxed);
-            let _ = running.thread.join();
-        }
+        Ok(())
     }
 
     pub fn record_profile_mtime(&self) {

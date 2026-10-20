@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { commands, events, type KeyConfig_Serialize, type Page_Serialize, type Profile_Serialize } from "./bindings";
+import { commands, events, type EditorRules, type KeyConfig_Serialize, type Page_Serialize, type Profile_Serialize } from "./bindings";
 
 // The `_Serialize` types are what the backend returns: every field is present.
 type Profile = Profile_Serialize;
@@ -14,12 +14,10 @@ const ROWS = [
   [11, 12, 13, 14, 15],
 ];
 const KEYS = ROWS.flat();
-/** Navigation keys. Shown for reference; a profile cannot bind them. */
-const NAV_KEYS = new Set([11, 12, 13]);
-
 interface DeckStatus {
   connected: boolean;
   running: boolean;
+  error: string | null;
 }
 
 export function App() {
@@ -29,7 +27,8 @@ export function App() {
   const [selected, setSelected] = useState<number | null>(null);
   const [previews, setPreviews] = useState<Record<number, string>>({});
   const [pressed, setPressed] = useState<number | null>(null);
-  const [deck, setDeck] = useState<DeckStatus>({ connected: false, running: false });
+  const [deck, setDeck] = useState<DeckStatus>({ connected: false, running: false, error: null });
+  const [rules, setRules] = useState<EditorRules | null>(null);
   const [builtins, setBuiltins] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -55,6 +54,7 @@ export function App() {
   useEffect(() => {
     void load();
     void commands.listBuiltins().then(setBuiltins);
+    void commands.editorRules().then(setRules);
     const refreshDeck = () => void commands.deviceStatus().then(setDeck);
     refreshDeck();
     const subscriptions = Promise.all([
@@ -101,6 +101,7 @@ export function App() {
   }
 
   const current: Page = draft.pages[page];
+  const navKeys = new Set(rules?.nav_keys ?? []);
   const updatePage = (change: (p: Page) => Page) =>
     setDraft((d) => d && { ...d, pages: d.pages.map((p, i) => (i === page ? change(p) : p)) });
   const setKey = (key: number, config: KeyConfig | undefined) =>
@@ -110,13 +111,18 @@ export function App() {
       else delete keys[key];
       return { ...p, keys };
     });
-  const addPage = () => {
-    const number = draft.pages.length + 1;
-    setDraft((d) => d && { ...d, pages: [...d.pages, { name: `Page ${number}`, keys: {}, apps: [] }] });
+  // Page rules come from the core crate, through these commands.
+  const addPage = async () => {
+    setDraft(await commands.addPage(draft));
     setPage(draft.pages.length);
   };
-  const deletePage = () => {
-    setDraft((d) => d && { ...d, pages: d.pages.filter((_, i) => i !== page) });
+  const deletePage = async () => {
+    const result = await commands.deletePage(draft, page);
+    if (result.status === "error") {
+      setError(result.error);
+      return;
+    }
+    setDraft(result.data);
     setPage((p) => Math.max(0, p - 1));
     setSelected(null);
   };
@@ -144,7 +150,7 @@ export function App() {
               setSelected(null);
             }}
           >
-            {p.name || `Page ${i + 1}`}
+            {p.name}
           </button>
         ))}
         <button onClick={addPage}>Add page</button>
@@ -156,7 +162,7 @@ export function App() {
             Page name
             <input value={current.name} onChange={(e) => updatePage((p) => ({ ...p, name: e.target.value }))} />
           </label>
-          <button onClick={deletePage} disabled={draft.pages.length < 2} className="danger">
+          <button onClick={deletePage} disabled={draft.pages.length <= (rules?.min_pages ?? 1)} className="danger">
             Delete page
           </button>
           <span className="spacer" />
@@ -170,12 +176,13 @@ export function App() {
             Save
           </button>
         </div>
+        {deck.error && <div className="error">{deck.error}</div>}
         {error && <div className="error">{error}</div>}
         {notice && <div className="error">{notice}</div>}
 
         <div className="grid">
           {KEYS.map((key) => {
-            const nav = NAV_KEYS.has(key);
+            const nav = navKeys.has(key);
             const classes = ["key", selected === key && "selected", pressed === key && "pressed"]
               .filter(Boolean)
               .join(" ");

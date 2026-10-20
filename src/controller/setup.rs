@@ -11,14 +11,18 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use tracing::{error, info};
 
-/// Load the profile into `state`. Call after logging is set up. Sets the page count.
+/// Load the profile file into `state`. Call after logging is set up.
 pub fn load_profile(state: &Arc<Mutex<AppState>>) {
+    load_profile_at(state, &profile_store::profile_path());
+}
+
+/// `load_profile` from a given file. Writes the default profile only when the file is missing.
+pub fn load_profile_at(state: &Arc<Mutex<AppState>>, path: &std::path::Path) {
     // Startup is the only place that may write the default profile.
-    let (profile, profile_error) =
-        match profile_store::ensure_default(&profile_store::profile_path()) {
-            Ok(profile) => (profile, None),
-            Err(e) => (Profile::default_from_legacy(), Some(e)),
-        };
+    let (profile, profile_error) = match profile_store::ensure_default(path) {
+        Ok(profile) => (profile, None),
+        Err(e) => (Profile::default_from_legacy(), Some(e)),
+    };
     let page_count = profile.pages.len();
     if let Some(e) = profile_error {
         error!("profile: {e}; using built-in layout");
@@ -63,3 +67,7 @@ pub fn reconnect(handle: Device, c: &Ctx) -> Option<Device> {
     info!("device reconnected");
     Some(new_handle)
 }
+
+#[cfg(test)]
+#[path = "setup_tests.rs"]
+mod tests;

@@ -48,7 +48,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_editor(app),
             "pause" => toggle_controller(app),
-            "autostart" => toggle_autostart(app),
+            "autostart" => crate::login_item::toggle_autostart(app),
             "quit" => {
                 app.state::<App>().stop();
                 app.exit(0);
@@ -71,25 +71,20 @@ fn toggle_controller(app: &AppHandle) {
     if state.is_running() {
         state.stop();
     } else {
-        state.start(app);
+        // A refusal shows in the editor (device status error). The label stays "Resume".
+        let _ = state.start(app);
     }
-    let label = if state.is_running() {
+    set_controller_running(app, state.is_running());
+}
+
+/// Set the pause item text to match whether the controller thread is alive.
+pub fn set_controller_running(app: &AppHandle, running: bool) {
+    let label = if running {
         "Pause controller"
     } else {
         "Resume controller"
     };
-    let _ = app.state::<TrayItems>().pause.set_text(label);
-}
-
-fn toggle_autostart(app: &AppHandle) {
-    let manager = app.autolaunch();
-    let enable = !manager.is_enabled().unwrap_or(false);
-    let result = if enable {
-        manager.enable()
-    } else {
-        manager.disable()
-    };
-    if result.is_ok() {
-        let _ = app.state::<TrayItems>().autostart.set_checked(enable);
+    if let Some(items) = app.try_state::<TrayItems>() {
+        let _ = items.pause.set_text(label);
     }
 }
