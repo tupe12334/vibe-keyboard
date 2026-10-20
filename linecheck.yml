@@ -29,8 +29,8 @@ rules:
     error: 224
   - pattern: "src/infrastructure/claude_sessions/os.rs"
     error: 147
-  - pattern: "src/infrastructure/frontmost.rs"
-    error: 180
+  - pattern: "src/infrastructure/frontmost_tests.rs"
+    error: 114
   - pattern: "src/domain/hotkey.rs"
     error: 167
   - pattern: "src/application/pages/claude_sessions.rs"
