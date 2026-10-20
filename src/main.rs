@@ -15,12 +15,12 @@ use vibe_keyboard::domain::navigation::NavigationStack;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::frontmost;
-use vibe_keyboard::infrastructure::images::{app_icon_generation, calibration_image};
+use vibe_keyboard::infrastructure::images::app_icon_generation;
 use vibe_keyboard::infrastructure::persistence::DeviceState;
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::system_metrics;
 use vibe_keyboard::infrastructure::usb::{
-    clear_all, device_init, keep_alive, read_event, send_button_image, wait_for_device, Device,
+    clear_all, device_init, keep_alive, read_event, wait_for_device, Device,
 };
 use vibe_keyboard::{domain, infrastructure};
 
@@ -53,7 +53,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     // Hidden: draw each logical key number on its key, then exit. Checks key positions.
     if std::env::args().any(|arg| arg == "--calibrate") {
-        return calibrate();
+        return vibe_keyboard::infrastructure::usb::calibrate::calibrate();
     }
     // Startup is the only place that may write the default profile.
     let (profile, profile_error) =
@@ -230,18 +230,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    Ok(())
-}
-
-/// Draw logical keys 1–15 (their numbers) on the deck, then return.
-fn calibrate() -> Result<(), Box<dyn std::error::Error>> {
-    let dev = Device::open()?;
-    let brightness = DeviceState::load().brightness;
-    device_init(&dev, brightness);
-    for key in 1..=15u8 {
-        let tile = calibration_image(key);
-        send_button_image(&dev, key, image::DynamicImage::ImageRgb8(tile));
-    }
     Ok(())
 }
 
