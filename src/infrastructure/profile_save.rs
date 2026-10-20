@@ -31,8 +31,7 @@ pub fn save_if_unchanged(
         .write(true)
         .truncate(false)
         .open(&lock_path)
-        .map_err(|e| SaveRefusal::Failed(format!("lock {}: {e}", lock_path.display())))?;
-    FileExt::lock(&lock)
+        .and_then(|file| FileExt::lock(&file).map(|()| file))
         .map_err(|e| SaveRefusal::Failed(format!("lock {}: {e}", lock_path.display())))?;
     if modified_at(path) != loaded {
         return Err(SaveRefusal::Changed);
@@ -51,6 +50,19 @@ mod tests {
             std::env::temp_dir().join(format!("vibe-keyboard-save-{name}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("create dir");
         dir.join("profile.toml")
+    }
+
+    #[test]
+    fn a_lock_file_that_cannot_open_refuses_without_writing() {
+        let path = std::env::temp_dir()
+            .join("vibe-keyboard-no-such-dir")
+            .join("profile.toml");
+        let profile = Profile::default_from_legacy();
+        assert!(matches!(
+            save_if_unchanged(&path, &profile, None),
+            Err(SaveRefusal::Failed(_))
+        ));
+        assert!(!path.exists());
     }
 
     #[test]
