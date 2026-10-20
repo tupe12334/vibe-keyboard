@@ -21,8 +21,6 @@ rules:
     error: 265
   - pattern: "src/infrastructure/persistence_tests.rs"
     error: 164
-  - pattern: "src/application/pages/main_page.rs"
-    error: 238
   - pattern: "src/infrastructure/app_icon.rs"
     error: 227
   - pattern: "src/infrastructure/images/numpad.rs"
@@ -57,6 +55,8 @@ rules:
     error: 104
   - pattern: "src/application/pages/session_actions.rs"
     error: 102
+  - pattern: "src/application/pages/main_page_tests.rs"
+    error: 108
   - pattern: "src/application/pages/mod.rs"
     error: 102
   - pattern: "**/*.rs"
