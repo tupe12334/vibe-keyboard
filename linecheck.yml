@@ -31,8 +31,6 @@ rules:
     error: 114
   - pattern: "src/application/pages/claude_sessions.rs"
     error: 164
-  - pattern: "src/application/actions/profile.rs"
-    error: 157
   - pattern: "src/application/pages/centy/issues.rs"
     error: 110
   - pattern: "src/presentation/tui/app_state.rs"
