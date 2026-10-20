@@ -18,7 +18,6 @@ use crate::domain::profile::Widget;
 #[cfg(test)]
 use crate::infrastructure::system_metrics::Disk;
 #[cfg(test)]
-use cpu_bar::{bar_color, bar_span, AMBER, BAR_W, BAR_X, GREEN, RED, TRACK};
 #[cfg(test)]
 use value_text::{free_text, percent, temperature_text};
 
@@ -90,6 +89,7 @@ pub fn side_image(
             bg,
             fg,
             stack_rect(safe),
+            side.bar_style.as_ref(),
         );
     }
     canvas

@@ -2,6 +2,8 @@ use super::*;
 
 use std::path::PathBuf;
 
+use super::cpu_bar::{bar_color, bar_span, BarLook, AMBER, BAR_CENTER, BAR_W, GREEN, RED, TRACK};
+
 fn all_widgets() -> Vec<Widget> {
     vec![
         Widget::CpuBar,
@@ -42,3 +44,9 @@ mod widget_stack;
 
 #[path = "side_tests/bar_and_values.rs"]
 mod bar_and_values;
+
+#[path = "side_tests/bar_style.rs"]
+mod bar_style;
+
+#[path = "side_tests/bar_look.rs"]
+mod bar_look;

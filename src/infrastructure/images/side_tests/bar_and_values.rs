@@ -12,8 +12,8 @@ fn bar_fills_from_the_bottom_up() {
         side_image(Some(&side), &root, &metrics, &SideInset::default())
     };
     let stack = stack_rect(safe_rect(&SideInset::default()));
-    let (top, bottom) = bar_span(stack.h);
-    let x = BAR_X + BAR_W / 2;
+    let (top, bottom) = bar_span(stack.h, true);
+    let x = BAR_CENTER;
     let y0 = stack.y;
     // Half full: the lower half is green, the top of the bar is still track.
     let half = at(50);

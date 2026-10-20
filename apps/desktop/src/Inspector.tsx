@@ -6,6 +6,7 @@ import { INSPECTOR_TABS, type InspectorTab, InspectorTabs } from "./InspectorTab
 import { KeyPanel } from "./KeyPanel";
 import { PromptsPanel } from "./PromptsPanel";
 import { SidePanel } from "./SidePanel";
+import { useSidePreview } from "./useSidePreview";
 import type { KeyConfig, Page, Profile } from "./types";
 
 interface Props {
@@ -32,6 +33,7 @@ interface Props {
 export function Inspector(props: Props) {
   const { draft, page, selected, rules, builtins, previews, tab, onTab, setKey, setHoldMs, setDraft, updatePage, setDisplay } = props;
   const current = draft.pages[page];
+  const sidePreview = useSidePreview(draft, page);
   const pageCount = draft.pages.length;
   const hint = <p className="status">Select a key on the deck to edit it.</p>;
   const keyEdit = (key: number) => (config: KeyConfig) => setKey(key, config);
@@ -62,7 +64,14 @@ export function Inspector(props: Props) {
         />
       ),
     prompts: <PromptsPanel profile={draft} limits={rules} onChange={setDraft} />,
-    side: <SidePanel side={current.side ?? null} onChange={(side) => updatePage((p) => ({ ...p, side }))} />,
+    side: (
+      <SidePanel
+        side={current.side ?? null}
+        rules={rules}
+        preview={sidePreview}
+        onChange={(side) => updatePage((p) => ({ ...p, side }))}
+      />
+    ),
     display: <DisplayPanel display={draft.display} onChange={setDisplay} />,
   };
 

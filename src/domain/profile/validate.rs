@@ -63,6 +63,15 @@ impl Profile {
                     out.push(format!("{place}: hold {problem}"));
                 }
             }
+            if let Some(style) = page.side.as_ref().and_then(|s| s.bar_style.as_ref()) {
+                let place = format!("page {} '{}' side", index + 1, page.name);
+                out.extend(
+                    style
+                        .problems()
+                        .into_iter()
+                        .map(|p| format!("{place}: {p}")),
+                );
+            }
         }
         out
     }

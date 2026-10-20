@@ -23,6 +23,11 @@ export const commands = {
 	 *  number of pages in the layout being edited.
 	 */
 	actionProblem: (action: Action_Deserialize, pageCount: number) => __TAURI_INVOKE<string | null>("action_problem", { action, pageCount }),
+	/**
+	 *  PNG data URL of the side screen of `page`, drawn by the same `side_image` the deck uses.
+	 *  The values are a fixed sample, so the preview reads the same on every machine.
+	 */
+	sidePreview: (profile: Profile_Deserialize, page: number) => typedError<string, string>(__TAURI_INVOKE("side_preview", { profile, page })),
 	deviceStatus: () => __TAURI_INVOKE<DeviceStatus>("device_status"),
 	editorRules: () => __TAURI_INVOKE<EditorRules>("editor_rules"),
 	/**  The layout with one more page, named by the core rule. */
@@ -91,6 +96,46 @@ export type Action_Serialize = ({ type: "none" }) & { command?: never; key?: nev
  */
 ({ type: "push_to_talk"; key?: string | null }) & { command?: never; keys?: never; name?: never; page?: never; url?: never };
 
+/**
+ *  Look of the CPU bar on one side screen. Every field is optional. Absent means today's look,
+ *  so a profile without `bar_style` renders as before.
+ */
+export type BarStyle = BarStyle_Serialize | BarStyle_Deserialize;
+
+/**
+ *  Look of the CPU bar on one side screen. Every field is optional. Absent means today's look,
+ *  so a profile without `bar_style` renders as before.
+ */
+export type BarStyle_Deserialize = {
+	/**  Fill color `#RRGGBB`. Absent: green below 60 %, amber below 85 %, red above. */
+	fill?: string | null,
+	/**  Color of the unfilled part, `#RRGGBB`. Absent: dark grey. */
+	track?: string | null,
+	/**  Bar width in px. Absent: 40. */
+	thickness?: number | null,
+	/**  Show the percent under the bar. Absent: shown. */
+	show_value?: boolean | null,
+	/**  Color of the percent text, `#RRGGBB`. Absent: the side text color. */
+	label_color?: string | null,
+};
+
+/**
+ *  Look of the CPU bar on one side screen. Every field is optional. Absent means today's look,
+ *  so a profile without `bar_style` renders as before.
+ */
+export type BarStyle_Serialize = {
+	/**  Fill color `#RRGGBB`. Absent: green below 60 %, amber below 85 %, red above. */
+	fill?: string | null,
+	/**  Color of the unfilled part, `#RRGGBB`. Absent: dark grey. */
+	track?: string | null,
+	/**  Bar width in px. Absent: 40. */
+	thickness?: number | null,
+	/**  Show the percent under the bar. Absent: shown. */
+	show_value?: boolean | null,
+	/**  Color of the percent text, `#RRGGBB`. Absent: the side text color. */
+	label_color?: string | null,
+};
+
 /**  Device came up. Sent by the controller. */
 export type DeviceConnected = Record<string, never>;
 
@@ -143,6 +188,13 @@ export type EditorRules = {
 	prompt_label_max: number,
 	/**  Longest prompt text, in characters. */
 	prompt_text_max: number,
+	/**  Narrowest, widest and default CPU bar width, in px. */
+	bar_thickness_min: number,
+	bar_thickness_max: number,
+	bar_thickness_default: number,
+	/**  Start colors for a custom bar fill and track, `#RRGGBB`. */
+	bar_fill_default: string,
+	bar_track_default: string,
 };
 
 /**  The `[input]` table of `profile.toml`. */
@@ -261,6 +313,8 @@ export type SideConfig_Deserialize = {
 	 *  `label` and `image`.
 	 */
 	widgets?: Widget[],
+	/**  Look of the CPU bar widget. Absent means the default look. */
+	bar_style?: BarStyle_Deserialize | null,
 };
 
 /**  The side screen: a 480x100 strip. Same image sources as keys, else the label. */
@@ -274,6 +328,8 @@ export type SideConfig_Serialize = {
 	 *  `label` and `image`.
 	 */
 	widgets?: Widget[],
+	/**  Look of the CPU bar widget. Absent means the default look. */
+	bar_style?: BarStyle_Serialize | null,
 };
 
 /**  Side screen margins. The defaults keep the old safe area, y 30..440. */

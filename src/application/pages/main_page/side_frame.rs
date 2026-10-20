@@ -26,7 +26,7 @@ fn side_to_show(
         .get(nav.home_page())
         .and_then(|p| p.side.clone());
     match resolve_side(page_side, nav.current().side()) {
-        SideContent::Show(side) => Some((side, s.metrics.clone(), s.profile.display.side_inset)),
+        SideContent::Show(side) => Some((*side, s.metrics.clone(), s.profile.display.side_inset)),
         SideContent::Keep => None,
     }
 }

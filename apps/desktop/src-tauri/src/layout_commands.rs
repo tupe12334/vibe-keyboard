@@ -3,7 +3,8 @@
 use serde::Serialize;
 use specta::Type;
 use vibe_keyboard::domain::profile::{
-    InputConfig, Profile, PROMPT_LABEL_MAX_CHARS, PROMPT_MAX_CHARS,
+    InputConfig, Profile, BAR_FILL_DEFAULT, BAR_THICKNESS_DEFAULT, BAR_THICKNESS_MAX,
+    BAR_THICKNESS_MIN, BAR_TRACK_DEFAULT, PROMPT_LABEL_MAX_CHARS, PROMPT_MAX_CHARS,
 };
 use vibe_keyboard::domain::profile_rules;
 
@@ -23,6 +24,13 @@ pub struct EditorRules {
     pub prompt_label_max: u32,
     /// Longest prompt text, in characters.
     pub prompt_text_max: u32,
+    /// Narrowest, widest and default CPU bar width, in px.
+    pub bar_thickness_min: u32,
+    pub bar_thickness_max: u32,
+    pub bar_thickness_default: u32,
+    /// Start colors for a custom bar fill and track, `#RRGGBB`.
+    pub bar_fill_default: String,
+    pub bar_track_default: String,
 }
 
 #[tauri::command]
@@ -36,6 +44,11 @@ pub fn editor_rules() -> EditorRules {
         hold_ms_max: profile_rules::HOLD_MS_MAX as u32,
         prompt_label_max: PROMPT_LABEL_MAX_CHARS as u32,
         prompt_text_max: PROMPT_MAX_CHARS as u32,
+        bar_thickness_min: BAR_THICKNESS_MIN,
+        bar_thickness_max: BAR_THICKNESS_MAX,
+        bar_thickness_default: BAR_THICKNESS_DEFAULT,
+        bar_fill_default: BAR_FILL_DEFAULT.into(),
+        bar_track_default: BAR_TRACK_DEFAULT.into(),
     }
 }
 
@@ -72,5 +85,6 @@ mod tests {
         let rules = editor_rules();
         assert_eq!(rules.prompt_label_max as usize, PROMPT_LABEL_MAX_CHARS);
         assert_eq!(rules.prompt_text_max as usize, PROMPT_MAX_CHARS);
+        assert_eq!(rules.bar_thickness_max, BAR_THICKNESS_MAX);
     }
 }
