@@ -38,14 +38,14 @@ export function DisplayPanel({
   return (
     <section className="panel">
       <strong>Display (hidden bezel band, px)</strong>
-      <div className="row three">
+      <div className="row">
         {KEY_EDGES.map((edge) => (
           <Field key={edge} label={`Key ${edge}`}>
             <input type="number" min={0} value={key[edge]} onChange={(e) => setKey(edge, e.target.value)} />
           </Field>
         ))}
       </div>
-      <div className="row three">
+      <div className="row">
         {SIDE_EDGES.map((edge) => (
           <Field key={edge} label={`Side ${edge}`}>
             <input type="number" min={0} value={side[edge]} onChange={(e) => setSide(edge, e.target.value)} />

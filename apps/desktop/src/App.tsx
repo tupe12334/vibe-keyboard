@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { commands, type EditorRules } from "./bindings";
+import { Inspector } from "./Inspector";
+import type { InspectorTab } from "./InspectorTabs";
 import { KeyGrid } from "./KeyGrid";
-import { KeyPanel } from "./KeyPanel";
 import { PageList } from "./PageList";
-import { DisplayPanel } from "./DisplayPanel";
-import { PromptsPanel } from "./PromptsPanel";
-import { SidePanel } from "./SidePanel";
 import { Toolbar } from "./Toolbar";
 import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
@@ -19,6 +17,7 @@ export function App() {
   const { deck, pressed } = useDeckEvents(onReload);
   const previews = usePreviews(draft, page);
   const [selected, setSelected] = useState<number | null>(null);
+  const [tab, setTab] = useState<InspectorTab>("key");
   const [rules, setRules] = useState<EditorRules | null>(null);
   const [builtins, setBuiltins] = useState<string[]>([]);
 
@@ -35,19 +34,15 @@ export function App() {
   const current: Page = draft.pages[page];
   const navKeys = new Set(rules?.nav_keys ?? []);
   const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
+  // Picking a key shows its fields first.
+  const pickKey = (key: number) => {
+    setSelected(key);
+    setTab("key");
+  };
 
   return (
     <div className="shell">
-      <PageList
-        pages={draft.pages}
-        page={page}
-        onSelect={(i) => {
-          setPage(i);
-          setSelected(null);
-        }}
-        onAdd={addPage}
-      />
-      <main className="main">
+      <div className="topbar">
         <Toolbar
           name={current.name}
           onRename={(name) => updatePage((p) => ({ ...p, name }))}
@@ -59,32 +54,37 @@ export function App() {
           onDiscard={() => void load()}
           onSave={() => void save()}
         />
+      </div>
+      <PageList
+        pages={draft.pages}
+        page={page}
+        onSelect={(i) => {
+          setPage(i);
+          setSelected(null);
+        }}
+        onAdd={addPage}
+      />
+      <main className="center">
         {deck.error && <div className="error">{deck.error}</div>}
         {error && <div className="error">{error}</div>}
         {notice && <div className="error">{notice}</div>}
-
-        <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={setSelected} />
-
-        <PromptsPanel profile={draft} limits={rules} onChange={setDraft} />
-        <DisplayPanel display={draft.display} onChange={setDisplay} />
-        <SidePanel side={current.side ?? null} onChange={(side) => updatePage((p) => ({ ...p, side }))} />
-
-        {selected !== null && (
-          <KeyPanel
-            key={selected}
-            keyNumber={selected}
-            preview={previews[selected]}
-            config={current.keys[selected]}
-            builtins={builtins}
-            pageCount={draft.pages.length}
-            holdMs={draft.input?.hold_ms ?? rules.default_hold_ms}
-            rules={rules}
-            onHoldMsChange={setHoldMs}
-            onChange={(config) => setKey(selected, config)}
-            onClear={() => setKey(selected, undefined)}
-          />
-        )}
+        <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={pickKey} />
       </main>
+      <Inspector
+        draft={draft}
+        page={page}
+        selected={selected}
+        rules={rules}
+        builtins={builtins}
+        previews={previews}
+        tab={tab}
+        onTab={setTab}
+        setKey={setKey}
+        setHoldMs={setHoldMs}
+        setDraft={setDraft}
+        updatePage={updatePage}
+        setDisplay={setDisplay}
+      />
     </div>
   );
 }
