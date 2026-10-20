@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use crate::domain::actions::Glyph;
 
-use super::{is_spinner, is_valid_tty, CLAUDE_SUFFIX, SUMMARY_CHARS};
+use super::session_status::is_spinner;
+use super::{is_valid_tty, CLAUDE_SUFFIX, SUMMARY_CHARS};
 
 /// Glyph and title from a terminal tab title such as `✳ Centy availability (claude)`.
 /// The title keeps no glyph and no ` (claude)` suffix.
