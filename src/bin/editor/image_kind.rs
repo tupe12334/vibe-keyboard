@@ -10,7 +10,7 @@ pub(super) enum ImageKind {
 impl ImageKind {
     pub(super) const ALL: [Self; 4] = [Self::None, Self::File, Self::Icon, Self::App];
 
-    pub(super) fn label(self) -> &'static str {
+    pub(super) const fn label(self) -> &'static str {
         match self {
             Self::None => "None",
             Self::File => "File",

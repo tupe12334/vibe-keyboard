@@ -3,7 +3,6 @@ mod centy;
 mod claude;
 mod log_file;
 mod profile;
-mod search;
 mod terminal;
 mod vscode_config;
 

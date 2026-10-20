@@ -2,6 +2,7 @@ use crate::domain::actions::ClaudeSession;
 
 use super::{action_pages, Screen};
 
+#[allow(clippy::expect_used, reason = "the stack is never empty")]
 impl super::NavigationStack {
     /// Replace the sessions on the open session list, keeping the page inside the new range.
     pub fn set_sessions(&mut self, new: Vec<ClaudeSession>) {
@@ -45,11 +46,11 @@ impl super::NavigationStack {
     /// Projects are sorted by name; issues are sorted by number.
     /// Each call reverses the current order.
     pub fn toggle_sort(&mut self) {
-        match self
+        let top = self
             .stack
             .last_mut()
-            .expect("NavigationStack is always non-empty")
-        {
+            .expect("NavigationStack is always non-empty");
+        match top {
             Screen::CentyProjectList { projects, .. } => {
                 let asc = projects.windows(2).all(|w| w[0].name <= w[1].name);
                 if asc {

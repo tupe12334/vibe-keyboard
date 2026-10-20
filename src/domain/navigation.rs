@@ -106,7 +106,7 @@ pub const fn back_key_on(screen: &Screen) -> BackKey {
 
 impl Screen {
     /// Side content this screen declares. None keeps the side screen of the home page.
-    pub fn side(&self) -> Option<SideConfig> {
+    pub const fn side(&self) -> Option<SideConfig> {
         match self {
             Self::MainPage { .. }
             | Self::CentyProjectList { .. }
@@ -131,6 +131,7 @@ pub struct NavigationStack {
     total_main_pages: usize,
 }
 
+#[allow(clippy::expect_used, reason = "the stack is never empty")]
 impl NavigationStack {
     pub fn new(initial_page: usize, total_main_pages: usize) -> Self {
         assert!(total_main_pages > 0, "must have at least one page");
@@ -209,11 +210,11 @@ impl NavigationStack {
     /// `MainPage` wraps around (circular). Pushed screens go to the previous page
     /// if available, otherwise pop.
     pub fn back(&mut self) {
-        let should_pop = match self
+        let top = self
             .stack
             .last_mut()
-            .expect("NavigationStack is always non-empty")
-        {
+            .expect("NavigationStack is always non-empty");
+        let should_pop = match top {
             Screen::MainPage { page } => {
                 *page = if *page == 0 {
                     self.total_main_pages - 1
@@ -259,11 +260,7 @@ impl NavigationStack {
     }
 
     pub fn can_forward(&self) -> bool {
-        match self
-            .stack
-            .last()
-            .expect("NavigationStack is always non-empty")
-        {
+        match self.current() {
             Screen::MainPage { .. } => true,
             Screen::CentyProjectList { projects, page, .. } => {
                 *page < projects.len().saturating_sub(1) / 10
@@ -286,11 +283,11 @@ impl NavigationStack {
 
     /// Navigate forward within the current screen's pages. No-op if no more pages.
     pub fn forward(&mut self) {
-        match self
+        let top = self
             .stack
             .last_mut()
-            .expect("NavigationStack is always non-empty")
-        {
+            .expect("NavigationStack is always non-empty");
+        match top {
             Screen::MainPage { page } => {
                 *page = (*page + 1) % self.total_main_pages;
             }

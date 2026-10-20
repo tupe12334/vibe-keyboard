@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use image::imageops::{self, FilterType};
+use image::imageops::FilterType;
 use image::{ImageBuffer, Rgb, RgbImage};
 
 use super::draw::fill_circle;
@@ -19,7 +19,7 @@ use super::{
 use crate::domain::actions::SessionStatus;
 use crate::domain::keys::is_nav_key;
 use crate::domain::profile::KEY_COUNT;
-use crate::domain::profile::{inner_rect, parse_color, Action, KeyConfig, KeyInset};
+use crate::domain::profile::{parse_color, Action, KeyConfig, KeyInset};
 use crate::infrastructure::profile_store::resolve_image;
 use crate::infrastructure::usb::DECK_IMAGE_SIZE;
 use app_icon_cache::app_icon_cached;

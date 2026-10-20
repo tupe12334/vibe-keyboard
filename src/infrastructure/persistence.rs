@@ -74,4 +74,5 @@ impl DeviceState {
 
 #[cfg(test)]
 #[path = "persistence_tests.rs"]
+#[allow(clippy::expect_used)]
 mod tests;
