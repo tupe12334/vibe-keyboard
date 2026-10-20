@@ -1,8 +1,6 @@
 //! Layout editor for `~/.config/vibe-keyboard/profile.toml`.
 //! The running controller hot-reloads the file after you save.
 
-use eframe::egui::Color32;
-use vibe_keyboard::infrastructure::images::SIDE_HEIGHT;
 #[path = "editor/app.rs"]
 mod app;
 #[path = "editor/app_picker.rs"]
@@ -31,12 +29,17 @@ mod page_list;
 mod prompts;
 #[path = "editor/state.rs"]
 mod state;
-use state::Editor;
+#[cfg(test)]
+use layout::GRID_MARGIN;
+use state::{Editor, PageOp};
 #[path = "editor/running_apps.rs"]
 mod running_apps;
 #[path = "editor/status_bar.rs"]
 mod status_bar;
-use layout::{cell_size, side_strip_size};
+use layout::{
+    cell_size, side_strip_size, GAP, GRID, KEY_PANEL_WIDTH, KEY_PANEL_WIDTH_RANGE, PAGES_WIDTH,
+    PAGES_WIDTH_RANGE, RED,
+};
 #[cfg(test)]
 use prompts::{apply_prompt_op, PromptOp};
 #[cfg(test)]
@@ -45,22 +48,6 @@ use running_apps::parse_lsappinfo;
 mod side_panel;
 #[path = "editor/side_strip.rs"]
 mod side_strip;
-
-/// Physical layout as seen from the front. Matches `device.md`.
-const GRID: [[u8; 5]; 3] = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]];
-/// Grid cell size in points. The deck key is square.
-const CELL_MAX: f32 = 96.0;
-const CELL_MIN: f32 = 24.0;
-/// Gap between grid cells, and the margin kept free around the grid.
-const GAP: f32 = 8.0;
-const GRID_MARGIN: f32 = 16.0;
-const PAGES_WIDTH: f32 = 260.0;
-const PAGES_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 200.0..=360.0;
-const KEY_PANEL_WIDTH: f32 = 320.0;
-const KEY_PANEL_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 260.0..=420.0;
-const RED: Color32 = Color32::from_rgb(230, 80, 80);
-/// Side strip preview: at most the device render height, same 100:480 ratio.
-const SIDE_STRIP_MAX: f32 = SIDE_HEIGHT as f32;
 
 fn main() -> eframe::Result {
     eframe::run_native(
@@ -76,15 +63,6 @@ fn main() -> eframe::Result {
             Ok(app)
         }),
     )
-}
-
-/// A page-list change, applied after the sidebar is drawn.
-enum PageOp {
-    Select(usize),
-    Add,
-    Up(usize),
-    Down(usize),
-    Delete(usize),
 }
 
 #[path = "editor/image_kind.rs"]

@@ -86,3 +86,12 @@ impl Editor {
         }
     }
 }
+
+/// A page-list change, applied after the sidebar is drawn.
+pub(super) enum PageOp {
+    Select(usize),
+    Add,
+    Up(usize),
+    Down(usize),
+    Delete(usize),
+}
