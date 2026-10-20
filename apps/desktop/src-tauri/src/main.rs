@@ -9,6 +9,9 @@ mod bindings;
 #[cfg(test)]
 mod command_harness;
 mod commands;
+mod display_commands;
+#[cfg(test)]
+mod display_tests;
 mod events;
 mod key_commands;
 mod layout_commands;
@@ -48,6 +51,7 @@ fn specta_builder() -> Builder<Wry> {
             prompt_commands::delete_prompt,
             app_commands::list_running_apps,
             app_commands::check_bundle_id,
+            display_commands::display_defaults,
         ])
         .events(collect_events![
             events::DeviceConnected,

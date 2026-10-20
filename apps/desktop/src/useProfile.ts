@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { commands } from "./bindings";
+import { commands, type DisplaySettings_Serialize as DisplaySettings } from "./bindings";
 import type { KeyConfig, Page, Profile } from "./types";
 
 /** The saved layout, the editor draft, the page shown, and the messages above the grid. */
@@ -60,6 +60,7 @@ export function useProfile() {
       return { ...p, keys };
     });
   const setHoldMs = (hold_ms: number) => setDraft((d) => d && { ...d, input: { ...d.input, hold_ms } });
+  const setDisplay = (display: DisplaySettings) => setDraft((d) => d && { ...d, display });
 
   return {
     draft,
@@ -76,5 +77,6 @@ export function useProfile() {
     updatePage,
     setKey,
     setHoldMs,
+    setDisplay,
   };
 }
