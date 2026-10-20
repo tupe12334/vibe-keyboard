@@ -7,10 +7,6 @@ rules:
     error: 316
   - pattern: "src/main.rs"
     error: 284
-  - pattern: "src/infrastructure/images/profile_key.rs"
-    error: 194
-  - pattern: "src/application/pages/claude_sessions.rs"
-    error: 164
   - pattern: "src/application/pages/centy/issues.rs"
     error: 110
   - pattern: "src/presentation/tui/app_state.rs"
