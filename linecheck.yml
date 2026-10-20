@@ -4,9 +4,9 @@ rules:
   - pattern: "src/domain/profile.rs"
     error: 880
   - pattern: "src/infrastructure/claude_sessions.rs"
-    error: 388
+    error: 278
   - pattern: "src/infrastructure/claude_sessions_tests.rs"
-    error: 380
+    error: 367
   - pattern: "src/application/mod.rs"
     error: 202
   - pattern: "src/application/filter_query.rs"
