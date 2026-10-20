@@ -33,8 +33,6 @@ rules:
     error: 202
   - pattern: "src/infrastructure/frontmost.rs"
     error: 180
-  - pattern: "src/infrastructure/system_metrics.rs"
-    error: 173
   - pattern: "src/domain/hotkey.rs"
     error: 167
   - pattern: "src/application/pages/claude_sessions.rs"
