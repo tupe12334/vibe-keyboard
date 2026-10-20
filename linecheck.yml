@@ -3,8 +3,6 @@ rules:
     error: 266
   - pattern: "src/domain/profile.rs"
     error: 142
-  - pattern: "src/application/mod.rs"
-    error: 202
   - pattern: "src/infrastructure/profile_store_tests.rs"
     error: 316
   - pattern: "src/main.rs"
