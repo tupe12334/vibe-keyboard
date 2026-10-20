@@ -20,7 +20,7 @@ rules:
   - pattern: "src/main.rs"
     error: 284
   - pattern: "src/infrastructure/images/profile_key.rs"
-    error: 265
+    error: 194
   - pattern: "src/infrastructure/persistence_tests.rs"
     error: 164
   - pattern: "src/infrastructure/app_icon_tests.rs"

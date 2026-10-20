@@ -1,13 +1,13 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Mutex, OnceLock};
 
 use image::imageops::{self, FilterType};
 use image::{ImageBuffer, Rgb, RgbImage};
 
 use super::draw::fill_circle;
 use super::fit;
+
+mod app_icon_cache;
 use super::icon_image;
 use super::status_tile::status_tile;
 use super::text::draw_label;
@@ -20,9 +20,10 @@ use crate::domain::actions::SessionStatus;
 use crate::domain::keys::is_nav_key;
 use crate::domain::profile::KEY_COUNT;
 use crate::domain::profile::{inner_rect, parse_color, Action, KeyConfig, KeyInset};
-use crate::infrastructure::app_icon::app_icon;
 use crate::infrastructure::profile_store::resolve_image;
 use crate::infrastructure::usb::DECK_IMAGE_SIZE;
+use app_icon_cache::app_icon_cached;
+pub use app_icon_cache::app_icon_generation;
 
 /// Render size before the inset step. Icons and labels are drawn at this size.
 pub(super) const KEY_SIZE: u32 = 100;
@@ -97,54 +98,6 @@ pub(super) fn source_image(image: &Path, root: &Path, size: u32) -> Option<RgbIm
         return app_icon_cached(bundle_id, size);
     }
     load_image(&resolve_image(root, image), size)
-}
-
-/// Installed-app icons, looked up off-thread. Results are cached, misses included.
-#[derive(Default)]
-struct AppIconCache {
-    /// Finished lookups by (bundle id, size). `None` is a miss (no such app, or no icon).
-    ready: HashMap<(String, u32), Option<RgbImage>>,
-    /// Lookups still running on a worker thread.
-    pending: HashSet<(String, u32)>,
-}
-
-static APP_ICONS: OnceLock<Mutex<AppIconCache>> = OnceLock::new();
-/// Bumped whenever a lookup finishes, so callers know to re-render.
-static APP_ICON_GENERATION: AtomicU64 = AtomicU64::new(0);
-
-fn app_cache() -> std::sync::MutexGuard<'static, AppIconCache> {
-    APP_ICONS
-        .get_or_init(|| Mutex::new(AppIconCache::default()))
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner)
-}
-
-/// Counter that changes each time an app icon lookup finishes.
-pub fn app_icon_generation() -> u64 {
-    APP_ICON_GENERATION.load(Ordering::Relaxed)
-}
-
-/// The icon for `bundle_id` if it is already known. Otherwise start a background lookup and
-/// return `None`, so the key shows its label until the lookup finishes.
-fn app_icon_cached(bundle_id: &str, size: u32) -> Option<RgbImage> {
-    let key = (bundle_id.to_string(), size);
-    let mut cache = app_cache();
-    if let Some(known) = cache.ready.get(&key) {
-        return known.clone();
-    }
-    if cache.pending.insert(key.clone()) {
-        std::thread::spawn(move || {
-            let icon = app_icon(&key.0, key.1).map(|img| {
-                img.resize_to_fill(key.1, key.1, FilterType::Triangle)
-                    .to_rgb8()
-            });
-            let mut cache = app_cache();
-            cache.pending.remove(&key);
-            cache.ready.insert(key, icon);
-            APP_ICON_GENERATION.fetch_add(1, Ordering::Relaxed);
-        });
-    }
-    None
 }
 
 pub(super) fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {
