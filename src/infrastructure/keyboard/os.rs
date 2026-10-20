@@ -13,10 +13,12 @@ use crate::domain::hotkey::{key_code, modifier_flags, Hotkey};
 use crate::domain::ptt::{Probe, PttGuard};
 use tracing::error;
 
+mod accessibility;
 mod panic;
 mod post;
 mod window;
 
+pub use accessibility::accessibility_trusted;
 pub use panic::install_panic_release;
 pub use post::tap;
 

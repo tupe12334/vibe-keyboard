@@ -43,6 +43,7 @@ pub fn on_event(app: &AppHandle, event: ControllerEvent) {
             let _ = KeyPressed { key }.emit(app);
         }
         ControllerEvent::ProfileReloaded => {
+            state.check_accessibility(app);
             let _ = ProfileReloaded {}.emit(app);
         }
     }

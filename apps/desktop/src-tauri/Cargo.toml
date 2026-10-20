@@ -17,6 +17,7 @@ specta-typescript = "0.0.12"
 serde = { version = "1", features = ["derive"] }
 base64 = "0.22"
 image = { version = "0.25", default-features = false, features = ["png"] }
+tracing = "0.1"
 
 [dev-dependencies]
 # Mock runtime: the commands run through the IPC layer in tests, with no window.

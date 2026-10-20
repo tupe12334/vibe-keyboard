@@ -1,3 +1,4 @@
+pub mod accessibility;
 pub mod actions;
 pub mod button;
 pub mod claude_session;

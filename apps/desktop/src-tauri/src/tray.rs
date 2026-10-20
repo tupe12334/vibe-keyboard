@@ -8,8 +8,11 @@ use crate::app::App;
 
 /// Tray items that change text or state while the app runs.
 pub struct TrayItems {
+    pub menu: Menu<Wry>,
     pub pause: MenuItem<Wry>,
     pub autostart: CheckMenuItem<Wry>,
+    /// Shown at the top of the menu only while push-to-talk lacks Accessibility.
+    pub accessibility: MenuItem<Wry>,
 }
 
 pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -24,6 +27,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         autostart_on,
         None::<&str>,
     )?;
+    let accessibility = crate::accessibility::menu_item(app)?;
     let quit = MenuItem::with_id(app, "quit", "Quit Vibe Keyboard", true, None::<&str>)?;
     let menu = Menu::with_items(
         app,
@@ -38,8 +42,10 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
     )?;
 
     app.manage(TrayItems {
+        menu: menu.clone(),
         pause: pause.clone(),
         autostart: autostart.clone(),
+        accessibility,
     });
 
     TrayIconBuilder::new()
@@ -49,6 +55,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
             "open" => show_editor(app),
             "pause" => toggle_controller(app),
             "autostart" => crate::login_item::toggle_autostart(app),
+            crate::accessibility::MENU_ID => crate::accessibility::open_settings(),
             "quit" => {
                 app.state::<App>().stop();
                 app.exit(0);

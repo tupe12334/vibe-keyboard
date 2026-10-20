@@ -15,7 +15,7 @@ use crate::thread::spawn;
 /// Managed by Tauri. One controller thread at most.
 pub struct App {
     /// UI state shared with the logger. The controller loads the profile into it.
-    state: Arc<Mutex<AppState>>,
+    pub(crate) state: Arc<Mutex<AppState>>,
     pub(crate) running: Mutex<Option<Running>>,
     pub(crate) device_connected: AtomicBool,
     /// Why the controller refused to start or stopped with an error. None when fine.
@@ -59,6 +59,7 @@ impl App {
             // The same profile load as `listen`. The controller needs the page count.
             controller::load_profile(&self.state);
             self.set_error(None);
+            self.check_accessibility(app);
             let shutdown = Arc::new(AtomicBool::new(false));
             let thread = spawn(
                 app.clone(),
