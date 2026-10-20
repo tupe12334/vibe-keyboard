@@ -3,7 +3,9 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 use crate::domain::navigation::{NavigationStack, Screen};
-use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
+use crate::infrastructure::claude_sessions::{
+    blink_session, focus_session, open_new_session, send_prompt,
+};
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
@@ -40,6 +42,11 @@ pub(super) fn session_action(
             info!("claude sessions: confirm exit for {}", session.tty);
             open_confirm_exit(nav, session);
             render_screen(nav, handle, state, dev_state);
+        }
+        Action::BlinkSession { session } => {
+            info!("claude sessions: blink {}", session.tty);
+            // Off the device loop: the focus waits on osascript, and the write may block on the tty.
+            std::thread::spawn(move || blink_session(&session.tty, session.app));
         }
         Action::SendPrompt { pid, tty, text } => {
             info!("claude sessions: send prompt to {tty}");

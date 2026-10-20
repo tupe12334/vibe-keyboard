@@ -12,7 +12,7 @@ mod screen;
 mod stack_state;
 pub use back_target::{back_key_on, BackKey};
 use paging::moadim_len;
-pub use paging::{action_pages, exit_on_page, prompt_index, PROMPTS_PER_PAGE};
+pub use paging::{action_pages, exit_on_page, prompt_index, BLINK_KEY, PROMPTS_PER_PAGE};
 pub use screen::Screen;
 mod forward;
 mod lists;

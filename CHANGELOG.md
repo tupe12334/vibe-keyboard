@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- BLINK key (10) on the session action page. It focuses the session, then shows an iTerm2 fireworks highlight on its pane. Prompts now use keys 1 to 9.
+
 ## [0.1.1] - 2026-10-20
 
 ### Fixed
