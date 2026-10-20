@@ -13,14 +13,16 @@ fn focus_scripts_raise_the_iterm_window_in_order() {
     let found = positions(
         &iterm,
         &[
+            "activate",
+            "delay 0.3",
             "tell s to select",
             "tell t to select",
             "tell w to select",
-            "set index of w to 1",
-            "activate",
         ],
     );
     assert!(found.windows(2).all(|w| w[0] < w[1]));
+    // `set index of w to 1` breaks the raise. Live, it left another window in front.
+    assert!(!iterm.contains("set index of"));
 }
 
 #[test]

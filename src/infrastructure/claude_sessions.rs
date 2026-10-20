@@ -15,7 +15,8 @@ mod titles;
 mod vscode_owner;
 
 pub use focus_check::{
-    focused_bundle, is_frontmost, is_selected, session_moved, ITERM_BUNDLE, TERMINAL_BUNDLE,
+    focused_bundle, is_frontmost, is_selected, scan_result, session_moved, Scan, ITERM_BUNDLE,
+    TERMINAL_BUNDLE,
 };
 pub use highlight::highlight_target;
 pub use new_session::new_session_script;

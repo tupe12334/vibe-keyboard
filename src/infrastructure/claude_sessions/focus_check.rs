@@ -40,6 +40,24 @@ pub fn session_moved(current: Option<&str>, tty: &str) -> bool {
         .is_some_and(|c| !c.is_empty() && !is_selected(Some(c), tty))
 }
 
+/// One focus scan's result. `Failed` is an osascript error or no output. iTerm2 reorders its windows
+/// during a scan, so a failed scan can be retried. `Missing` is a clean "no such tab".
+#[derive(Debug, PartialEq, Eq)]
+pub enum Scan {
+    Found,
+    Missing,
+    Failed,
+}
+
+/// Reads one scan's stdout. Anything but `found` or `missing` counts as failed.
+pub fn scan_result(out: Option<&str>) -> Scan {
+    match out.map(str::trim) {
+        Some("found") => Scan::Found,
+        Some("missing") => Scan::Missing,
+        _ => Scan::Failed,
+    }
+}
+
 #[cfg(test)]
 #[path = "focus_check_tests.rs"]
 mod tests;

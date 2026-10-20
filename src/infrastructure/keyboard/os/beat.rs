@@ -11,6 +11,9 @@ use crate::domain::ptt::{deadline, next_index};
 
 /// How often a hold re-checks the frontmost app and Accessibility.
 const PROBE_EVERY: Duration = Duration::from_millis(250);
+/// The iTerm2 tty read is ignored this long after a hold starts. Focus has only just landed, and a
+/// read taken then can lag. The move rule still needs two misses in a row.
+const SESSION_GRACE: Duration = Duration::from_millis(500);
 /// `QOS_CLASS_USER_INTERACTIVE`, from `<sys/qos.h>`.
 const QOS_CLASS_USER_INTERACTIVE: u32 = 0x21;
 
@@ -40,9 +43,13 @@ pub(super) fn beat(generation: u64) {
 
 /// Probe focus and Accessibility every `PROBE_EVERY` until the hold ends.
 pub(super) fn watch_focus(generation: u64, tty: &Option<String>) {
+    let started = Instant::now();
     loop {
         thread::sleep(PROBE_EVERY);
-        let probe = read_probe(tty.as_deref());
+        let mut probe = read_probe(tty.as_deref());
+        if started.elapsed() < SESSION_GRACE {
+            probe.session_moved = false;
+        }
         if !lock().observe(generation, probe) {
             break;
         }

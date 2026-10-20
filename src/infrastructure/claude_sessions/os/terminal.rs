@@ -1,6 +1,6 @@
 //! osascript calls that focus a session tab, type a prompt into it, or open a new session window.
 
-use super::front_tty::settle_on;
+use super::front_tty::{find_tab, settle_on};
 use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
 use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
@@ -22,18 +22,16 @@ pub fn focus_session(tty: &str) -> bool {
     let Some(scripts) = focus_scripts(tty) else {
         return false;
     };
-    let found = scripts.iter().enumerate().find_map(|(index, script)| {
-        let out = run("osascript", &["-e", script], FOCUS_TIMEOUT)?;
-        (out.trim() == "found").then_some(index)
-    });
-    let Some(index) = found else {
+    let Some(index) = find_tab(&scripts) else {
         // Open VS Code only for a session that runs under it. Others have no app to bring forward.
         if runs_in_vscode(tty) {
             run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
         }
         return false;
     };
-    focused_bundle(index).is_some_and(ensure_frontmost) && settle_on(index, tty)
+    // One retry: the first select can lose the race with the app coming forward.
+    let landed = || focused_bundle(index).is_some_and(ensure_frontmost) && settle_on(index, tty);
+    landed() || (run("osascript", &["-e", &scripts[index]], FOCUS_TIMEOUT).is_some() && landed())
 }
 
 /// True when the `claude` on `tty` runs under VS Code, per a fresh `ps`.

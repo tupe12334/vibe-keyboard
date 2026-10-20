@@ -1,6 +1,5 @@
-//! osascript reads of the tty shown in front, the wait for focus to land on it, and the BLINK
-//! highlight. Excluded from the coverage gate; the rules live in `claude_sessions/focus_check.rs`
-//! and `claude_sessions/highlight.rs`.
+//! osascript reads of the tty shown in front, the tab scan, the wait for focus to land, and the
+//! BLINK highlight. Excluded from the coverage gate; rules live in `focus_check.rs`, `highlight.rs`.
 
 use std::fs::OpenOptions;
 use std::io::Write;
@@ -9,9 +8,13 @@ use std::time::{Duration, Instant};
 
 use tracing::warn;
 
+use super::tab_scripts::{ITERM_FRONT_TTY, TERMINAL_FRONT_TTY};
 use super::terminal::focus_session;
+use super::FOCUS_TIMEOUT;
 use crate::domain::actions::TerminalApp;
-use crate::infrastructure::claude_sessions::{highlight_target, is_selected, session_moved};
+use crate::infrastructure::claude_sessions::{
+    highlight_target, is_selected, scan_result, session_moved, Scan,
+};
 use crate::infrastructure::process::run;
 
 /// Hard limit for one read. Each read is a separate osascript call.
@@ -20,29 +23,36 @@ const READ_TIMEOUT: Duration = Duration::from_secs(2);
 const SETTLE: Duration = Duration::from_secs(1);
 const POLL: Duration = Duration::from_millis(50);
 
-/// `AppleScript` that prints the tty of iTerm2's current session. Empty when iTerm2 is not running.
-pub const ITERM_FRONT_TTY: &str = r#"if application "iTerm2" is running then
-  tell application "iTerm2"
-    if (count of windows) is 0 then return ""
-    return tty of current session of current tab of current window
-  end tell
-end if
-return """#;
-
-/// `AppleScript` that prints the tty of the selected tab in Terminal.app's front window.
-pub const TERMINAL_FRONT_TTY: &str = r#"if application "Terminal" is running then
-  tell application "Terminal"
-    if (count of windows) is 0 then return ""
-    return tty of selected tab of front window
-  end tell
-end if
-return """#;
-
 /// The tty shown in front by the terminal at `index` (0 iTerm2, 1 Terminal.app). None when unknown.
 fn front_tty(index: usize) -> Option<String> {
     let script = [ITERM_FRONT_TTY, TERMINAL_FRONT_TTY].get(index)?;
     let out = run("osascript", &["-e", script], READ_TIMEOUT)?;
     Some(out.trim().to_string()).filter(|tty| !tty.is_empty())
+}
+
+const SCAN_ATTEMPTS: usize = 3;
+const SCAN_RETRY_WAIT: Duration = Duration::from_millis(150);
+
+/// Index of the script (0 iTerm2, 1 Terminal.app) whose terminal holds the tab, or None. A failed
+/// scan (iTerm2 reorders its windows mid-scan, then prints nothing) is retried. Missing is not.
+pub(super) fn find_tab(scripts: &[String; 2]) -> Option<usize> {
+    for attempt in 0..SCAN_ATTEMPTS {
+        if attempt > 0 {
+            thread::sleep(SCAN_RETRY_WAIT);
+        }
+        let mut failed = false;
+        for (index, script) in scripts.iter().enumerate() {
+            match scan_result(run("osascript", &["-e", script], FOCUS_TIMEOUT).as_deref()) {
+                Scan::Found => return Some(index),
+                Scan::Missing => {}
+                Scan::Failed => failed = true,
+            }
+        }
+        if !failed {
+            return None;
+        }
+    }
+    None
 }
 
 /// Poll for up to `SETTLE` until the terminal at `index` shows `tty` in front. Logs a warning and
