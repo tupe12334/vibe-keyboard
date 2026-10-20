@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+/// A prompt a session action types into a Claude Code session, followed by Enter.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "specta", derive(specta::Type))]
 pub struct Prompt {

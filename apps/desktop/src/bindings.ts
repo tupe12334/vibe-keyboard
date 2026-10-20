@@ -29,6 +29,12 @@ export const commands = {
 	addPage: (profile: Profile_Deserialize) => __TAURI_INVOKE<Profile_Serialize>("add_page", { profile }),
 	/**  The layout without page `index`. Refused when the layout would have no pages left. */
 	deletePage: (profile: Profile_Deserialize, index: number) => typedError<Profile_Serialize, string>(__TAURI_INVOKE("delete_page", { profile, index })),
+	/**  The layout with one more prompt row, with the core rule's default text. */
+	addPrompt: (profile: Profile_Deserialize) => __TAURI_INVOKE<Profile_Serialize>("add_prompt", { profile }),
+	/**  The layout with prompt row `index` swapped with its neighbour above or below. */
+	movePrompt: (profile: Profile_Deserialize, index: number, down: boolean) => __TAURI_INVOKE<Profile_Serialize>("move_prompt", { profile, index, down }),
+	/**  The layout without prompt row `index`. */
+	deletePrompt: (profile: Profile_Deserialize, index: number) => __TAURI_INVOKE<Profile_Serialize>("delete_prompt", { profile, index }),
 };
 
 /** Events */
@@ -122,6 +128,10 @@ export type EditorRules = {
 	/**  Shortest and longest hold time the editor accepts, in milliseconds. */
 	hold_ms_min: number,
 	hold_ms_max: number,
+	/**  Longest prompt label, in characters. Labels print on a key image. */
+	prompt_label_max: number,
+	/**  Longest prompt text, in characters. */
+	prompt_text_max: number,
 };
 
 /**  The `[input]` table of `profile.toml`. */
@@ -215,6 +225,7 @@ export type Profile_Serialize = {
 	input?: InputConfig,
 };
 
+/**  A prompt a session action types into a Claude Code session, followed by Enter. */
 export type Prompt = {
 	label: string,
 	text: string,

@@ -2,7 +2,9 @@
 
 use serde::Serialize;
 use specta::Type;
-use vibe_keyboard::domain::profile::{InputConfig, Profile};
+use vibe_keyboard::domain::profile::{
+    InputConfig, Profile, PROMPT_LABEL_MAX_CHARS, PROMPT_MAX_CHARS,
+};
 use vibe_keyboard::domain::profile_rules;
 
 /// The editor's rules, read once when the editor opens.
@@ -17,6 +19,10 @@ pub struct EditorRules {
     /// Shortest and longest hold time the editor accepts, in milliseconds.
     pub hold_ms_min: u32,
     pub hold_ms_max: u32,
+    /// Longest prompt label, in characters. Labels print on a key image.
+    pub prompt_label_max: u32,
+    /// Longest prompt text, in characters.
+    pub prompt_text_max: u32,
 }
 
 #[tauri::command]
@@ -28,6 +34,8 @@ pub fn editor_rules() -> EditorRules {
         default_hold_ms: InputConfig::default().hold_ms as u32,
         hold_ms_min: profile_rules::HOLD_MS_MIN as u32,
         hold_ms_max: profile_rules::HOLD_MS_MAX as u32,
+        prompt_label_max: PROMPT_LABEL_MAX_CHARS as u32,
+        prompt_text_max: PROMPT_MAX_CHARS as u32,
     }
 }
 
@@ -52,5 +60,17 @@ pub fn delete_page(profile: Profile, index: u32) -> Result<Profile, String> {
         Ok(profile)
     } else {
         Err(format!("page {} does not exist", index + 1))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn editor_rules_expose_the_prompt_limits_from_the_core_crate() {
+        let rules = editor_rules();
+        assert_eq!(rules.prompt_label_max as usize, PROMPT_LABEL_MAX_CHARS);
+        assert_eq!(rules.prompt_text_max as usize, PROMPT_MAX_CHARS);
     }
 }
