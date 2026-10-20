@@ -19,6 +19,8 @@ mod lifecycle;
 mod login_item;
 mod profile_io;
 mod prompt_commands;
+#[cfg(test)]
+mod side_tests;
 mod status;
 mod supervise;
 mod thread;
