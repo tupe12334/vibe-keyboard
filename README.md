@@ -150,6 +150,28 @@ action = { type = "open_app", name = "com.googlecode.iterm2" }
 `open_app` takes an app name (`open -a`) or a bundle id (`open -b`, when the value contains a dot and no spaces).
 The editor lists running apps for each page's `apps`. You can also type a bundle id.
 
+### Side screen widgets
+
+The 480x100 side screen next to keys 5, 10 and 15 can show live values. List them in order, left to right. When `widgets` is set, it replaces the side `label` and `image`.
+
+```toml
+[[pages]]
+name = "Monitor"
+
+[pages.side]
+bg = "#101018"
+fg = "#E6E6E6"
+widgets = [
+  { type = "cpu_bar" },
+  { type = "cpu_percent" },
+  { type = "temperature" },
+  { type = "disk_free" },
+]
+```
+
+Widget types: `cpu_percent`, `cpu_bar` (0-100 %, green below 60, amber below 85, red above), `temperature` (hottest CPU die, `N/A` if none), `disk_free` (free space on the user volume), and `text` with `value = "..."`.
+Values refresh every 2 seconds. Only a changed frame is sent to the device.
+
 Track the config directory in git. Keep runtime files out of it:
 
 ```gitignore

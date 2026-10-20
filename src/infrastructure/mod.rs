@@ -5,4 +5,5 @@ pub mod frontmost;
 pub mod images;
 pub mod persistence;
 pub mod profile_store;
+pub mod system_metrics;
 pub mod usb;

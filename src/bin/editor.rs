@@ -9,14 +9,15 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, Prompt, SideConfig,
+    format_color, parse_color, Action, ActionKind, KeyConfig, Profile, Prompt, SideConfig, Widget,
     BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
-    app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_WIDTH, SAFE_X,
-    SIDE_HEIGHT, SIDE_WIDTH,
+    app_icon_generation, icon_image, key_image, side_image, ICON_NAMES, SAFE_HEIGHT, SAFE_WIDTH,
+    SAFE_X, SAFE_Y, SIDE_HEIGHT, SIDE_WIDTH,
 };
 use vibe_keyboard::infrastructure::profile_store;
+use vibe_keyboard::infrastructure::system_metrics::{self, Metrics, Shared};
 
 /// Physical layout as seen from the front. Matches `device.md`.
 const GRID: [[u8; 5]; 3] = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]];
@@ -31,8 +32,8 @@ const PAGES_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 200.0..=360.0;
 const KEY_PANEL_WIDTH: f32 = 320.0;
 const KEY_PANEL_WIDTH_RANGE: std::ops::RangeInclusive<f32> = 260.0..=420.0;
 const RED: Color32 = Color32::from_rgb(230, 80, 80);
-/// Side strip preview: at most the device width, same 480:100 ratio.
-const SIDE_STRIP_MAX: f32 = SIDE_WIDTH as f32;
+/// Side strip preview: at most the device render height, same 100:480 ratio.
+const SIDE_STRIP_MAX: f32 = SIDE_HEIGHT as f32;
 
 fn main() -> eframe::Result {
     eframe::run_native(
@@ -117,6 +118,7 @@ struct Preview {
 /// Rendered side preview, with the config it was rendered from.
 struct SidePreview {
     config: Option<SideConfig>,
+    metrics: Metrics,
     texture: egui::TextureHandle,
 }
 
@@ -228,6 +230,8 @@ struct Editor {
     icon_textures: HashMap<&'static str, egui::TextureHandle>,
     /// Set when `profile.toml` could not be read. Saving is refused while it is set.
     load_error: Option<String>,
+    /// Latest system sample, shared with the sampler thread. Widgets in the preview use it.
+    metrics: Shared,
     /// Last rendered side preview of the current page.
     side_preview: Option<SidePreview>,
     /// The side panel is shown instead of the key panel.
@@ -256,6 +260,7 @@ impl Editor {
             load_error,
             side_preview: None,
             side_open: false,
+            metrics: system_metrics::start(),
         };
         editor.start_running_refresh();
         editor
@@ -428,6 +433,8 @@ impl Editor {
     }
 
     /// Texture of the side screen of the current page. Re-rendered only when its config changes.
+    /// Re-rendered when its config or the latest system sample changes. Widget pages ask for
+    /// a repaint every sample, so the values stay live.
     fn side_texture(&mut self, ctx: &egui::Context) -> egui::TextureHandle {
         let config = self
             .session
@@ -435,32 +442,37 @@ impl Editor {
             .pages
             .get(self.page)
             .and_then(|p| p.side.clone());
+        let metrics = system_metrics::snapshot(&self.metrics);
+        if config.as_ref().is_some_and(|c| !c.widgets.is_empty()) {
+            ctx.request_repaint_after(system_metrics::SAMPLE_INTERVAL);
+        }
         if let Some(cached) = &self.side_preview {
-            if cached.config == config {
+            if cached.config == config && cached.metrics == metrics {
                 return cached.texture.clone();
             }
         }
-        let img = side_image(config.as_ref(), &self.root);
+        let img = side_image(config.as_ref(), &self.root, &metrics);
         let texture = texture_from(ctx, "side", &img);
         self.side_preview = Some(SidePreview {
             config,
+            metrics,
             texture: texture.clone(),
         });
         texture
     }
 
-    /// Side preview strip above the keys, with the safe area drawn faintly. True when clicked.
+    /// Tall side preview beside the keys, with the safe area drawn faintly. True when clicked.
     fn side_strip(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> bool {
-        let size = side_strip_size(ui.available_width());
+        let size = side_strip_size(ui.available_height());
         let (rect, response) = ui.allocate_exact_size(size, Sense::click());
         let texture = self.side_texture(ctx);
         let painter = ui.painter_at(rect);
         let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
         painter.image(texture.id(), rect, uv, Color32::WHITE);
-        let scale = size.x / SIDE_WIDTH as f32;
+        let scale = size.y / SIDE_HEIGHT as f32;
         let safe = Rect::from_min_size(
-            rect.min + Vec2::new(SAFE_X as f32 * scale, 0.0),
-            Vec2::new(SAFE_WIDTH as f32 * scale, size.y),
+            rect.min + Vec2::new(SAFE_X as f32 * scale, SAFE_Y as f32 * scale),
+            Vec2::new(SAFE_WIDTH as f32 * scale, SAFE_HEIGHT as f32 * scale),
         );
         painter.rect_stroke(
             safe,
@@ -518,6 +530,7 @@ impl Editor {
             }
         });
         self.image_picker(ui, &ctx, &mut edited.image);
+        widget_editor(ui, &mut edited.widgets);
         ui.separator();
         let remove = ui.button("Remove side screen").clicked();
         // Write only real changes, so an untouched panel never dirties the profile.
@@ -993,10 +1006,73 @@ impl Editor {
     }
 }
 
-/// Size of the side strip for `avail_width`: at most the device width, 480:100 ratio.
-fn side_strip_size(avail_width: f32) -> Vec2 {
-    let width = (avail_width - GRID_MARGIN).clamp(1.0, SIDE_STRIP_MAX);
-    Vec2::new(width, width * SIDE_HEIGHT as f32 / SIDE_WIDTH as f32)
+/// List of side widgets: reorder, remove, edit text, and add one of each kind.
+/// Widgets replace the side label and image when the list is not empty.
+fn widget_editor(ui: &mut egui::Ui, widgets: &mut Vec<Widget>) {
+    ui.separator();
+    ui.strong("Widgets");
+    let last = widgets.len().saturating_sub(1);
+    let (mut remove, mut swap) = (None, None);
+    for (i, widget) in widgets.iter_mut().enumerate() {
+        ui.horizontal(|ui| {
+            ui.label(widget_name(widget));
+            if let Widget::Text { value } = widget {
+                ui.text_edit_singleline(value);
+            }
+            if ui.add_enabled(i > 0, egui::Button::new("Up")).clicked() {
+                swap = Some((i, i - 1));
+            }
+            if ui
+                .add_enabled(i < last, egui::Button::new("Down"))
+                .clicked()
+            {
+                swap = Some((i, i + 1));
+            }
+            if ui.button("Remove").clicked() {
+                remove = Some(i);
+            }
+        });
+    }
+    if let Some(i) = remove {
+        widgets.remove(i);
+    }
+    if let Some((a, b)) = swap {
+        widgets.swap(a, b);
+    }
+    ui.horizontal_wrapped(|ui| {
+        for (label, widget) in [
+            ("+ CPU %", Widget::CpuPercent),
+            ("+ CPU bar", Widget::CpuBar),
+            ("+ Temp", Widget::Temperature),
+            ("+ Disk", Widget::DiskFree),
+            (
+                "+ Text",
+                Widget::Text {
+                    value: String::new(),
+                },
+            ),
+        ] {
+            if ui.button(label).clicked() {
+                widgets.push(widget);
+            }
+        }
+    });
+}
+
+const fn widget_name(widget: &Widget) -> &'static str {
+    match widget {
+        Widget::CpuPercent => "CPU %",
+        Widget::CpuBar => "CPU bar",
+        Widget::Temperature => "Temperature",
+        Widget::DiskFree => "Disk free",
+        Widget::Text { .. } => "Text",
+    }
+}
+
+/// Size of the side strip for `avail_height`: at most the device render height, 100:480 ratio.
+fn side_strip_size(avail_height: f32) -> Vec2 {
+    let height = (avail_height - GRID_MARGIN).clamp(1.0, SIDE_STRIP_MAX);
+    Vec2::new(height * SIDE_WIDTH as f32 / SIDE_HEIGHT as f32, height)
 }
 
 /// Largest square cell that fits the 3x5 grid in `avail`, never below `CELL_MIN`.
@@ -1160,8 +1236,11 @@ impl eframe::App for Editor {
             .show(ui, |ui| self.key_panel(ui));
         let (side_clicked, clicked) = egui::CentralPanel::default()
             .show(ui, |ui| {
-                let side = self.side_strip(ui, &ctx);
-                (side, self.grid(ui, &ctx))
+                ui.horizontal_top(|ui| {
+                    let side = self.side_strip(ui, &ctx);
+                    (side, self.grid(ui, &ctx))
+                })
+                .inner
             })
             .inner;
         if let Some(op) = page_op {
@@ -1318,11 +1397,11 @@ mod tests {
 
     #[test]
     fn grid_fits_the_default_and_minimum_window() {
-        // Window minus both side panels, the top and bottom bars, and the side strip.
+        // Window minus both side panels, the top and bottom bars, and the side strip beside the keys.
         let central = |window: Vec2| {
-            let width = window.x - PAGES_WIDTH - KEY_PANEL_WIDTH;
-            let strip = side_strip_size(width).y + GAP;
-            Vec2::new(width, window.y - 60.0 - strip)
+            let height = window.y - 60.0;
+            let strip = side_strip_size(height).x + GAP;
+            Vec2::new(window.x - PAGES_WIDTH - KEY_PANEL_WIDTH - strip, height)
         };
         for window in [Vec2::new(1200.0, 720.0), Vec2::new(900.0, 600.0)] {
             let area = central(window);

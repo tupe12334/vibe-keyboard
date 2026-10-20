@@ -5,18 +5,21 @@ use image::{Rgb, RgbImage};
 const SCALE: u32 = 3;
 const GLYPH_W: u32 = 3;
 const GLYPH_H: u32 = 5;
-const ADVANCE: u32 = (GLYPH_W + 1) * SCALE;
-const LINE_H: u32 = (GLYPH_H + 1) * SCALE;
 const MAX_LINES: usize = 4;
 
 /// Draw `text` centered on `img`, word-wrapped to as many lines as fit.
 pub fn draw_label(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
-    draw_wrapped(img, text, fg, MAX_LINES);
+    draw_wrapped(img, text, fg, MAX_LINES, SCALE);
 }
 
 /// Like `draw_label`, but at most three lines. Used for session titles under a status bar.
 pub fn draw_title(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
-    draw_wrapped(img, text, fg, 3);
+    draw_wrapped(img, text, fg, 3, SCALE);
+}
+
+/// Like `draw_label`, with glyphs `scale` times the base size. Lines past the bottom are clipped.
+pub fn draw_label_scaled(img: &mut RgbImage, text: &str, fg: Rgb<u8>, scale: u32) {
+    draw_wrapped(img, text, fg, MAX_LINES, scale);
 }
 
 /// One line of small text (scale 1, 5 px tall) in the top-right corner of `img`. Fits a 12 px bar.
@@ -24,23 +27,41 @@ pub fn draw_tag(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
     let width = text.chars().count() as u32 * (GLYPH_W + 1);
     let mut x = img.width().saturating_sub(width + 2);
     for c in text.chars() {
-        draw_glyph_at(img, x, 3, glyph(c), fg, 1);
+        draw_glyph(img, x, 3, glyph(c), fg, 1);
         x += GLYPH_W + 1;
     }
 }
 
-fn draw_wrapped(img: &mut RgbImage, text: &str, fg: Rgb<u8>, max_lines: usize) {
-    let per_line = (img.width() / ADVANCE) as usize;
+fn draw_wrapped(img: &mut RgbImage, text: &str, fg: Rgb<u8>, max_lines: usize, scale: u32) {
+    let advance = (GLYPH_W + 1) * scale;
+    let line_h = (GLYPH_H + 1) * scale;
+    let per_line = (img.width() / advance) as usize;
     let lines = wrap(text, per_line, max_lines);
-    let total = lines.len() as u32 * LINE_H;
+    let total = lines.len() as u32 * line_h;
     let top = img.height().saturating_sub(total) / 2;
     for (row, line) in lines.iter().enumerate() {
-        let width = line.chars().count() as u32 * ADVANCE;
+        let width = line.chars().count() as u32 * advance;
         let left = img.width().saturating_sub(width) / 2;
-        let y = top + row as u32 * LINE_H;
+        let y = top + row as u32 * line_h;
         for (i, c) in line.chars().enumerate() {
-            draw_glyph(img, left + i as u32 * ADVANCE, y, glyph(c), fg);
+            draw_glyph(img, left + i as u32 * advance, y, glyph(c), fg, scale);
         }
+    }
+}
+
+/// Height in pixels of one line of text at `scale`.
+pub const fn text_height(scale: u32) -> u32 {
+    GLYPH_H * scale
+}
+
+/// Draw `text` on one line, centered horizontally, with its top edge at `y`. Pixels past
+/// the image edge are dropped.
+pub fn draw_line(img: &mut RgbImage, y: u32, text: &str, fg: Rgb<u8>, scale: u32) {
+    let advance = (GLYPH_W + 1) * scale;
+    let width = text.chars().count() as u32 * advance;
+    let left = img.width().saturating_sub(width) / 2;
+    for (i, c) in text.chars().enumerate() {
+        draw_glyph(img, left + i as u32 * advance, y, glyph(c), fg, scale);
     }
 }
 
@@ -74,11 +95,7 @@ fn wrap(text: &str, per_line: usize, max_lines: usize) -> Vec<String> {
     lines
 }
 
-fn draw_glyph(img: &mut RgbImage, x: u32, y: u32, rows: [u8; 5], fg: Rgb<u8>) {
-    draw_glyph_at(img, x, y, rows, fg, SCALE);
-}
-
-fn draw_glyph_at(img: &mut RgbImage, x: u32, y: u32, rows: [u8; 5], fg: Rgb<u8>, scale: u32) {
+fn draw_glyph(img: &mut RgbImage, x: u32, y: u32, rows: [u8; 5], fg: Rgb<u8>, scale: u32) {
     for (ry, bits) in rows.iter().enumerate() {
         for rx in 0..GLYPH_W {
             if bits & (1 << (GLYPH_W - 1 - rx)) == 0 {
@@ -143,6 +160,7 @@ const fn glyph(c: char) -> [u8; 5] {
         '+' => [0b000, 0b010, 0b111, 0b010, 0b000],
         '!' => [0b010, 0b010, 0b010, 0b000, 0b010],
         '?' => [0b110, 0b001, 0b010, 0b000, 0b010],
+        '%' => [0b101, 0b001, 0b010, 0b100, 0b101],
         _ => [0; 5],
     }
 }
@@ -163,5 +181,22 @@ mod tests {
         let mut img = RgbImage::from_pixel(100, 100, Rgb([0, 0, 0]));
         draw_label(&mut img, "HI", Rgb([255, 255, 255]));
         assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
+    }
+
+    #[test]
+    fn draw_line_is_centered_and_clipped_at_the_edge() {
+        let mut img = RgbImage::from_pixel(60, 20, Rgb([0, 0, 0]));
+        // Wider than the image: must not panic, and must paint nothing past the edge.
+        draw_line(&mut img, 0, "100%", Rgb([255, 255, 255]), 5);
+        assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
+    }
+
+    #[test]
+    fn scaled_label_uses_the_larger_glyphs() {
+        let mut img = RgbImage::from_pixel(100, 100, Rgb([0, 0, 0]));
+        draw_label_scaled(&mut img, "N/A", Rgb([255, 255, 255]), 5);
+        // A 5x glyph is 15 pixels wide per column; the top-left block must be lit.
+        let lit = img.pixels().filter(|p| p.0 == [255, 255, 255]).count();
+        assert!(lit > 25 * 5, "only {lit} lit pixels");
     }
 }

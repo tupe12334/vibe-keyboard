@@ -1,7 +1,7 @@
 mod actions;
 mod pages;
 
-pub use pages::{render_screen, SessionsRefresh};
+pub use pages::{refresh_side_widgets, render_screen, SessionsRefresh};
 
 use crate::domain::actions::{NewSessionTerminal, TerminalApp};
 use crate::domain::navigation::prompt_index;

@@ -3,6 +3,7 @@ use std::collections::{HashMap, VecDeque};
 use crate::domain::actions::{ButtonAction, ScreenView};
 use crate::domain::profile::Profile;
 use crate::domain::switching::AutoPage;
+use crate::infrastructure::system_metrics::Metrics;
 use throbber_widgets_tui::ThrobberState;
 
 const LOG_CAPACITY: usize = 10;
@@ -11,6 +12,10 @@ pub struct AppState {
     pub total_pages: usize,
     /// The user's layout. Main-page keys and actions come from here.
     pub profile: Profile,
+    /// Latest system sample, refreshed by the controller tick. Side widgets read it.
+    pub metrics: Metrics,
+    /// Side frame last sent to the device. Cleared on every full redraw.
+    pub side_frame: Option<Vec<u8>>,
     /// Whether the shown main page was picked by the app in front.
     pub auto_page: AutoPage,
     pub pressed_key: Option<u8>,
@@ -32,6 +37,8 @@ impl AppState {
         Self {
             total_pages,
             profile: Profile::default(),
+            metrics: Metrics::default(),
+            side_frame: None,
             auto_page: AutoPage::default(),
             pressed_key: None,
             loading: false,

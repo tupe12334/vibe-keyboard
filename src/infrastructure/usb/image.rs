@@ -56,7 +56,9 @@ pub fn send_button_image(handle: &Device, key: u8, img: DynamicImage) {
     refresh(handle);
 }
 
-/// Side screen geometry, verified on hardware. Keys 5, 10 and 15 share the panel. No rotation.
+/// Side screen upload geometry, verified on hardware. Keys 5, 10 and 15 share the panel.
+/// The upload is landscape. The panel is mounted vertically, so the portrait render is
+/// rotated first (`side_upload`).
 pub const SIDE_W: u16 = 480;
 pub const SIDE_H: u16 = 100;
 
@@ -75,16 +77,25 @@ pub fn side_header(jpeg_len: usize, w: u16, h: u16, x: u16, y: u16) -> [u8; 32] 
     hdr
 }
 
-/// Send `img` to the side screen as one stream: header, then JPEG, cut into output reports.
-/// Image is cropped to 480x100. Never send a taller image: it spills onto keys 5, 10 and 15.
+/// Turns the portrait side render (100x480) into the landscape upload (480x100). The top
+/// of the column ends at the bottom-left, so the render is rotated 90° counter-clockwise.
+/// The resize keeps the upload at 480x100 whatever the input size.
+pub fn side_upload(img: DynamicImage) -> DynamicImage {
+    DynamicImage::ImageRgb8(
+        img.rotate270()
+            .resize_to_fill(
+                u32::from(SIDE_W),
+                u32::from(SIDE_H),
+                image::imageops::FilterType::Triangle,
+            )
+            .to_rgb8(),
+    )
+}
+
+/// Send `img` (portrait side render) to the side screen as one stream: header, then JPEG,
+/// cut into output reports. Never send a taller image: it spills onto keys 5, 10 and 15.
 pub fn send_side_image(handle: &Device, img: DynamicImage) {
-    let rgb = img
-        .resize_to_fill(
-            u32::from(SIDE_W),
-            u32::from(SIDE_H),
-            image::imageops::FilterType::Triangle,
-        )
-        .to_rgb8();
+    let rgb = side_upload(img).to_rgb8();
     let mut jpeg = Vec::new();
     if let Err(e) = JpegEncoder::new_with_quality(&mut jpeg, 90).encode(
         &rgb.into_raw(),
@@ -113,7 +124,8 @@ pub fn send_side_image(handle: &Device, img: DynamicImage) {
 
 #[cfg(test)]
 mod tests {
-    use super::side_header;
+    use super::{side_header, side_upload};
+    use image::{DynamicImage, Rgb, RgbImage};
 
     #[test]
     fn side_header_bytes_match_the_verified_layout() {
@@ -128,6 +140,18 @@ mod tests {
         );
         assert!(hdr[21..].iter().all(|&b| b == 0));
         assert_eq!(hdr.len(), 32);
+    }
+
+    #[test]
+    fn side_upload_rotates_portrait_counter_clockwise() {
+        // Portrait top-left must land at landscape bottom-left; top-right at top-left.
+        let mut portrait = RgbImage::new(100, 480);
+        portrait.put_pixel(0, 0, Rgb([255, 0, 0]));
+        portrait.put_pixel(99, 0, Rgb([0, 255, 0]));
+        let out = side_upload(DynamicImage::ImageRgb8(portrait)).to_rgb8();
+        assert_eq!(out.dimensions(), (480, 100));
+        assert_eq!(out.get_pixel(0, 99), &Rgb([255, 0, 0]));
+        assert_eq!(out.get_pixel(0, 0), &Rgb([0, 255, 0]));
     }
 
     #[test]

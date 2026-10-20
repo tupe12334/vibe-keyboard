@@ -3,7 +3,8 @@ mod logging;
 mod presentation;
 
 use application::{
-    handle_filter_query, handle_frontmost, handle_key_event, render_screen, SessionsRefresh,
+    handle_filter_query, handle_frontmost, handle_key_event, refresh_side_widgets, render_screen,
+    SessionsRefresh,
 };
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -17,6 +18,7 @@ use vibe_keyboard::infrastructure::frontmost;
 use vibe_keyboard::infrastructure::images::{app_icon_generation, calibration_image};
 use vibe_keyboard::infrastructure::persistence::DeviceState;
 use vibe_keyboard::infrastructure::profile_store;
+use vibe_keyboard::infrastructure::system_metrics;
 use vibe_keyboard::infrastructure::usb::{
     clear_all, device_init, keep_alive, read_event, send_button_image, wait_for_device, Device,
 };
@@ -24,6 +26,8 @@ use vibe_keyboard::{domain, infrastructure};
 
 const PROFILE_POLL: Duration = Duration::from_secs(1);
 const FRONTMOST_POLL: Duration = Duration::from_millis(500);
+/// Side widgets refresh at this rate. Matches the metrics sampler.
+const SIDE_POLL: Duration = Duration::from_secs(2);
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // One controller per deck. Taken before logging (which truncates app.log) and before any
@@ -120,6 +124,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut was_on_main_page = nav.main_page().is_some();
     let mut icon_generation = app_icon_generation();
     let mut sessions_refresh = SessionsRefresh::default();
+    let metrics = system_metrics::start();
+    let mut last_side_tick = Instant::now();
 
     loop {
         if shutdown.load(Ordering::Relaxed) {
@@ -178,6 +184,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 true
             }
         };
+
+        if last_side_tick.elapsed() >= SIDE_POLL {
+            last_side_tick = Instant::now();
+            let sample = system_metrics::snapshot(&metrics);
+            app_state
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .metrics = sample;
+            refresh_side_widgets(&handle, &app_state, &nav);
+        }
 
         if last_heartbeat.elapsed() >= Duration::from_secs(8) {
             keep_alive(&handle);

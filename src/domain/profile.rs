@@ -82,6 +82,29 @@ pub struct SideConfig {
     pub fg: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub image: Option<PathBuf>,
+    /// Live values shown left to right. When set, the side screen shows these instead of
+    /// `label` and `image`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub widgets: Vec<Widget>,
+}
+
+/// One value on the side screen. TOML: `type = "cpu_percent"`, `type = "text"`, etc.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Widget {
+    /// Global CPU use as a number.
+    CpuPercent,
+    /// Global CPU use as a bar from 0 to 100 %.
+    CpuBar,
+    /// Hottest CPU sensor in degrees Celsius, or `N/A`.
+    Temperature,
+    /// Free space on the user volume.
+    DiskFree,
+    /// Fixed text.
+    Text {
+        #[serde(default)]
+        value: String,
+    },
 }
 
 impl Default for SideConfig {
@@ -91,6 +114,7 @@ impl Default for SideConfig {
             bg: default_bg(),
             fg: default_fg(),
             image: None,
+            widgets: Vec::new(),
         }
     }
 }
@@ -804,6 +828,7 @@ mod tests {
                 bg: "#102030".into(),
                 fg: "#FFFFFF".into(),
                 image: Some(PathBuf::from("icon:back")),
+                widgets: Vec::new(),
             }),
         );
         let text = toml::to_string_pretty(&profile).unwrap_or_default();
@@ -814,6 +839,35 @@ mod tests {
         profile.set_side(0, None);
         let cleared = toml::to_string_pretty(&profile).unwrap_or_default();
         assert_eq!(cleared, plain_text);
+    }
+
+    #[test]
+    fn widgets_round_trip_and_empty_list_is_omitted() {
+        let mut profile = Profile::default_from_legacy();
+        profile.set_side(
+            0,
+            Some(SideConfig {
+                widgets: vec![
+                    Widget::CpuBar,
+                    Widget::CpuPercent,
+                    Widget::Temperature,
+                    Widget::DiskFree,
+                    Widget::Text {
+                        value: "BUILD".into(),
+                    },
+                ],
+                ..SideConfig::default()
+            }),
+        );
+        let text = toml::to_string_pretty(&profile).unwrap_or_default();
+        assert!(text.contains("type = \"cpu_bar\""), "text was:\n{text}");
+        assert!(text.contains("type = \"text\""), "text was:\n{text}");
+        let back: Profile = toml::from_str(&text).unwrap_or_default();
+        assert_eq!(back, profile);
+        // A side with no widgets writes no `widgets` key, so old profiles stay byte-identical.
+        profile.set_side(0, Some(SideConfig::default()));
+        let plain = toml::to_string_pretty(&profile).unwrap_or_default();
+        assert!(!plain.contains("widgets"), "text was:\n{plain}");
     }
 
     #[test]

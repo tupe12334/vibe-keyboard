@@ -11,6 +11,8 @@ mod session_actions;
 
 pub use centy::{fetch_centy_issues, fetch_centy_projects};
 pub use claude_sessions::SessionsRefresh;
+pub use main_page::refresh_side_widgets;
+use main_page::render_side;
 pub use session_actions::show_focus_only;
 
 use crate::infrastructure::usb::Device;
@@ -35,6 +37,8 @@ pub fn render_screen(
         s.nav_can_back = NavigationStack::can_back();
         s.nav_can_out = nav.can_out();
         s.nav_can_forward = nav.can_forward();
+        // clear_all below blanks the side screen too, so the sent frame is no longer shown.
+        s.side_frame = None;
     }
     clear_all(handle);
     let screen = nav.current();
@@ -94,4 +98,5 @@ pub fn render_screen(
             image::DynamicImage::ImageRgb8(crate::infrastructure::images::label_image("OUT")),
         );
     }
+    render_side(handle, state, nav);
 }
