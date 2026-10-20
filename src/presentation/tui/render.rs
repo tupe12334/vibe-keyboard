@@ -8,6 +8,7 @@ use throbber_widgets_tui::Throbber;
 
 use super::app_state::AppState;
 use super::render_action::render_action;
+use super::render_grid::render_buttons;
 use super::render_title;
 
 pub fn render(state: &mut AppState, frame: &mut Frame) {
@@ -21,32 +22,7 @@ pub fn render(state: &mut AppState, frame: &mut Frame) {
     render_buttons(frame, chunks[1], state);
 }
 
-fn render_buttons(frame: &mut Frame, area: Rect, state: &mut AppState) {
-    let rows = Layout::vertical([
-        Constraint::Length(7),
-        Constraint::Length(7),
-        Constraint::Length(7),
-    ])
-    .split(area);
-
-    for (row_idx, row_area) in rows.iter().enumerate() {
-        let cols = Layout::horizontal([
-            Constraint::Ratio(1, 5),
-            Constraint::Ratio(1, 5),
-            Constraint::Ratio(1, 5),
-            Constraint::Ratio(1, 5),
-            Constraint::Ratio(1, 5),
-        ])
-        .split(*row_area);
-
-        for (col_idx, col_area) in cols.iter().enumerate() {
-            let key_num = (row_idx * 5 + col_idx + 1) as u8;
-            render_button(frame, *col_area, key_num, state);
-        }
-    }
-}
-
-fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &mut AppState) {
+pub(super) fn render_button(frame: &mut Frame, area: Rect, key: u8, state: &mut AppState) {
     let is_pressed = state.pressed_key == Some(key);
     let is_loading = state.loading;
     let is_nav = key == 11 || key == 12 || key == 13;
