@@ -19,8 +19,8 @@ rules:
     error: 284
   - pattern: "src/infrastructure/images/profile_key.rs"
     error: 265
-  - pattern: "src/infrastructure/persistence.rs"
-    error: 242
+  - pattern: "src/infrastructure/persistence_tests.rs"
+    error: 164
   - pattern: "src/application/pages/main_page.rs"
     error: 238
   - pattern: "src/infrastructure/app_icon.rs"
