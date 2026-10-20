@@ -1,6 +1,7 @@
 mod actions;
 mod centy_actions;
 mod moadim_keys;
+pub mod new_session_open;
 mod pages;
 pub mod prompt_return;
 mod session_actions;

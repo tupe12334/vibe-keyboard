@@ -5,8 +5,8 @@ use super::input;
 use super::reload::reload_profile;
 use super::side;
 use crate::application::{
-    handle_filter_query, handle_frontmost, poll_holds, prompt_return, release_all_holds,
-    render_screen,
+    handle_filter_query, handle_frontmost, new_session_open, poll_holds, prompt_return,
+    release_all_holds, render_screen,
 };
 use crate::domain::ptt::Release;
 use crate::infrastructure::images::app_icon_generation;
@@ -36,6 +36,7 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
     input::back_on_main_page(c, handle);
     c.pages.tick(&mut c.nav, handle, &c.app_state, &c.dev_state);
     prompt_return::poll_sent_prompt(&mut c.nav, handle, &c.app_state, &c.dev_state);
+    new_session_open::poll_new_session(&mut c.nav, handle, &c.app_state, &c.dev_state);
     if read_lost || handle.has_failed() {
         Flow::Lost
     } else {
