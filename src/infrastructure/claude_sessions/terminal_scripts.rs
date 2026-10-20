@@ -46,6 +46,8 @@ return "missing""#
 
 /// Two `AppleScript`s that select the tab on `/dev/<tty>`: `[iTerm2, Terminal.app]`.
 /// Each prints `found` on success and `missing` otherwise. None for an invalid tty.
+/// iTerm2 activates first and waits, then selects. `set index of w to 1` and select-before-activate
+/// both left another window in front when iTerm2 was not frontmost (live: 6 of 30 passed).
 pub fn focus_scripts(tty: &str) -> Option<[String; 2]> {
     if !is_valid_tty(tty) {
         return None;
@@ -58,11 +60,11 @@ pub fn focus_scripts(tty: &str) -> Option<[String; 2]> {
       repeat with t in tabs of w
         repeat with s in sessions of t
           if tty of s is "{device}" then
+            activate
+            delay 0.3
             tell s to select
             tell t to select
             tell w to select
-            set index of w to 1
-            activate
             return "found"
           end if
         end repeat

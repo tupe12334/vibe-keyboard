@@ -31,3 +31,15 @@ fn frontmost_must_match_the_expected_bundle() {
         "unknown front is no match"
     );
 }
+
+#[test]
+fn scan_result_separates_missing_from_failed() {
+    assert_eq!(scan_result(Some("found\n")), Scan::Found);
+    assert_eq!(scan_result(Some("missing")), Scan::Missing);
+    assert_eq!(
+        scan_result(Some("")),
+        Scan::Failed,
+        "osascript error prints nothing"
+    );
+    assert_eq!(scan_result(None), Scan::Failed);
+}
