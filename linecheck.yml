@@ -2,7 +2,7 @@ rules:
   - pattern: "src/bin/editor.rs"
     error: 682
   - pattern: "src/domain/navigation.rs"
-    error: 1201
+    error: 442
   - pattern: "src/domain/profile.rs"
     error: 880
   - pattern: "src/infrastructure/claude_sessions.rs"
