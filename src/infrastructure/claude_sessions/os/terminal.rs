@@ -4,8 +4,8 @@ use super::front_tty::{find_tab, settle_on};
 use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
 use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
-    focus_scripts, focused_bundle, is_frontmost, is_session_on_tty, is_vscode_session,
-    new_session_script, send_text_scripts,
+    focus_scripts, focused_bundle, is_frontmost, is_vscode_session, new_session_script,
+    resolve_session_pid, send_text_scripts,
 };
 use crate::infrastructure::frontmost::frontmost_bundle_id;
 use crate::infrastructure::process::run;
@@ -66,19 +66,22 @@ fn ensure_frontmost(bundle: &str) -> bool {
     false
 }
 
-/// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Skips when `pid`
-/// no longer runs `claude` on `tty`, because the tty may have been reused. Logs when no app
-/// confirms the send. Returns true only when a tab confirmed it. Blocks until done, so call it from
-/// a thread.
+/// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. When `pid` was
+/// restarted, the `claude` now on `tty` gets the prompt. Skips when no `claude` runs on `tty`. Logs
+/// when no app confirms the send. Returns true only when a tab confirmed it. Blocks until done, so
+/// call it from a thread.
 pub fn send_prompt(pid: u32, tty: &str, text: &str) -> bool {
     let Some(scripts) = send_text_scripts(tty, text) else {
         return false;
     };
-    let still_there = run("ps", &["-Ao", "pid=,tty=,comm="], PS_TIMEOUT)
-        .is_some_and(|ps| is_session_on_tty(&ps, pid, tty));
-    if !still_there {
-        tracing::warn!("claude sessions: pid {pid} no longer on {tty}; prompt skipped");
+    let Some(live) = run("ps", &["-Ao", "pid=,tty=,comm="], PS_TIMEOUT)
+        .and_then(|ps| resolve_session_pid(&ps, pid, tty))
+    else {
+        tracing::warn!("claude sessions: no claude session on {tty}; prompt skipped");
         return false;
+    };
+    if live != pid {
+        tracing::info!("claude sessions: pid {pid} restarted as {live} on {tty}");
     }
     let sent = scripts.iter().any(|script| {
         run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
