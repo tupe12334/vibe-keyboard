@@ -43,7 +43,7 @@ use layout::{
 #[cfg(test)]
 use prompts::{apply_prompt_op, PromptOp};
 #[cfg(test)]
-use running_apps::parse_lsappinfo;
+use vibe_keyboard::infrastructure::running_apps::parse_lsappinfo;
 #[path = "editor/side_panel.rs"]
 mod side_panel;
 #[path = "editor/side_strip.rs"]

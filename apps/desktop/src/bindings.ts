@@ -35,6 +35,10 @@ export const commands = {
 	movePrompt: (profile: Profile_Deserialize, index: number, down: boolean) => __TAURI_INVOKE<Profile_Serialize>("move_prompt", { profile, index, down }),
 	/**  The layout without prompt row `index`. */
 	deletePrompt: (profile: Profile_Deserialize, index: number) => __TAURI_INVOKE<Profile_Serialize>("delete_prompt", { profile, index }),
+	/**  Apps running now, for the app-icon picker. Empty if the list cannot be read. */
+	listRunningApps: () => __TAURI_INVOKE<RunningApp[]>("list_running_apps"),
+	/**  Whether `text` is a bundle id, by the core rule the layout uses for `open_app`. */
+	checkBundleId: (text: string) => __TAURI_INVOKE<boolean>("check_bundle_id", { text }),
 };
 
 /** Events */
@@ -229,6 +233,11 @@ export type Profile_Serialize = {
 export type Prompt = {
 	label: string,
 	text: string,
+};
+
+export type RunningApp = {
+	name: string,
+	bundle_id: string,
 };
 
 /**  The side screen: a 480x100 strip. Same image sources as keys, else the label. */

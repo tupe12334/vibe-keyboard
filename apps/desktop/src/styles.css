@@ -104,3 +104,9 @@ label { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
 }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .row.three { grid-template-columns: 1fr 1fr 1fr; }
+
+.app-icon-preview {
+  width: 96px;
+  height: 96px;
+  margin-top: 6px;
+}
