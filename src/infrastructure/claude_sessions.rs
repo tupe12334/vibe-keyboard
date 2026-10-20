@@ -10,6 +10,7 @@ mod session_list;
 mod session_status;
 mod terminal_scripts;
 mod titles;
+mod vscode_owner;
 
 pub use focus_check::{focused_bundle, is_frontmost, ITERM_BUNDLE, TERMINAL_BUNDLE};
 pub use new_session::new_session_script;
@@ -19,6 +20,7 @@ pub use session_list::build_sessions;
 pub use session_status::{age_label, label_for, status_for};
 pub use terminal_scripts::{focus_scripts, send_text_scripts};
 pub use titles::{parse_tab_titles, parse_title, summary_from_jsonl};
+pub use vscode_owner::is_vscode_session;
 
 use std::time::Duration;
 

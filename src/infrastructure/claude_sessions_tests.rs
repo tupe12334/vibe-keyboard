@@ -17,3 +17,6 @@ mod tty;
 
 #[path = "claude_sessions_tests/scripts.rs"]
 mod scripts;
+
+#[path = "claude_sessions_tests/vscode.rs"]
+mod vscode;

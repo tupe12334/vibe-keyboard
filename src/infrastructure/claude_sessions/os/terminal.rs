@@ -3,8 +3,8 @@
 use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
 use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
-    focus_scripts, focused_bundle, is_frontmost, is_session_on_tty, new_session_script,
-    send_text_scripts,
+    focus_scripts, focused_bundle, is_frontmost, is_session_on_tty, is_vscode_session,
+    new_session_script, send_text_scripts,
 };
 use crate::infrastructure::frontmost::frontmost_bundle_id;
 use crate::infrastructure::process::run;
@@ -14,8 +14,8 @@ use std::time::{Duration, Instant};
 const FRONT_WAIT: Duration = Duration::from_millis(500);
 const FRONT_POLL: Duration = Duration::from_millis(50);
 
-/// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab
-/// (VS Code and other terminals), it activates VS Code and returns false. Returns true only when
+/// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab,
+/// it activates VS Code only if the session runs under VS Code, and returns false. Returns true only when
 /// the tab was found and its terminal is verified frontmost. Blocks until done, so call it from a
 /// thread.
 pub fn focus_session(tty: &str) -> bool {
@@ -27,10 +27,19 @@ pub fn focus_session(tty: &str) -> bool {
         (out.trim() == "found").then_some(index)
     });
     let Some(bundle) = found.and_then(focused_bundle) else {
-        run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
+        // Open VS Code only for a session that runs under it. Others have no app to bring forward.
+        if runs_in_vscode(tty) {
+            run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
+        }
         return false;
     };
     ensure_frontmost(bundle)
+}
+
+/// True when the `claude` on `tty` runs under VS Code, per a fresh `ps`.
+fn runs_in_vscode(tty: &str) -> bool {
+    run("ps", &["-Ao", "pid=,ppid=,tty=,comm="], PS_TIMEOUT)
+        .is_some_and(|ps| is_vscode_session(&ps, tty))
 }
 
 /// True when `bundle` is frontmost. If not, asks `LaunchServices` to open it (works from a
