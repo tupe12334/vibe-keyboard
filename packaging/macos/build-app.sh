@@ -41,9 +41,19 @@ echo "==> Installing to ${DEST}/${APP_NAME}"
 mkdir -p "${DEST}"
 rm -rf "${DEST:?}/${APP_NAME}"
 cp -R "${SRC_APP}" "${DEST}/${APP_NAME}"
-# Seal the bundle ad-hoc. Tauri leaves only the binary signed. A sealed bundle
-# keeps a stable identity for macOS privacy grants.
-codesign --force -s - "${DEST}/${APP_NAME}"
+# Seal the bundle. Tauri leaves only the binary signed. A stable identity keeps
+# macOS privacy grants (Accessibility) across rebuilds. Ad-hoc signatures change
+# on every build, so the grant is lost each time.
+SIGN_IDENTITY="${VK_SIGN_IDENTITY:-Vibe Keyboard Local}"
+identities="$(security find-identity -v -p codesigning || true)"
+if grep -qF "\"${SIGN_IDENTITY}\"" <<<"${identities}"; then
+    echo "==> Signing with identity: ${SIGN_IDENTITY}"
+    codesign --force --deep --sign "${SIGN_IDENTITY}" --identifier com.tupe12334.vibe-keyboard "${DEST}/${APP_NAME}"
+else
+    echo "warning: signing identity \"${SIGN_IDENTITY}\" not found. Falling back to ad-hoc signing." >&2
+    echo "warning: ad-hoc signing: Accessibility must be re-granted after every reinstall; see packaging/macos/README.md" >&2
+    codesign --force -s - "${DEST}/${APP_NAME}"
+fi
 codesign --verify --strict "${DEST}/${APP_NAME}"
 
 echo "Installed: ${DEST}/${APP_NAME}"

@@ -75,6 +75,8 @@ packaging/macos/build-app.sh
 ```
 
 This installs `Vibe Keyboard.app` to `~/Applications`. No `sudo` is needed.
+To keep the Accessibility grant across rebuilds, see
+[Keep the Accessibility grant across rebuilds](packaging/macos/README.md#keep-the-accessibility-grant-across-rebuilds).
 
 The app runs as a normal user. It opens the device's HID vendor interface in
 non-exclusive mode. The `hidapi` crate builds its bundled C backend, so no
