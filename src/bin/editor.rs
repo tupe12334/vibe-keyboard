@@ -10,7 +10,7 @@ use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKin
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
     format_color, inner_rect, parse_color, Action, ActionKind, KeyConfig, KeyInset, PixelRect,
-    Profile, Prompt, SideConfig, SideInset, Widget, BUILTIN_NAMES,
+    Prompt, SideConfig, SideInset, Widget, BUILTIN_NAMES,
 };
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, icon_image, key_image, safe_rect, side_image, ICON_NAMES, SIDE_HEIGHT,
@@ -152,88 +152,11 @@ fn shade_hidden(painter: &egui::Painter, area: Rect, canvas: (u32, u32), visible
     }
 }
 
-/// How long the Undo for a discard stays available.
-const UNDO_WINDOW: Duration = Duration::from_secs(10);
-
-/// Edits in memory and the last file state. Pure, so its transitions are unit tested.
-#[derive(Default)]
-struct Session {
-    profile: Profile,
-    /// The profile as last read from or written to disk.
-    saved: Profile,
-    /// The edits dropped by the last discard, and when they were dropped.
-    dropped: Option<(Profile, Instant)>,
-}
-
-impl Session {
-    fn new(profile: Profile) -> Self {
-        Self {
-            saved: profile.clone(),
-            profile,
-            dropped: None,
-        }
-    }
-
-    fn dirty(&self) -> bool {
-        self.profile != self.saved
-    }
-
-    /// A save wrote `profile` to disk. Earlier discards can no longer be undone.
-    fn mark_saved(&mut self) {
-        self.saved = self.profile.clone();
-        self.dropped = None;
-    }
-
-    /// Drop unsaved edits and adopt `disk`, the file as it is now. False when nothing is dirty.
-    /// Replace everything with the file as it is on disk. Used when the user chooses Reload.
-    fn replace_with_disk(&mut self, disk: Profile) {
-        self.saved = disk.clone();
-        self.profile = disk;
-        self.dropped = None;
-    }
-
-    fn discard(&mut self, disk: Profile, now: Instant) -> bool {
-        if !self.dirty() {
-            return false;
-        }
-        let dropped = std::mem::replace(&mut self.profile, disk.clone());
-        self.dropped = Some((dropped, now));
-        self.saved = disk;
-        true
-    }
-
-    fn undo_available(&self, now: Instant) -> bool {
-        self.dropped
-            .as_ref()
-            .is_some_and(|(_, at)| now.duration_since(*at) <= UNDO_WINDOW)
-    }
-
-    /// Restore the edits dropped by the last discard, if still in the undo window.
-    fn undo(&mut self, now: Instant) -> bool {
-        if !self.undo_available(now) {
-            self.dropped = None;
-            return false;
-        }
-        if let Some((profile, _)) = self.dropped.take() {
-            self.profile = profile;
-        }
-        true
-    }
-
-    fn expire(&mut self, now: Instant) {
-        if !self.undo_available(now) {
-            self.dropped = None;
-        }
-    }
-}
-
-/// Read the profile the way startup does. Returns the layout and the read error, if any.
-fn load_from_disk() -> (Profile, Option<String>) {
-    match profile_store::ensure_default(&profile_store::profile_path()) {
-        Ok(profile) => (profile, None),
-        Err(e) => (Profile::default_from_legacy(), Some(e)),
-    }
-}
+#[path = "editor/session.rs"]
+mod session;
+#[cfg(test)]
+use session::UNDO_WINDOW;
+use session::{load_from_disk, Session};
 
 struct Editor {
     root: PathBuf,
