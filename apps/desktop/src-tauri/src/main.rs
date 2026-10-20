@@ -13,6 +13,18 @@ mod commands;
 mod display_commands;
 #[cfg(test)]
 mod display_tests;
+#[cfg(test)]
+mod editor_preserve_hold_tests;
+#[cfg(test)]
+mod editor_preserve_key_tests;
+#[cfg(test)]
+mod editor_preserve_layout_tests;
+#[cfg(test)]
+mod editor_preserve_side_tests;
+#[cfg(test)]
+mod editor_preserve_startup_tests;
+#[cfg(test)]
+mod editor_preserve_support;
 mod events;
 mod key_commands;
 mod layout_commands;
