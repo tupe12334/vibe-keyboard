@@ -10,9 +10,7 @@ rules:
   - pattern: "src/infrastructure/claude_sessions_tests.rs"
     error: 380
   - pattern: "src/application/mod.rs"
-    error: 204
-  - pattern: "src/application/key_action.rs"
-    error: 238
+    error: 202
   - pattern: "src/application/filter_query.rs"
     error: 124
   - pattern: "src/infrastructure/profile_store.rs"
