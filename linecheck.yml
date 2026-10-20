@@ -41,8 +41,8 @@ rules:
     error: 157
   - pattern: "src/infrastructure/app_icon/os.rs"
     error: 128
-  - pattern: "src/infrastructure/usb/commands.rs"
-    error: 111
+  - pattern: "src/application/pages/centy/issues.rs"
+    error: 110
   - pattern: "src/application/pages/input_number.rs"
     error: 108
   - pattern: "src/domain/switching.rs"
