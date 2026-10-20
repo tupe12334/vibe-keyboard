@@ -54,6 +54,13 @@ fn send_text_scripts_joins_multiline_text() {
 }
 
 #[test]
+fn send_text_scripts_empty_text_types_only_enter() {
+    let [iterm, terminal] = send_text_scripts("ttys007", "").unwrap_or_default();
+    assert!(iterm.contains(r#"write text """#));
+    assert!(terminal.contains(r#"do script "" in t"#));
+}
+
+#[test]
 fn send_text_scripts_embed_escaped_text_and_device() {
     let [iterm, terminal] = send_text_scripts("ttys007", r#"a"b"#).unwrap_or_default();
     assert!(iterm.contains(r#"tty of s is "/dev/ttys007""#));

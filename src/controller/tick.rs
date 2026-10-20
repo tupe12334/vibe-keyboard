@@ -5,8 +5,8 @@ use super::input;
 use super::reload::reload_profile;
 use super::side;
 use crate::application::{
-    expire_flash, handle_filter_query, handle_frontmost, poll_holds, prompt_return,
-    release_all_holds, render_screen,
+    handle_filter_query, handle_frontmost, poll_holds, prompt_return, release_all_holds,
+    render_screen,
 };
 use crate::infrastructure::images::app_icon_generation;
 use crate::infrastructure::profile_store;
@@ -29,7 +29,6 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
     confirm_filter(c, handle);
     let read_lost = input::read_key(c, handle);
     poll_holds(handle, &mut c.nav, &c.app_state, &c.dev_state);
-    expire_flash(handle, &c.app_state, &c.nav, Instant::now());
     release_on_page_change(c);
     side::tick(c, handle);
     input::heartbeat(c, handle);

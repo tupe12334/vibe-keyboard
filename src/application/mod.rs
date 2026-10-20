@@ -19,7 +19,6 @@ mod input_modes;
 
 pub use frontmost::handle_frontmost;
 pub use holds::{install_panic_release, poll_holds, read_wait, release_all_holds};
-pub use voice::expire_flash;
 
 use crate::infrastructure::usb::Device;
 use std::sync::{Arc, Mutex, MutexGuard};

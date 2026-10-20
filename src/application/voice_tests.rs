@@ -2,11 +2,33 @@ use super::*;
 use crate::domain::actions::{ClaudeSession, SessionStatus, TerminalApp};
 use crate::domain::hold::{Gesture, Held, HoldTracker};
 use crate::domain::navigation::{NavigationStack, Screen};
+use std::time::{Duration, Instant};
 
 const HOLD: Duration = Duration::from_millis(400);
 
 fn voice_press(holds: &mut HoldTracker, t0: Instant) {
     holds.press(VOICE_KEY, t0, Held::Voice);
+}
+
+fn session(app: TerminalApp) -> ClaudeSession {
+    ClaudeSession {
+        pid: 7,
+        app,
+        tty: "ttys009".into(),
+        label: "s".into(),
+        status: SessionStatus::Active,
+        age: None,
+        focused: false,
+    }
+}
+
+fn session_page(app: TerminalApp) -> NavigationStack {
+    let mut nav = NavigationStack::new(0, 1);
+    nav.push(Screen::SessionActions {
+        session: session(app),
+        page: 0,
+    });
+    nav
 }
 
 #[test]
@@ -49,43 +71,27 @@ fn tap_on_voice_key_is_a_tap_and_never_a_hold() {
 }
 
 #[test]
-fn flash_shows_hold_until_its_deadline_then_expires_once() {
-    let t0 = Instant::now();
-    let mut flash = None;
-    arm(&mut flash, t0);
-    assert!(flash.is_some());
-    assert!(!take_expired(
-        &mut flash,
-        t0 + FLASH - Duration::from_millis(1)
-    ));
-    assert!(flash.is_some());
-    assert!(take_expired(&mut flash, t0 + FLASH));
-    assert!(flash.is_none());
-    assert!(!take_expired(&mut flash, t0 + FLASH * 2));
+fn tap_on_voice_key_sends_enter_to_the_session() {
+    let nav = session_page(TerminalApp::ITerm);
+    let Some(Action::SendPrompt { pid, tty, text }) = enter_action(nav.current()) else {
+        panic!("tap on voice must send");
+    };
+    assert_eq!((pid, tty.as_str(), text.as_str()), (7, "ttys009", ""));
+}
+
+#[test]
+fn voice_key_sends_nothing_for_muted_apps_or_other_screens() {
+    assert!(enter_action(session_page(TerminalApp::Other).current()).is_none());
+    assert!(enter_action(NavigationStack::new(0, 1).current()).is_none());
 }
 
 #[test]
 fn voice_hold_is_muted_for_apps_that_take_no_text() {
-    let session = |app| ClaudeSession {
-        pid: 1,
-        app,
-        tty: "ttys009".into(),
-        label: "s".into(),
-        status: SessionStatus::Active,
-        age: None,
-        focused: false,
-    };
-    let mut nav = NavigationStack::new(0, 1);
-    nav.push(Screen::SessionActions {
-        session: session(TerminalApp::ITerm),
-        page: 0,
-    });
+    let nav = session_page(TerminalApp::ITerm);
     assert!(holds_voice(nav.current(), VOICE_KEY));
     assert!(!holds_voice(nav.current(), 14));
-    nav.back();
-    nav.push(Screen::SessionActions {
-        session: session(TerminalApp::Other),
-        page: 0,
-    });
-    assert!(!holds_voice(nav.current(), VOICE_KEY));
+    assert!(!holds_voice(
+        session_page(TerminalApp::Other).current(),
+        VOICE_KEY
+    ));
 }
