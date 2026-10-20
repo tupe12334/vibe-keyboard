@@ -29,7 +29,7 @@ pub fn write(profile: &Profile, loaded: Option<SystemTime>, overwrite: bool) -> 
     let disk = profile_store::modified_at(&path);
     let base = if overwrite { disk } else { loaded };
     match save_if_unchanged(&path, profile, base) {
-        Ok(()) => Outcome::Saved,
+        Ok(_) => Outcome::Saved,
         Err(SaveRefusal::Changed) => Outcome::Conflict,
         Err(SaveRefusal::Failed(e)) => Outcome::Refused(format!("Save failed: {e}")),
     }

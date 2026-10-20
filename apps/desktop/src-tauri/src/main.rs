@@ -11,6 +11,7 @@ mod key_commands;
 mod layout_commands;
 mod lifecycle;
 mod login_item;
+mod profile_io;
 mod status;
 mod supervise;
 mod thread;

@@ -1,16 +1,13 @@
 //! Profile and device commands the webview calls. Types come from the core crate.
 
-use std::sync::PoisonError;
-
 use serde::Serialize;
 use specta::Type;
 use tauri::State;
 use vibe_keyboard::domain::profile::Profile;
-use vibe_keyboard::domain::profile_rules;
-use vibe_keyboard::infrastructure::profile_save::save_if_unchanged;
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
+use crate::profile_io::{load_layout, save_layout};
 
 #[derive(Serialize, Type)]
 pub struct DeviceStatus {
@@ -24,10 +21,7 @@ pub struct DeviceStatus {
 #[tauri::command]
 #[specta::specta]
 pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
-    let path = profile_store::profile_path();
-    let profile = profile_store::read(&path)?.unwrap_or_else(Profile::default_from_legacy);
-    app.record_profile_mtime();
-    Ok(profile)
+    load_layout(&app.loaded_mtime, &profile_store::profile_path())
 }
 
 /// Write the layout. Refused while it has problems, or when the file changed on disk
@@ -35,26 +29,7 @@ pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
 #[tauri::command]
 #[specta::specta]
 pub fn save_profile(profile: Profile, app: State<'_, App>) -> Result<(), String> {
-    let problems = profile_rules::save_problems(&profile);
-    if !problems.is_empty() {
-        return Err(format!(
-            "{} problem(s): {}",
-            problems.len(),
-            problems.join("; ")
-        ));
-    }
-    let path = profile_store::profile_path();
-    let loaded = *app
-        .loaded_mtime
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner);
-    match save_if_unchanged(&path, &profile, loaded) {
-        Ok(()) => {
-            app.record_profile_mtime();
-            Ok(())
-        }
-        Err(refusal) => Err(refusal.to_string()),
-    }
+    save_layout(&app.loaded_mtime, &profile_store::profile_path(), &profile)
 }
 
 #[tauri::command]
@@ -66,3 +41,7 @@ pub fn device_status(app: State<'_, App>) -> DeviceStatus {
         error: app.last_error(),
     }
 }
+
+#[cfg(test)]
+#[path = "commands_tests.rs"]
+mod tests;

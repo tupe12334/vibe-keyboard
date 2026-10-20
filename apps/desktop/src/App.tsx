@@ -162,7 +162,7 @@ export function App() {
             Page name
             <input value={current.name} onChange={(e) => updatePage((p) => ({ ...p, name: e.target.value }))} />
           </label>
-          <button onClick={deletePage} disabled={draft.pages.length <= (rules?.min_pages ?? 1)} className="danger">
+          <button onClick={deletePage} disabled={!rules || draft.pages.length <= rules.min_pages} className="danger">
             Delete page
           </button>
           <span className="spacer" />
