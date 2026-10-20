@@ -1,4 +1,5 @@
 mod browser;
+mod builtin;
 mod centy;
 mod claude;
 mod log_file;
