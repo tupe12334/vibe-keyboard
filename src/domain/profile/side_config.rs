@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use super::{default_bg, default_fg};
+use super::color::{default_bg, default_fg};
 
 /// The side screen: a 480x100 strip. Same image sources as keys, else the label.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

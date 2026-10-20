@@ -3,11 +3,15 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+mod color;
 mod display;
 mod input_config;
 mod layout;
 mod legacy;
 mod page;
+#[cfg(test)]
+use color::DEFAULT_BG;
+pub use color::{format_color, parse_color};
 pub use display::{inner_rect, is_default, DisplaySettings, KeyInset, PixelRect, SideInset};
 pub use input_config::InputConfig;
 pub use page::Page;
@@ -32,9 +36,6 @@ pub const BUILTIN_NAMES: [&str; 9] = [
     "claude_sessions",
     "moadim",
 ];
-
-const DEFAULT_BG: &str = "#141414";
-const DEFAULT_FG: &str = "#E6E6E6";
 
 /// The whole user layout: an ordered list of main pages, and the prompts a session action sends.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -66,14 +67,6 @@ pub const PROMPT_MAX_CHARS: usize = 2000;
 
 /// Longest prompt label the profile accepts. Labels print on a key image.
 pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
-
-fn default_bg() -> String {
-    DEFAULT_BG.into()
-}
-
-fn default_fg() -> String {
-    DEFAULT_FG.into()
-}
 
 /// True for macOS bundle ids such as `com.apple.Terminal`: dotted, no spaces.
 /// Names ending in `.app` are app names (`Google Chrome.app`), not bundle ids.
@@ -116,21 +109,6 @@ impl Action {
             },
         }
     }
-}
-
-/// Parse `#RRGGBB` into bytes. Returns `None` for any other text.
-pub fn parse_color(text: &str) -> Option<[u8; 3]> {
-    let hex = text.strip_prefix('#')?;
-    if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
-        return None;
-    }
-    let value = u32::from_str_radix(hex, 16).ok()?;
-    Some([(value >> 16) as u8, (value >> 8) as u8, value as u8])
-}
-
-/// Format bytes as `#RRGGBB`.
-pub fn format_color(rgb: [u8; 3]) -> String {
-    format!("#{:02X}{:02X}{:02X}", rgb[0], rgb[1], rgb[2])
 }
 
 #[cfg(test)]
