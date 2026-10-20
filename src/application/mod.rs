@@ -13,6 +13,8 @@ mod dictation;
 mod frontmost;
 mod gestures;
 mod holds;
+mod input_modes;
+use input_modes::NumberEdit;
 
 pub use frontmost::handle_frontmost;
 use gestures::end_press;
@@ -479,29 +481,15 @@ fn handle_action_key(
             render_screen(nav, handle, state, dev_state);
         }
         Action::InputNumberDigit { digit } => {
-            nav.input_number_append(digit);
-            let value = nav.input_number_value().unwrap_or("").to_string();
-            info!("input number: appended '{}', value = {}", digit, value);
-            render_screen(nav, handle, state, dev_state);
+            input_modes::edit_number(NumberEdit::Digit(digit), nav, handle, state, dev_state);
         }
         Action::InputNumberClear => {
-            nav.input_number_clear();
-            info!("input number: cleared");
-            render_screen(nav, handle, state, dev_state);
+            input_modes::edit_number(NumberEdit::Clear, nav, handle, state, dev_state);
         }
         Action::InputNumberBackspace => {
-            nav.input_number_backspace();
-            let value = nav.input_number_value().unwrap_or("").to_string();
-            info!("input number: backspace, value = {}", value);
-            render_screen(nav, handle, state, dev_state);
+            input_modes::edit_number(NumberEdit::Backspace, nav, handle, state, dev_state);
         }
-        Action::Search => {
-            info!("activating filter input mode");
-            let mut s = lock(state);
-            s.text_input_mode = true;
-            s.text_input_value = String::new();
-            s.text_input_confirmed = false;
-        }
+        Action::Search => input_modes::start_filter_input(state),
         Action::None => {}
     }
 }
