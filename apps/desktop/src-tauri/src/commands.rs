@@ -7,7 +7,7 @@ use specta::Type;
 use tauri::State;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::domain::profile_rules;
-use vibe_keyboard::infrastructure::profile_save::save_if_unchanged;
+use vibe_keyboard::infrastructure::profile_save::{load_with_mtime, save_if_unchanged};
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
@@ -24,9 +24,8 @@ pub struct DeviceStatus {
 #[tauri::command]
 #[specta::specta]
 pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
-    let path = profile_store::profile_path();
-    let profile = profile_store::read(&path)?.unwrap_or_else(Profile::default_from_legacy);
-    app.record_profile_mtime();
+    let (profile, mtime) = load_with_mtime(&profile_store::profile_path())?;
+    app.set_loaded_mtime(mtime);
     Ok(profile)
 }
 
@@ -49,8 +48,8 @@ pub fn save_profile(profile: Profile, app: State<'_, App>) -> Result<(), String>
         .lock()
         .unwrap_or_else(PoisonError::into_inner);
     match save_if_unchanged(&path, &profile, loaded) {
-        Ok(()) => {
-            app.record_profile_mtime();
+        Ok(written) => {
+            app.set_loaded_mtime(written);
             Ok(())
         }
         Err(refusal) => Err(refusal.to_string()),

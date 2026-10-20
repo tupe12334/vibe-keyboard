@@ -76,11 +76,11 @@ impl App {
         stop_running(&self.running);
     }
 
-    pub fn record_profile_mtime(&self) {
+    /// The profile file time the editor last loaded or saved. Set from the read or the write.
+    pub fn set_loaded_mtime(&self, mtime: Option<SystemTime>) {
         *self
             .loaded_mtime
             .lock()
-            .unwrap_or_else(PoisonError::into_inner) =
-            profile_store::modified_at(&profile_store::profile_path());
+            .unwrap_or_else(PoisonError::into_inner) = mtime;
     }
 }
