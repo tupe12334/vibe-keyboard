@@ -1,7 +1,11 @@
 use crate::domain::actions::{CentyIssue, CentyProject, ClaudeSession};
 use crate::domain::moadim::{Flash, MoadimList, Routine};
 use crate::domain::profile::SideConfig;
+#[cfg(test)]
 use std::time::Instant;
+
+mod input_digits;
+mod moadim;
 
 #[derive(Clone)]
 pub enum Screen {
@@ -308,63 +312,6 @@ impl NavigationStack {
         }
     }
 
-    /// Update the open Moadim screen with a fresh list. Returns true when the screen changed.
-    pub fn set_moadim(&mut self, new: MoadimList) -> bool {
-        match self.stack.last_mut() {
-            Some(Screen::MoadimList { list, page }) => {
-                if *list == new {
-                    return false;
-                }
-                let max = moadim_len(&new).saturating_sub(1) / 10;
-                *page = (*page).min(max);
-                *list = new;
-                true
-            }
-            Some(Screen::MoadimRoutine { routine, .. }) => {
-                let MoadimList::Online(routines) = &new else {
-                    return false;
-                };
-                let Some(fresh) = routines.iter().find(|r| r.id == routine.id) else {
-                    return false;
-                };
-                if fresh == routine {
-                    return false;
-                }
-                *routine = fresh.clone();
-                true
-            }
-            _ => false,
-        }
-    }
-
-    /// True when the top screen shows Moadim routines.
-    pub fn is_moadim(&self) -> bool {
-        matches!(
-            self.stack.last(),
-            Some(Screen::MoadimList { .. } | Screen::MoadimRoutine { .. })
-        )
-    }
-
-    /// Show `flash` on the open routine screen, replacing any flash already there.
-    pub fn set_flash(&mut self, flash: Flash) {
-        if let Some(Screen::MoadimRoutine { flash: slot, .. }) = self.stack.last_mut() {
-            *slot = Some(flash);
-        }
-    }
-
-    /// Drop the flash on the open routine screen once its time is up. True when it dropped one.
-    pub fn clear_expired_flash(&mut self, now: Instant) -> bool {
-        match self.stack.last_mut() {
-            Some(Screen::MoadimRoutine { flash, .. })
-                if flash.as_ref().is_some_and(|f| now >= f.until) =>
-            {
-                *flash = None;
-                true
-            }
-            _ => false,
-        }
-    }
-
     /// Go to the previous page of a session or routine list. Unlike `back`, it never pops the screen.
     pub fn previous_page(&mut self) {
         if let Some(Screen::ClaudeSessions { page, .. } | Screen::MoadimList { page, .. }) =
@@ -443,39 +390,6 @@ impl NavigationStack {
             | Screen::NewSessionChoice
             | Screen::SessionActions { .. }
             | Screen::MoadimRoutine { .. } => {}
-        }
-    }
-
-    /// Append a digit character to the current `InputNumber` value.
-    /// No-op if not on the `InputNumber` screen.
-    pub fn input_number_append(&mut self, digit: char) {
-        if let Some(Screen::InputNumber { value }) = self.stack.last_mut() {
-            value.push(digit);
-        }
-    }
-
-    /// Clear the `InputNumber` value.
-    /// No-op if not on the `InputNumber` screen.
-    pub fn input_number_clear(&mut self) {
-        if let Some(Screen::InputNumber { value }) = self.stack.last_mut() {
-            value.clear();
-        }
-    }
-
-    /// Delete the last character of the `InputNumber` value (backspace).
-    /// No-op if not on the `InputNumber` screen.
-    pub fn input_number_backspace(&mut self) {
-        if let Some(Screen::InputNumber { value }) = self.stack.last_mut() {
-            value.pop();
-        }
-    }
-
-    /// Return the current `InputNumber` value, or `None` if not on that screen.
-    pub fn input_number_value(&self) -> Option<&str> {
-        if let Some(Screen::InputNumber { value }) = self.stack.last() {
-            Some(value)
-        } else {
-            None
         }
     }
 }
