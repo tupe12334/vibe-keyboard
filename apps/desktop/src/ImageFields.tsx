@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AppIconFields } from "./AppIconFields";
 import { Field } from "./Field";
+import { GooglePhotoFields } from "./GooglePhotoFields";
 
 type Source = "none" | "file" | "app";
 
@@ -43,6 +44,7 @@ export function ImageFields({
           <input value={image ?? ""} onChange={(e) => onChange(e.target.value || null)} />
         </Field>
       )}
+      {source === "file" && <GooglePhotoFields onChange={onChange} />}
       {source === "app" && <AppIconFields image={image} preview={preview} onChange={onChange} />}
     </div>
   );

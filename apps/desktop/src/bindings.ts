@@ -44,6 +44,11 @@ export const commands = {
 	listRunningApps: () => __TAURI_INVOKE<RunningApp[]>("list_running_apps"),
 	/**  Whether `text` is a bundle id, by the core rule the layout uses for `open_app`. */
 	checkBundleId: (text: string) => __TAURI_INVOKE<boolean>("check_bundle_id", { text }),
+	/**
+	 *  Download the cover photo of a Google Photos share link. Gives the path to store in the
+	 *  key's `image`, relative to the profile folder.
+	 */
+	importGooglePhoto: (link: string) => typedError<string, string>(__TAURI_INVOKE("import_google_photo", { link })),
 	/**  The built-in insets. The layout file omits a value that equals its default. */
 	displayDefaults: () => __TAURI_INVOKE<DisplayDefaults>("display_defaults"),
 	/**  The editor allows the quit: nothing unsaved, or Save or Discard was chosen. */
