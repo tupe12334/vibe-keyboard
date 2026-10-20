@@ -1,64 +1,32 @@
 # macOS packaging
 
-Builds `VibeKeyboard.app`. The app starts the headless controller. A per-user
-LaunchAgent can start it at login. No terminal, no sudo, no root.
+`build-app.sh` builds the Tauri desktop app and installs it to
+`~/Applications/Vibe Keyboard.app`. No terminal window is needed after install,
+and no sudo or root.
 
-## Bundle
-
-| Key | Value |
-| --- | --- |
-| Bundle id | `com.tupe12334.vibe-keyboard` |
-| Executable | `Contents/MacOS/launcher` (shell script, `exec`s `listen --headless`) |
-| Controller | `Contents/MacOS/listen` |
-| Editor | `Contents/MacOS/editor` |
-| Dock icon | none (`LSUIElement`) |
-| Icon | `Contents/Resources/AppIcon.icns` (from `assets/app/`) |
-
-## Build
+## Install
 
 ```sh
 packaging/macos/build-app.sh
 ```
 
-Output: `target/VibeKeyboard.app` (or `$CARGO_TARGET_DIR/VibeKeyboard.app`),
-ad-hoc signed. Building does not start anything.
+The script runs `pnpm install --frozen-lockfile` and
+`pnpm tauri build --bundles app` in `apps/desktop`. It copies the result to
+`~/Applications`. The old copy is replaced only after the build succeeds.
 
-## Install and run at login
+Environment variables:
 
-```sh
-packaging/macos/build-app.sh --install
-```
-
-This copies the app to `~/Applications/VibeKeyboard.app`, writes
-`~/Library/LaunchAgents/com.tupe12334.vibe-keyboard.controller.plist`, and
-loads it. The agent runs `listen --headless` at login and restarts after a
-crash. It exits cleanly if another controller already holds the lock.
-
-## Open
-
-- Double-click `VibeKeyboard.app`: starts the controller. No window.
-- Open the editor: `open -a ~/Applications/VibeKeyboard.app --args --editor`.
-
-Only one controller runs at a time. A second start exits without error.
+| Variable | Default | Effect |
+| --- | --- | --- |
+| `CARGO_TARGET_DIR` | `<repo>/target` | Build output root |
+| `DEST` | `~/Applications` | Install folder |
 
 ## Permissions
 
-The HID device opens non-exclusively. No Input Monitoring grant is needed.
-Some keys run `osascript`: they control Terminal, Claude, and System Events.
-macOS asks for Automation for those apps. A key that sends a keystroke through
-System Events needs Accessibility. Grant these to `VibeKeyboard` when asked.
-Ad-hoc signing pins each build. After a rebuild, macOS can drop a manual grant.
-A stable signing identity would keep grants across rebuilds.
+Push-to-talk needs System Settings → Privacy & Security → Accessibility →
+Vibe Keyboard. Start at login is in the tray menu.
 
-## Uninstall
+## Legacy
 
-```sh
-packaging/macos/uninstall.sh
-```
-
-Stops the agent, then removes the plist and `~/Applications/VibeKeyboard.app`.
-
-## Logs
-
-`~/Library/Logs/vibe-keyboard/controller.log` (stdout and stderr). The uninstall
-script keeps this file.
+`packaging/macos/uninstall.sh` removes the old `VibeKeyboard.app` and its
+LaunchAgent from earlier builds. It does nothing for `Vibe Keyboard.app`.
