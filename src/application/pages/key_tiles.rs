@@ -22,12 +22,12 @@ pub fn key_inset(state: &Arc<Mutex<tui::AppState>>) -> KeyInset {
 pub fn show_out(handle: &Device, state: &Arc<Mutex<tui::AppState>>) {
     let inset = key_inset(state);
     let tile = label_image("OUT", &inset);
-    send_button_image(handle, 11, DynamicImage::ImageRgb8(tile));
+    send_button_image(handle, 11, &DynamicImage::ImageRgb8(tile));
 }
 
 /// A session that cannot take prompts shows FOCUS ONLY on its key.
 pub fn show_focus_only(handle: &Device, key: u8, state: &Arc<Mutex<tui::AppState>>) {
     let inset = key_inset(state);
     let tile = label_image("FOCUS ONLY", &inset);
-    send_button_image(handle, key, DynamicImage::ImageRgb8(tile));
+    send_button_image(handle, key, &DynamicImage::ImageRgb8(tile));
 }

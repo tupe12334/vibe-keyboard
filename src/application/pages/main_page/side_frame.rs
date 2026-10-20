@@ -43,7 +43,7 @@ fn send_side_frame(handle: &Device, state: &Arc<Mutex<tui::AppState>>, frame: &R
             return true;
         }
     }
-    if !send_side_image(handle, DynamicImage::ImageRgb8(frame.clone())) {
+    if !send_side_image(handle, &DynamicImage::ImageRgb8(frame.clone())) {
         return false;
     }
     state

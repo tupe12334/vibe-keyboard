@@ -47,7 +47,7 @@ pub fn expire_flash(
 
 fn draw(handle: &Device, state: &Arc<Mutex<tui::AppState>>, label: &str) {
     let tile = label_image(label, &key_inset(state));
-    send_button_image(handle, VOICE_KEY, DynamicImage::ImageRgb8(tile));
+    send_button_image(handle, VOICE_KEY, &DynamicImage::ImageRgb8(tile));
 }
 
 /// Start a flash that ends `FLASH` after `now`.

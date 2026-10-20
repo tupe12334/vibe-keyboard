@@ -64,17 +64,17 @@ pub fn render_project_actions(
     send_button_image(
         handle,
         1,
-        DynamicImage::ImageRgb8(generate_vscode_config_image()),
+        &DynamicImage::ImageRgb8(generate_vscode_config_image()),
     );
     send_button_image(
         handle,
         2,
-        DynamicImage::ImageRgb8(generate_terminal_image()),
+        &DynamicImage::ImageRgb8(generate_terminal_image()),
     );
-    send_button_image(handle, 3, DynamicImage::ImageRgb8(generate_web_image()));
+    send_button_image(handle, 3, &DynamicImage::ImageRgb8(generate_web_image()));
     send_button_image(
         handle,
         4,
-        DynamicImage::ImageRgb8(generate_project_item_image()),
+        &DynamicImage::ImageRgb8(generate_project_item_image()),
     );
 }

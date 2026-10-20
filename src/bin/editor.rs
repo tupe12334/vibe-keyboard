@@ -896,8 +896,8 @@ impl Editor {
         }
     }
 
-    fn apply_page_op(&mut self, op: PageOp) {
-        match op {
+    fn apply_page_op(&mut self, op: &PageOp) {
+        match *op {
             PageOp::Select(index) => {
                 self.page = index;
                 self.key = None;
@@ -1337,7 +1337,7 @@ impl eframe::App for Editor {
             })
             .inner;
         if let Some(op) = page_op {
-            self.apply_page_op(op);
+            self.apply_page_op(&op);
         }
         if side_clicked {
             self.side_open = true;

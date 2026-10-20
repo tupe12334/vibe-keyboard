@@ -63,7 +63,7 @@ pub fn render_main_page(
     // The same images the editor previews. Keys 11–13 are the navigation art.
     let root = profile_store::root_dir();
     for (key, img) in page_images(&keys, &root, &key_inset) {
-        send_button_image(handle, key, DynamicImage::ImageRgb8(img));
+        send_button_image(handle, key, &DynamicImage::ImageRgb8(img));
     }
     info!("page {}: {} key(s)", page + 1, keys.len());
 }

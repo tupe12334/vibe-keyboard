@@ -22,7 +22,7 @@ fn side_upload_rotates_portrait_counter_clockwise() {
     let mut portrait = RgbImage::new(100, 480);
     portrait.put_pixel(0, 0, Rgb([255, 0, 0]));
     portrait.put_pixel(99, 0, Rgb([0, 255, 0]));
-    let out = side_upload(DynamicImage::ImageRgb8(portrait)).to_rgb8();
+    let out = side_upload(&DynamicImage::ImageRgb8(portrait)).to_rgb8();
     assert_eq!(out.dimensions(), (480, 100));
     assert_eq!(out.get_pixel(0, 99), &Rgb([255, 0, 0]));
     assert_eq!(out.get_pixel(0, 0), &Rgb([0, 255, 0]));

@@ -24,7 +24,7 @@ pub fn side_header(jpeg_len: usize, w: u16, h: u16, x: u16, y: u16) -> [u8; 32] 
 /// Turns the portrait side render (100x480) into the landscape upload (480x100). The top
 /// of the column ends at the bottom-left, so the render is rotated 90° counter-clockwise.
 /// The resize keeps the upload at 480x100 whatever the input size.
-pub fn side_upload(img: DynamicImage) -> DynamicImage {
+pub fn side_upload(img: &DynamicImage) -> DynamicImage {
     DynamicImage::ImageRgb8(
         img.rotate270()
             .resize_to_fill(
