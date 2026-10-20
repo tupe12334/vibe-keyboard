@@ -7,6 +7,7 @@ use std::time::{Duration, Instant};
 use crate::domain::hold::{Held, HoldTracker};
 use crate::domain::keys::is_nav_key;
 use crate::domain::navigation::{NavigationStack, Screen};
+use crate::domain::ptt::Release;
 use crate::infrastructure::keyboard;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
@@ -48,13 +49,13 @@ pub fn poll_holds(
 }
 
 /// Stop every hold now and forget the keys that are down. Their releases then do nothing.
-/// Called on shutdown, device disconnect and page change, so no key stays down.
-pub fn release_all_holds(state: &Arc<Mutex<tui::AppState>>) {
+/// Called on shutdown, device disconnect and page change, so no key stays down. `reason` is logged.
+pub fn release_all_holds(state: &Arc<Mutex<tui::AppState>>, reason: Release) {
     state
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .holds = HoldTracker::default();
-    keyboard::release_all();
+    keyboard::release_all(reason);
 }
 
 /// Lift a held key if the process panics. Must run before the panic unwinds.

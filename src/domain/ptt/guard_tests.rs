@@ -50,6 +50,6 @@ fn old_generation_cannot_start_or_repeat() {
     let second = guard.begin(1);
     assert!(!guard.start(first, 1, SPACE, 0, ok(APP), t0));
     assert!(guard.start(second, 1, SPACE, 0, ok(APP), t0));
-    assert!(!guard.pump(first, ok(APP), t0));
+    assert!(!guard.pump(first, t0));
     assert_eq!(log.borrow().len(), 1);
 }

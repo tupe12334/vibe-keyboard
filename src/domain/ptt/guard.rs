@@ -1,10 +1,9 @@
 //! The hold's state, and the key down that starts it.
 
+use super::focus::MoveCheck;
+use super::repeat::Beats;
+use super::KeyPoster;
 use std::time::Instant;
-
-use tracing::warn;
-
-use super::{KeyEvent, KeyPoster, Probe};
 
 pub(super) struct Hold {
     pub(super) key: u8,
@@ -13,6 +12,8 @@ pub(super) struct Hold {
     pub(super) pid: i32,
     pub(super) generation: u64,
     pub(super) touched: Instant,
+    pub(super) moves: MoveCheck,
+    pub(super) beats: Beats,
 }
 
 /// The one hold of a process. Every event goes through its poster.
@@ -39,54 +40,6 @@ impl<P: KeyPoster> PttGuard<P> {
         self.generation += 1;
         self.pending = Some((key, self.generation));
         self.generation
-    }
-
-    /// Key down for the reserved hold, to the frontmost app's pid from `probe`. Refused when the
-    /// generation is stale, another hold is active, no app has focus, or Accessibility is off.
-    pub fn start(
-        &mut self,
-        generation: u64,
-        key: u8,
-        code: u16,
-        flags: u64,
-        probe: Probe,
-        now: Instant,
-    ) -> bool {
-        if self.pending != Some((key, generation)) {
-            return false;
-        }
-        self.pending = None;
-        if let Some(active) = &self.hold {
-            warn!(
-                "push to talk: key {key} ignored, key {} already holds it",
-                active.key
-            );
-            return false;
-        }
-        let Some(pid) = probe.front else {
-            return false;
-        };
-        if !probe.trusted {
-            return false;
-        }
-        self.poster.post(
-            pid,
-            KeyEvent {
-                code,
-                flags,
-                down: true,
-                repeat: false,
-            },
-        );
-        self.hold = Some(Hold {
-            key,
-            code,
-            flags,
-            pid,
-            generation,
-            touched: now,
-        });
-        true
     }
 }
 
