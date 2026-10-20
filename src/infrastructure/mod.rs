@@ -6,6 +6,7 @@ pub mod frontmost;
 pub mod images;
 pub mod keyboard;
 pub mod moadim;
+pub mod mouse_release;
 pub mod persistence;
 pub mod process;
 pub mod profile_save;
