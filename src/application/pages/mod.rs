@@ -5,6 +5,7 @@ mod issue_actions;
 mod issue_list;
 pub mod key_tiles;
 mod main_page;
+pub mod moadim;
 mod new_session;
 mod project_actions;
 mod project_list;
@@ -32,9 +33,7 @@ pub fn render_screen(
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     {
-        let mut s = state
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let mut s = super::lock(state);
         s.nav_can_back = NavigationStack::can_back();
         s.nav_can_out = nav.can_out();
         s.nav_can_forward = nav.can_forward();
@@ -90,6 +89,7 @@ pub fn render_screen(
         Screen::SessionActions { session, page } => {
             session_actions::render_session_actions(session, *page, handle, state);
         }
+        _ => moadim::render(screen, handle, state),
     }
     // Every sub-screen shows OUT on key 11. Drawn last, so a page cannot cover it.
     if back_key_on(screen) == BackKey::Out {

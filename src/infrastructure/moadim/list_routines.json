@@ -1,0 +1,13 @@
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "[\n {\n  \"id\": \"00000000-0000-4000-8000-000000000001\",\n  \"title\": \"Sample routine A\",\n  \"schedule\": \"0 11 * * 0-4\",\n  \"enabled\": true,\n  \"is_running\": false,\n  \"consecutive_failures\": 0,\n  \"last_scheduled_trigger_at\": null,\n  \"last_manual_trigger_at\": null,\n  \"auto_disabled_reason\": null\n },\n {\n  \"id\": \"00000000-0000-4000-8000-000000000002\",\n  \"title\": \"Sample routine B\",\n  \"schedule\": \"0 * * * *\",\n  \"enabled\": false,\n  \"is_running\": false,\n  \"consecutive_failures\": 0,\n  \"last_scheduled_trigger_at\": null,\n  \"last_manual_trigger_at\": null,\n  \"auto_disabled_reason\": null\n },\n {\n  \"id\": \"00000000-0000-4000-8000-000000000003\",\n  \"title\": \"Sample routine C\",\n  \"schedule\": \"0 9-20 * * 0-4\",\n  \"enabled\": true,\n  \"is_running\": false,\n  \"consecutive_failures\": 31,\n  \"last_scheduled_trigger_at\": 1791194400,\n  \"last_manual_trigger_at\": null,\n  \"auto_disabled_reason\": null\n },\n {\n  \"id\": \"00000000-0000-4000-8000-000000000004\",\n  \"title\": \"Sample routine D\",\n  \"schedule\": \"17 */3 * * *\",\n  \"enabled\": false,\n  \"is_running\": false,\n  \"consecutive_failures\": 6,\n  \"last_scheduled_trigger_at\": 1790728218,\n  \"last_manual_trigger_at\": 1790543251,\n  \"auto_disabled_reason\": \"auto-disabled after 3 consecutive failed run(s); re-enable to reset and try again\"\n },\n {\n  \"id\": \"00000000-0000-4000-8000-000000000005\",\n  \"title\": \"Sample routine E\",\n  \"schedule\": \"0 * * * *\",\n  \"enabled\": true,\n  \"is_running\": false,\n  \"consecutive_failures\": 0,\n  \"last_scheduled_trigger_at\": 1792058400,\n  \"last_manual_trigger_at\": 1788389671,\n  \"auto_disabled_reason\": null\n }\n]"
+      }
+    ],
+    "isError": false
+  }
+}
