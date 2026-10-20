@@ -6,7 +6,11 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 mod display;
+mod input_config;
+mod page;
 pub use display::{inner_rect, is_default, DisplaySettings, KeyInset, PixelRect, SideInset};
+pub use input_config::InputConfig;
+pub use page::Page;
 mod key;
 pub use key::{Action, ActionKind, KeyConfig};
 mod side_config;
@@ -63,104 +67,12 @@ pub const PROMPT_MAX_CHARS: usize = 2000;
 /// Longest prompt label the profile accepts. Labels print on a key image.
 pub const PROMPT_LABEL_MAX_CHARS: usize = 40;
 
-/// The `[input]` table of `profile.toml`.
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct InputConfig {
-    /// Milliseconds a key must stay down before its `hold` action starts.
-    #[serde(default = "default_hold_ms")]
-    #[cfg_attr(feature = "specta", specta(type = u32))]
-    pub hold_ms: u64,
-}
-
-const DEFAULT_HOLD_MS: u64 = 400;
-
-const fn default_hold_ms() -> u64 {
-    DEFAULT_HOLD_MS
-}
-
-impl Default for InputConfig {
-    fn default() -> Self {
-        Self {
-            hold_ms: DEFAULT_HOLD_MS,
-        }
-    }
-}
-
-impl InputConfig {
-    pub fn is_default(&self) -> bool {
-        *self == Self::default()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct Page {
-    pub name: String,
-    #[serde(default, with = "key_map")]
-    #[cfg_attr(
-        feature = "specta",
-        specta(type = std::collections::BTreeMap<String, KeyConfig>)
-    )]
-    pub keys: BTreeMap<u8, KeyConfig>,
-    /// Bundle ids (for example `com.google.Chrome`). The page shows when one is in front.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub apps: Vec<String>,
-    /// Content for the side screen next to keys 5, 10 and 15. Absent means no side content.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub side: Option<SideConfig>,
-}
-
-/// TOML tables need string keys, so key numbers are written as `"1"`, `"14"`, etc.
-/// Output order is the string order of the keys (`"1", "10", ...`). It is still deterministic.
-mod key_map {
-    use std::collections::BTreeMap;
-
-    use serde::de::Error as _;
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
-    use super::KeyConfig;
-
-    pub fn serialize<S: Serializer>(
-        map: &BTreeMap<u8, KeyConfig>,
-        serializer: S,
-    ) -> Result<S::Ok, S::Error> {
-        let text: BTreeMap<String, &KeyConfig> =
-            map.iter().map(|(k, v)| (k.to_string(), v)).collect();
-        text.serialize(serializer)
-    }
-
-    pub fn deserialize<'de, D: Deserializer<'de>>(
-        deserializer: D,
-    ) -> Result<BTreeMap<u8, KeyConfig>, D::Error> {
-        let text: BTreeMap<String, KeyConfig> = BTreeMap::deserialize(deserializer)?;
-        text.into_iter()
-            .map(|(k, v)| {
-                k.parse::<u8>()
-                    .map(|key| (key, v))
-                    .map_err(D::Error::custom)
-            })
-            .collect()
-    }
-}
-
 fn default_bg() -> String {
     DEFAULT_BG.into()
 }
 
 fn default_fg() -> String {
     DEFAULT_FG.into()
-}
-
-impl Page {
-    pub fn new(name: &str) -> Self {
-        Self {
-            name: name.into(),
-            keys: BTreeMap::new(),
-            apps: Vec::new(),
-            side: None,
-        }
-    }
 }
 
 /// True for macOS bundle ids such as `com.apple.Terminal`: dotted, no spaces.
