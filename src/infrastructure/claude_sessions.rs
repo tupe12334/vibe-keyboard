@@ -4,18 +4,24 @@
 
 mod new_session;
 mod os;
+mod process_list;
+mod session_status;
 mod terminal_scripts;
 mod titles;
 
 pub use new_session::new_session_script;
 pub use os::{focus_session, list_sessions, open_new_session, send_prompt};
+pub use process_list::{claude_processes, cwds_from_lsof};
+pub use session_status::{age_label, label_for, status_for};
 pub use terminal_scripts::{focus_scripts, send_text_scripts};
 pub use titles::{parse_tab_titles, parse_title, summary_from_jsonl};
 
 use std::collections::HashMap;
 use std::time::Duration;
 
-use crate::domain::actions::{ClaudeSession, Glyph, SessionStatus, TerminalApp};
+#[cfg(test)]
+use crate::domain::actions::Glyph;
+use crate::domain::actions::{ClaudeSession, SessionStatus, TerminalApp};
 
 /// A tty that printed within this long is `Active`. Older is `Stale`. Claude Code redraws while it
 /// works, so a session that is quiet for a minute is waiting or idle.
@@ -28,83 +34,6 @@ pub const SPINNER_ACTIVE_WITHIN: Duration = Duration::from_mins(10);
 const CLAUDE_SUFFIX: &str = " (claude)";
 /// Longest session name shown on a key. The key font fits about three short lines.
 const SUMMARY_CHARS: usize = 60;
-
-/// `(pid, tty)` for each `claude` process that has a terminal, from `ps -Ao pid=,tty=,comm=`.
-/// Skips `??` (no terminal, for example a background helper).
-pub fn claude_processes(ps: &str) -> Vec<(u32, String)> {
-    ps.lines()
-        .filter_map(|line| {
-            let (pid, rest) = line.trim_start().split_once(' ')?;
-            let (tty, comm) = rest.trim_start().split_once(' ')?;
-            let name = comm.trim().rsplit('/').next()?;
-            if name != "claude" || tty == "??" {
-                return None;
-            }
-            Some((pid.parse().ok()?, tty.to_string()))
-        })
-        .collect()
-}
-
-/// Working directory per pid from `lsof -a -d cwd -Fpn -p <pids>`. A `p` line starts a process
-/// and its `n` line holds the path.
-pub fn cwds_from_lsof(output: &str) -> HashMap<u32, String> {
-    let mut cwds = HashMap::new();
-    let mut pid: Option<u32> = None;
-    for line in output.lines() {
-        if let Some(text) = line.strip_prefix('p') {
-            pid = text.parse().ok();
-        } else if let (Some(id), Some(path)) = (pid, line.strip_prefix('n')) {
-            if !path.is_empty() {
-                cwds.insert(id, path.to_string());
-            }
-        }
-    }
-    cwds
-}
-
-/// Short name for a working directory: `~` for home, else the last path component.
-pub fn label_for(cwd: &str, home: &str) -> String {
-    if cwd == home {
-        return "~".into();
-    }
-    cwd.trim_end_matches('/')
-        .rsplit('/')
-        .next()
-        .filter(|name| !name.is_empty())
-        .unwrap_or("/")
-        .to_string()
-}
-
-/// True for the spinner glyphs Claude Code cycles while it works: `◐◑◒◓` and braille.
-const fn is_spinner(c: char) -> bool {
-    matches!(c, '\u{25D0}'..='\u{25D3}' | '\u{2800}'..='\u{28FF}')
-}
-
-/// Activity status from the tty age and the title glyph. A spinner means Claude is mid-task, so it
-/// is `Active` while the tty is at most `SPINNER_ACTIVE_WITHIN` old. Otherwise the age decides
-/// against `ACTIVE_WITHIN`. `✳` does not change the result.
-pub fn status_for(age: Duration, title_glyph: Option<Glyph>) -> SessionStatus {
-    let spinning = title_glyph == Some(Glyph::Spinner) && age <= SPINNER_ACTIVE_WITHIN;
-    if spinning || age <= ACTIVE_WITHIN {
-        SessionStatus::Active
-    } else {
-        SessionStatus::Stale
-    }
-}
-
-/// Short age for a key corner: `NOW` under a minute, then `2M`, `1H`, `3D`. Empty when unknown.
-pub fn age_label(age: Option<Duration>) -> String {
-    let Some(age) = age else {
-        return String::new();
-    };
-    let secs = age.as_secs();
-    match secs {
-        0..=59 => "NOW".into(),
-        60..=3599 => format!("{}M", secs / 60),
-        3600..=86_399 => format!("{}H", secs / 3600),
-        _ => format!("{}D", secs / 86_400),
-    }
-}
 
 /// True when `pid` is still a `claude` process on `tty`, per a fresh `ps` output. A tty that
 /// closed and was reused by another tab fails this check.
