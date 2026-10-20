@@ -23,8 +23,8 @@ rules:
     error: 265
   - pattern: "src/infrastructure/persistence_tests.rs"
     error: 164
-  - pattern: "src/infrastructure/app_icon.rs"
-    error: 227
+  - pattern: "src/infrastructure/app_icon_tests.rs"
+    error: 134
   - pattern: "src/infrastructure/images/numpad.rs"
     error: 225
   - pattern: "src/presentation/tui/render.rs"
