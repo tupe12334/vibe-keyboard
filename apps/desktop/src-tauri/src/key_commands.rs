@@ -4,9 +4,10 @@ use std::io::Cursor;
 
 use base64::Engine as _;
 use image::RgbImage;
-use vibe_keyboard::domain::profile::{Action, Profile, BUILTIN_NAMES};
+use vibe_keyboard::domain::profile::{Action, Profile};
 use vibe_keyboard::infrastructure::images::key_image;
 use vibe_keyboard::infrastructure::profile_store;
+use vibe_keyboard::plugins;
 
 /// PNG data URL of one key, drawn by the same `key_image` the deck uses.
 /// `profile` is the layout to preview, which may be unsaved.
@@ -33,7 +34,7 @@ pub fn action_problem(action: Action, page_count: u32) -> Option<String> {
 #[tauri::command]
 #[specta::specta]
 pub fn list_builtins() -> Vec<String> {
-    BUILTIN_NAMES.iter().map(ToString::to_string).collect()
+    plugins::names().map(String::from).collect()
 }
 
 pub(crate) fn png_data_url(image: &RgbImage) -> Result<String, String> {

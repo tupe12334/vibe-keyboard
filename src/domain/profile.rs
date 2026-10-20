@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 mod bar_style;
-mod builtins;
 mod color;
 mod display;
 mod input_config;
@@ -13,7 +12,6 @@ mod legacy;
 mod page;
 mod prompt;
 pub use bar_style::*;
-pub use builtins::BUILTIN_NAMES;
 #[cfg(test)]
 use color::DEFAULT_BG;
 pub use color::{format_color, parse_color};
@@ -84,7 +82,7 @@ impl Action {
             ActionKind::GoToPage => Self::GoToPage { page: 0 },
             ActionKind::PushToTalk => Self::PushToTalk { key: None },
             ActionKind::Builtin => Self::Builtin {
-                name: BUILTIN_NAMES[0].into(),
+                name: crate::plugins::PLUGINS[0].name().into(),
             },
         }
     }

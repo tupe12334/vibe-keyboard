@@ -8,7 +8,6 @@ use crate::domain::profile::inner_rect;
     reason = "diagnostic report for the key layout check"
 )]
 fn key_content_fills_the_visible_rect() {
-    use crate::domain::profile::BUILTIN_NAMES;
     use crate::infrastructure::images::ICON_NAMES;
 
     let root = PathBuf::from("/nonexistent");
@@ -29,11 +28,12 @@ fn key_content_fills_the_visible_rect() {
     let bg_hex = "#1E3C78";
     let bg = parse_color(bg_hex).unwrap_or([0; 3]);
     let mut icons: Vec<(String, KeyConfig)> = Vec::new();
-    for name in BUILTIN_NAMES {
-        // The session list tile is drawn by its page, not as a key icon.
-        if name == "claude_sessions" {
+    for plugin in crate::plugins::PLUGINS {
+        // A plugin with no tile shows its label, checked below.
+        if plugin.tile().is_none() {
             continue;
         }
+        let name = plugin.name();
         icons.push((
             name.to_string(),
             KeyConfig {

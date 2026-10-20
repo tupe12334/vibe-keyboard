@@ -1,6 +1,7 @@
 use crate::domain::hotkey::{key_code, parse_hotkey};
 
-use crate::domain::profile::{Action, BUILTIN_NAMES};
+use crate::domain::profile::Action;
+use crate::plugins;
 
 impl Action {
     /// Reason this action cannot run, if any. `page_count` is the number of pages in the profile.
@@ -16,7 +17,8 @@ impl Action {
             Self::GoToPage { page } => {
                 (*page >= page_count).then(|| format!("go-to page {page} does not exist"))
             }
-            Self::Builtin { name } => (!BUILTIN_NAMES.contains(&name.as_str()))
+            Self::Builtin { name } => plugins::find(name)
+                .is_none()
                 .then(|| format!("unknown built-in '{name}'")),
             Self::PushToTalk { key } => key.as_deref().and_then(push_to_talk_problem),
         }

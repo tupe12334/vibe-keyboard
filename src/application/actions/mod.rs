@@ -1,8 +1,8 @@
 mod browser;
-mod builtin;
 mod centy;
 mod claude;
 mod log_file;
+mod plugin_host;
 mod profile;
 mod terminal;
 mod vscode_config;

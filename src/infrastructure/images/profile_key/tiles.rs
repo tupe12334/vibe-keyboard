@@ -4,11 +4,7 @@ use super::super::text::draw_label;
 use super::{inset_key, FALLBACK_BG, FALLBACK_FG, KEY_SIZE, NAV_BG};
 use crate::domain::profile::KeyInset;
 
-pub(in crate::infrastructure::images) fn label_tile(
-    label: &str,
-    bg: [u8; 3],
-    fg: [u8; 3],
-) -> RgbImage {
+pub(crate) fn label_tile(label: &str, bg: [u8; 3], fg: [u8; 3]) -> RgbImage {
     let mut img = ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE, Rgb(bg));
     draw_label(&mut img, label, Rgb(fg));
     img

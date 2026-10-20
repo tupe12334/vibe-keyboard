@@ -53,7 +53,7 @@ pub enum Action {
         #[cfg_attr(feature = "specta", specta(type = u32))]
         page: usize,
     },
-    /// A built-in action from `BUILTIN_NAMES`.
+    /// A built-in action: the name of a plugin in `crate::plugins::PLUGINS`.
     Builtin {
         name: String,
     },
