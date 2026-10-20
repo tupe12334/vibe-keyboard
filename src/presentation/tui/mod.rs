@@ -1,6 +1,7 @@
 mod app_state;
 mod render;
 mod render_action;
+mod render_grid;
 mod render_title;
 
 pub use app_state::AppState;
