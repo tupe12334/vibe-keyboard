@@ -33,14 +33,18 @@ use std::sync::{Arc, Mutex};
 
 use tauri::{Manager, WindowEvent};
 use tauri_plugin_autostart::MacosLauncher;
+use vibe_keyboard::infrastructure::login_path::apply_login_path;
 use vibe_keyboard::presentation::tui::AppState;
 
 use app::App;
 
 fn main() {
+    // First, before any thread or child process. A login start has a minimal PATH.
+    let login_path_dirs = apply_login_path();
     // Held for the whole run: dropping it stops the file log.
     let state = Arc::new(Mutex::new(AppState::new(0)));
     let _log_guard = vibe_keyboard::logging::init(Arc::clone(&state));
+    tracing::info!("PATH extended at login: {login_path_dirs:?}");
 
     let builder = bindings::specta_builder();
 

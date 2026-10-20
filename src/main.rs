@@ -2,11 +2,12 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex, PoisonError};
 
 use signal_hook::consts::{SIGINT, SIGTERM};
-use tracing::warn;
+use tracing::{info, warn};
 use vibe_keyboard::controller::{self, ControllerEvent, RunOptions};
 use vibe_keyboard::domain::accessibility::{push_to_talk_warning, uses_push_to_talk};
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::keyboard::accessibility_trusted;
+use vibe_keyboard::infrastructure::login_path::apply_login_path;
 use vibe_keyboard::infrastructure::usb::calibrate::calibrate;
 use vibe_keyboard::logging;
 use vibe_keyboard::presentation::tui::AppState;
@@ -16,6 +17,8 @@ use vibe_keyboard::presentation::tui::AppState;
     reason = "the duplicate-start message is shown in the terminal before exit"
 )]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // First, before any thread or child process. A login start has a minimal PATH.
+    let login_path_dirs = apply_login_path();
     // One controller per deck. Taken before logging (which truncates app.log) and before any
     // device access. The guard lives until exit, so the lock stays held for the whole run.
     let _controller_lock = match controller::claim() {
@@ -40,6 +43,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state = Arc::new(Mutex::new(AppState::new(0)));
     let _log_guard = logging::init(Arc::clone(&state));
+    info!("PATH extended at login: {login_path_dirs:?}");
     controller::load_profile(&state);
     // Push-to-talk does nothing without Accessibility. Say so once at startup.
     let uses = uses_push_to_talk(&state.lock().unwrap_or_else(PoisonError::into_inner).profile);
