@@ -1,13 +1,12 @@
 //! App state shared by the commands, the tray and the controller thread.
 
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
 
 use tauri::AppHandle;
 use vibe_keyboard::controller;
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
-use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::presentation::tui::AppState;
 
 use crate::lifecycle::{start_with, stop_running, Running};
@@ -74,13 +73,5 @@ impl App {
     /// Stop the controller and wait for it. The controller clears the deck on the way out.
     pub fn stop(&self) {
         stop_running(&self.running);
-    }
-
-    /// The profile file time the editor last loaded or saved. Set from the read or the write.
-    pub fn set_loaded_mtime(&self, mtime: Option<SystemTime>) {
-        *self
-            .loaded_mtime
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner) = mtime;
     }
 }
