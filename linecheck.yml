@@ -1,6 +1,6 @@
 rules:
   - pattern: "src/bin/editor.rs"
-    error: 1304
+    error: 1220
   - pattern: "src/domain/navigation.rs"
     error: 1201
   - pattern: "src/domain/profile.rs"
