@@ -23,3 +23,4 @@ tracing = "0.1"
 # Mock runtime: the commands run through the IPC layer in tests, with no window.
 tauri = { version = "2", features = ["test", "tray-icon", "image-png"] }
 serde_json = "1"
+toml = "0.8"
