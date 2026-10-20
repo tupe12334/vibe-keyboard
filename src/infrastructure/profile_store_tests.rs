@@ -1,4 +1,4 @@
-use super::*;
+use super::{profile_guide::GUIDE_README, *};
 use crate::domain::profile::{Action, KeyConfig};
 use std::os::unix::fs::PermissionsExt;
 

@@ -11,6 +11,10 @@ use crate::infrastructure::persistence::config_dir;
 mod profile_images;
 pub use profile_images::{import_image, resolve_image};
 
+#[path = "profile_guide.rs"]
+mod profile_guide;
+use profile_guide::write_guide;
+
 /// `~/.config/vibe-keyboard/`. Holds the tracked `profile.toml` and `images/`.
 pub fn root_dir() -> PathBuf {
     config_dir().join("vibe-keyboard")
@@ -55,25 +59,6 @@ pub fn ensure_default(path: &Path) -> Result<Profile, String> {
     }
 }
 
-const GUIDE_README: &str = include_str!("../../assets/config/README.md");
-const GUIDE_GITIGNORE: &str = "state.toml\napp.log\n*.tmp\n.DS_Store\n";
-
-/// Keep `README.md` equal to the bundled text: write it when missing or different.
-/// `.gitignore` is written only when missing, so users can extend it.
-fn write_guide(root: &Path) -> Result<(), String> {
-    fs::create_dir_all(root).map_err(|e| format!("create {}: {e}", root.display()))?;
-    let readme = root.join("README.md");
-    if fs::read(&readme).ok().as_deref() != Some(GUIDE_README.as_bytes()) {
-        write_atomic(&readme, GUIDE_README.as_bytes())?;
-    }
-    let ignore = root.join(".gitignore");
-    if !ignore.exists() {
-        fs::write(&ignore, GUIDE_GITIGNORE)
-            .map_err(|e| format!("write {}: {e}", ignore.display()))?;
-    }
-    Ok(())
-}
-
 /// Write the profile to `path`. Output is deterministic and always ends with a newline.
 /// Skips the write when the bytes are unchanged.
 #[allow(clippy::expect_used, reason = "a Profile always serializes")]
@@ -92,7 +77,7 @@ pub fn save(path: &Path, profile: &Profile) -> Result<(), String> {
 
 /// Write `bytes` to `path` through a sibling `<name>.tmp`, then rename it over `path`.
 /// A reader never sees a half-written file.
-fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
+pub(super) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<(), String> {
     let mut tmp = path.as_os_str().to_owned();
     tmp.push(".tmp");
     let tmp = PathBuf::from(tmp);
