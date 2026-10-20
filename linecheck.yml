@@ -30,7 +30,7 @@ rules:
   - pattern: "src/presentation/tui/render.rs"
     error: 224
   - pattern: "src/infrastructure/claude_sessions/os.rs"
-    error: 217
+    error: 147
   - pattern: "src/infrastructure/frontmost.rs"
     error: 180
   - pattern: "src/domain/hotkey.rs"

@@ -11,6 +11,7 @@ fn selecting_a_session_focuses_its_tab_then_opens_actions() {
         label: "s".into(),
         status: SessionStatus::Active,
         age: None,
+        focused: false,
     };
     let mut nav = NavigationStack::new(0, 1);
     let mut focused = Vec::new();

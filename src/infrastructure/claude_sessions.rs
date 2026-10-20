@@ -2,8 +2,10 @@
 //!
 //! This file holds the pure logic. Process spawns live in `claude_sessions/os.rs`.
 
+mod new_session;
 mod os;
 
+pub use new_session::new_session_script;
 pub use os::{focus_session, list_sessions, open_new_session, send_prompt};
 
 use std::collections::HashMap;
@@ -223,6 +225,7 @@ pub fn build_sessions(
                 label,
                 status,
                 age,
+                focused: false,
             }
         })
         .collect();
@@ -247,29 +250,6 @@ fn order_key(session: &ClaudeSession) -> (SessionStatus, Duration) {
 pub fn is_valid_tty(tty: &str) -> bool {
     tty.strip_prefix("ttys")
         .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
-}
-
-/// `AppleScript` that opens a new window running `claude` in the home folder. iTerm2 types the
-/// command into the new window's shell, so the user's own PATH and profile apply.
-const ITERM_NEW_SESSION: &str = r#"tell application "iTerm2"
-  activate
-  create window with default profile
-  tell current session of current window to write text "claude"
-end tell"#;
-
-/// `AppleScript` for Terminal.app. `do script` opens a new window and runs `claude` in it.
-const TERMINAL_NEW_SESSION: &str = r#"tell application "Terminal"
-  activate
-  do script "claude"
-end tell"#;
-
-/// The script that opens a new Claude Code window in `app`. Fixed text, so no user input is
-/// ever put into it.
-pub const fn new_session_script(app: NewSessionTerminal) -> &'static str {
-    match app {
-        NewSessionTerminal::ITerm => ITERM_NEW_SESSION,
-        NewSessionTerminal::Terminal => TERMINAL_NEW_SESSION,
-    }
 }
 
 /// `AppleScript` expression for `text`. Escapes backslash and double quote. `\n`, `\r` and `\t`

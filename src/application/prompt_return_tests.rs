@@ -9,6 +9,7 @@ fn session(app: TerminalApp, tty: &str) -> ClaudeSession {
         label: "s".into(),
         status: SessionStatus::Active,
         age: None,
+        focused: false,
     }
 }
 

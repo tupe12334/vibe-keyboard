@@ -11,7 +11,7 @@ fn label_session_and_calibration_tiles_respect_the_inset() {
     let label = label_image("HI", &inset);
     assert_eq!(label.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
     assert!((0..20).all(|y| label.get_pixel(0, y).0 == FALLBACK_BG));
-    let session = session_image("X", SessionStatus::Active, "1m", &inset);
+    let session = session_image("X", SessionStatus::Active, "1m", &inset, false);
     assert_eq!(session.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
     assert!((0..20).all(|y| session.get_pixel(0, y).0 == FALLBACK_BG));
     // Calibration: the red outline starts on the inset edge, and the hidden band stays black.

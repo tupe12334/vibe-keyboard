@@ -8,6 +8,7 @@ use image::DynamicImage;
 use crate::domain::actions::{ButtonAction, ClaudeSession, ScreenView, SessionStatus};
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::infrastructure::claude_sessions::{age_label, list_sessions};
+use crate::infrastructure::focused_session::with_focus;
 use crate::infrastructure::images::{label_image, session_image};
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::{send_button_image, Device};
@@ -53,9 +54,7 @@ impl SessionsRefresh {
         }
         if self.rx.is_none() && self.started.is_none_or(|t| t.elapsed() >= REFRESH) {
             let (tx, rx) = channel();
-            std::thread::spawn(move || {
-                let _ = tx.send(list_sessions());
-            });
+            std::thread::spawn(move || tx.send(with_focus(list_sessions())).ok());
             self.rx = Some(rx);
             self.started = Some(Instant::now());
         }
@@ -67,6 +66,7 @@ fn same_view(old: &[ClaudeSession], new: &[ClaudeSession]) -> bool {
     old.len() == new.len()
         && old.iter().zip(new).all(|(a, b)| {
             a.tty == b.tty
+                && a.focused == b.focused
                 && a.label == b.label
                 && a.status == b.status
                 && age_label(a.age) == age_label(b.age)
@@ -86,7 +86,7 @@ pub fn render_claude_sessions(
     let inset = super::key_tiles::key_inset(state);
     let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
     let mut tiles = Vec::new();
-    for (i, session) in sessions
+    for (i, entry) in sessions
         .iter()
         .skip(page * PER_PAGE)
         .take(PER_PAGE)
@@ -96,13 +96,13 @@ pub fn render_claude_sessions(
         actions.insert(
             key,
             ButtonAction {
-                name: session.label.clone(),
-                title: status_text(session.status).into(),
-                description: format!("/dev/{}", session.tty),
+                name: entry.label.clone(),
+                title: status_text(entry.status).into(),
+                description: format!("/dev/{}", entry.tty),
             },
         );
-        let age = age_label(session.age);
-        let tile = session_image(&session.label, session.status, &age, &inset);
+        let age = age_label(entry.age);
+        let tile = session_image(&entry.label, entry.status, &age, &inset, entry.focused);
         tiles.push((key, tile));
     }
     if page > 0 {

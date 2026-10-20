@@ -2,16 +2,15 @@
 //! logic that decides what to do with the output lives in `claude_sessions.rs`.
 
 use std::collections::HashMap;
-use std::io::Read;
 use std::path::Path;
-use std::process::{Command, Stdio};
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 
 use super::{
     build_sessions, claude_processes, cwds_from_lsof, is_valid_tty, parse_tab_titles,
     summary_from_jsonl,
 };
 use crate::domain::actions::{ClaudeSession, TerminalApp};
+use crate::infrastructure::process::run;
 
 mod terminal;
 pub use terminal::{focus_session, open_new_session, send_prompt};
@@ -145,34 +144,4 @@ fn summary_for(cwd: &str, home: &str) -> Option<String> {
         .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "jsonl"))
         .max_by_key(|entry| entry.metadata().and_then(|meta| meta.modified()).ok())?;
     summary_from_jsonl(&std::fs::read_to_string(newest.path()).ok()?)
-}
-
-/// Run a program with no shell. Returns its stdout when it ends within `timeout`. The exit
-/// status is ignored, because `lsof` exits non-zero when one pid has already gone.
-fn run(program: &str, args: &[&str], timeout: Duration) -> Option<String> {
-    let mut child = Command::new(program)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .ok()?;
-    // Read stdout on its own thread. A full pipe would otherwise stall the child until timeout.
-    let mut stdout = child.stdout.take()?;
-    let reader = std::thread::spawn(move || {
-        let mut text = String::new();
-        stdout.read_to_string(&mut text).map(|_| text)
-    });
-    let deadline = Instant::now() + timeout;
-    loop {
-        match child.try_wait() {
-            Ok(Some(_)) => break,
-            Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return None;
-            }
-        }
-    }
-    reader.join().ok()?.ok()
 }

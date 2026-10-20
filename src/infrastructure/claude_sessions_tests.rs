@@ -298,18 +298,6 @@ fn focus_scripts_embed_the_device_path() {
 }
 
 #[test]
-fn new_session_script_runs_claude_in_the_chosen_app() {
-    let iterm = new_session_script(NewSessionTerminal::ITerm);
-    assert!(iterm.contains(r#"tell application "iTerm2""#));
-    assert!(iterm.contains(r#"write text "claude""#));
-    assert!(!iterm.contains("Terminal"));
-    let terminal = new_session_script(NewSessionTerminal::Terminal);
-    assert!(terminal.contains(r#"tell application "Terminal""#));
-    assert!(terminal.contains(r#"do script "claude""#));
-    assert!(!terminal.contains("iTerm2"));
-}
-
-#[test]
 fn applescript_string_escapes_quotes_and_backslashes() {
     assert_eq!(applescript_string("/recap").as_deref(), Some(r#""/recap""#));
     assert_eq!(

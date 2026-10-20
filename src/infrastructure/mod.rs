@@ -1,10 +1,12 @@
 pub mod app_icon;
 pub mod claude_sessions;
 pub mod controller_lock;
+pub mod focused_session;
 pub mod frontmost;
 pub mod images;
 pub mod moadim;
 pub mod persistence;
+pub mod process;
 pub mod profile_store;
 pub mod system_metrics;
 pub mod usb;
