@@ -20,6 +20,11 @@ pub const fn action_pages(count: usize) -> usize {
     }
 }
 
+/// True when key 15 is EXIT on `page`: the last action page. Earlier pages use key 15 for MORE.
+pub const fn exit_on_page(page: usize, count: usize) -> bool {
+    page + 1 >= action_pages(count)
+}
+
 /// Index into the prompt list for `key` on `page`. None for a key with no prompt on that page.
 pub const fn prompt_index(page: usize, key: u8, count: usize) -> Option<usize> {
     if key < 1 || key > 10 {

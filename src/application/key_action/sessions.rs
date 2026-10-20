@@ -1,10 +1,10 @@
 use std::sync::{Arc, Mutex};
 
 use super::Action;
-use crate::application::pages::RECAP_TEXT;
+use crate::application::pages::{confirm_action, exit_action, RECAP_TEXT};
 use crate::application::{lock, prompt_return};
 use crate::domain::actions::NewSessionTerminal;
-use crate::domain::navigation::{prompt_index, Screen};
+use crate::domain::navigation::{exit_on_page, prompt_index, Screen};
 use crate::presentation::tui;
 
 /// Keys on the Claude session screens: the list, the action page and the new-session choice.
@@ -34,6 +34,7 @@ pub(super) fn action(key: u8, screen: &Screen, state: &Arc<Mutex<tui::AppState>>
                 _ => None,
             };
             match (key, text) {
+                (15, _) if exit_on_page(*page, prompts.len()) => exit_action(session),
                 (15, _) => Action::TurnActionPage {
                     forward: true,
                     count: prompts.len(),
@@ -49,6 +50,7 @@ pub(super) fn action(key: u8, screen: &Screen, state: &Arc<Mutex<tui::AppState>>
                 },
             }
         }
+        Screen::ConfirmExit { session } => confirm_action(key, session),
         Screen::NewSessionChoice => match key {
             1 => Action::NewSession {
                 terminal: NewSessionTerminal::ITerm,

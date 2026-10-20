@@ -29,6 +29,7 @@ pub(super) fn action_for_key(
         | Screen::CentyIssueActions { .. } => centy::action(key, screen),
         Screen::ClaudeSessions { .. }
         | Screen::SessionActions { .. }
+        | Screen::ConfirmExit { .. }
         | Screen::NewSessionChoice => sessions::action(key, screen, state),
         Screen::InputNumber { .. } => input_number::action(key, screen),
     }

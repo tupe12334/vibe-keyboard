@@ -32,6 +32,15 @@ pub fn muted_image(label: &str, inset: &KeyInset) -> RgbImage {
     )
 }
 
+/// A red label tile for a destructive action, such as EXIT.
+pub fn danger_image(label: &str, inset: &KeyInset) -> RgbImage {
+    inset_key(
+        &label_tile(label, [170, 30, 30], [255, 255, 255]),
+        inset,
+        [170, 30, 30],
+    )
+}
+
 /// Keys 11, 12 and 13 always navigate. Each shows a fixed label.
 pub(super) fn nav_image(key: u8) -> RgbImage {
     let label = match key {

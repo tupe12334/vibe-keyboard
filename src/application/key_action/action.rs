@@ -43,6 +43,9 @@ pub(in crate::application) enum Action {
     OpenSessionActions {
         session: crate::domain::actions::ClaudeSession,
     },
+    OpenConfirmExit {
+        session: crate::domain::actions::ClaudeSession,
+    },
     SendPrompt {
         pid: u32,
         tty: String,

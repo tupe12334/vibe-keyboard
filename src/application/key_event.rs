@@ -75,7 +75,9 @@ pub fn handle_key_event(
         13 if !is_input_number
             && !matches!(
                 nav.current(),
-                Screen::ClaudeSessions { .. } | Screen::SessionActions { .. }
+                Screen::ClaudeSessions { .. }
+                    | Screen::SessionActions { .. }
+                    | Screen::ConfirmExit { .. }
             ) =>
         {
             nav.forward();

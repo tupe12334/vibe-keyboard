@@ -20,6 +20,7 @@ impl NavigationStack {
             | Screen::InputNumber { .. }
             | Screen::NewSessionChoice
             | Screen::SessionActions { .. }
+            | Screen::ConfirmExit { .. }
             | Screen::MoadimRoutine { .. } => false,
         }
     }
@@ -63,6 +64,7 @@ impl NavigationStack {
             | Screen::InputNumber { .. }
             | Screen::NewSessionChoice
             | Screen::SessionActions { .. }
+            | Screen::ConfirmExit { .. }
             | Screen::MoadimRoutine { .. } => {}
         }
     }
