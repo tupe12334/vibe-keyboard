@@ -7138,6 +7138,7 @@ dependencies = [
  "base64 0.22.1",
  "image",
  "serde",
+ "serde_json",
  "specta",
  "specta-typescript",
  "tauri",

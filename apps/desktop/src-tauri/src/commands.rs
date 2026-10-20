@@ -41,3 +41,7 @@ pub fn device_status(app: State<'_, App>) -> DeviceStatus {
         error: app.last_error(),
     }
 }
+
+#[cfg(test)]
+#[path = "commands_tests.rs"]
+mod tests;
