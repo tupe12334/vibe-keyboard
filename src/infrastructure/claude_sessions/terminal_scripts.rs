@@ -60,6 +60,7 @@ pub fn focus_scripts(tty: &str) -> Option<[String; 2]> {
           if tty of s is "{device}" then
             tell s to select
             tell t to select
+            tell w to select
             set index of w to 1
             activate
             return "found"
@@ -78,6 +79,7 @@ return "missing""#
       repeat with t in tabs of w
         if tty of t is "{device}" then
           set selected of t to true
+          set frontmost of w to true
           set index of w to 1
           activate
           return "found"
