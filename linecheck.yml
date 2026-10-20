@@ -1,6 +1,4 @@
 rules:
-  - pattern: "src/domain/navigation.rs"
-    error: 157
   - pattern: "src/domain/navigation/movement.rs"
     error: 114
   - pattern: "src/main.rs"
