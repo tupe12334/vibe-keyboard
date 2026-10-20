@@ -4,9 +4,7 @@ use std::sync::{Arc, Mutex};
 use image::DynamicImage;
 
 use crate::domain::actions::{ButtonAction, ClaudeSession, ScreenView, TerminalApp};
-use crate::domain::navigation::{
-    action_pages, prompt_index, NavigationStack, Screen, PROMPTS_PER_PAGE,
-};
+use crate::domain::navigation::{action_pages, prompt_index, PROMPTS_PER_PAGE};
 
 use crate::infrastructure::images::{label_image, muted_image};
 use crate::infrastructure::usb::{send_button_image, Device};
@@ -61,26 +59,9 @@ pub fn render_session_actions(
             },
         ));
     }
-    tiles.push((
-        14,
-        if typed {
-            label_image("RECAP")
-        } else {
-            muted_image("RECAP")
-        },
-    ));
-    actions.insert(
-        14,
-        ButtonAction {
-            name: "Recap".into(),
-            title: "Recap".into(),
-            description: if typed {
-                format!("Send {RECAP_TEXT} to this session")
-            } else {
-                "Recap: this app takes no typed text".into()
-            },
-        },
-    );
+    let (recap_tile, recap) = recap_key(typed);
+    tiles.push((14, recap_tile));
+    actions.insert(14, recap);
     if action_pages(prompts.len()) > 1 {
         tiles.push((15, label_image("MORE")));
     }
@@ -106,49 +87,11 @@ pub fn render_session_actions(
     }
 }
 
-/// Selecting a session: `focus` runs first, on the session's tty, then the action page opens. The
-/// device loop passes a `focus` that runs in a thread, because osascript can be slow.
-pub fn open_session_actions(
-    nav: &mut NavigationStack,
-    session: ClaudeSession,
-    focus: impl FnOnce(&str),
-) {
-    focus(&session.tty);
-    nav.push(Screen::SessionActions { session, page: 0 });
-}
-
-/// Shows a short message on a prompt key that the session's app cannot take. It stays until the
-/// user leaves the page.
-pub fn show_focus_only(handle: &Device, key: u8) {
-    send_button_image(
-        handle,
-        key,
-        DynamicImage::ImageRgb8(label_image("FOCUS ONLY")),
-    );
-}
+#[path = "session_actions_keys.rs"]
+mod keys;
+use keys::recap_key;
+pub use keys::{open_session_actions, show_focus_only};
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::actions::SessionStatus;
-
-    #[test]
-    fn selecting_a_session_focuses_its_tab_then_opens_actions() {
-        let session = ClaudeSession {
-            pid: 1,
-            app: TerminalApp::ITerm,
-            tty: "ttys009".into(),
-            label: "s".into(),
-            status: SessionStatus::Active,
-            age: None,
-        };
-        let mut nav = NavigationStack::new(0, 1);
-        let mut focused = Vec::new();
-        open_session_actions(&mut nav, session, |tty| focused.push(tty.to_string()));
-        assert_eq!(focused, ["ttys009"]);
-        assert!(matches!(
-            nav.current(),
-            Screen::SessionActions { page: 0, .. }
-        ));
-    }
-}
+#[path = "session_actions_tests.rs"]
+mod tests;
