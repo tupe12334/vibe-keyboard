@@ -27,5 +27,5 @@ mod vscode;
 #[path = "claude_sessions_tests/routines.rs"]
 mod routines;
 
-#[path = "claude_sessions_tests/flash.rs"]
-mod flash;
+#[path = "claude_sessions_tests/highlight.rs"]
+mod highlight;

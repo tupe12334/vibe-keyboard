@@ -60,12 +60,12 @@ pub fn more_or_exit_key(
 /// Label on the BLINK key (10).
 pub const BLINK_LABEL: &str = "BLINK";
 
-/// The BLINK key (10): focuses the session, then flashes its pane. Works for every app, so never muted.
+/// The BLINK key (10): focuses the session, then highlights its pane in iTerm2. Focus works for every app.
 pub fn blink_key(inset: &KeyInset) -> (RgbImage, ButtonAction) {
     let action = ButtonAction {
         name: "Blink".into(),
         title: "Blink".into(),
-        description: "Focus this session and flash its pane".into(),
+        description: "Focus this session and show a fireworks highlight".into(),
     };
     (label_image(BLINK_LABEL, inset), action)
 }

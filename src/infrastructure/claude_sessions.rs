@@ -2,8 +2,8 @@
 //!
 //! This file holds the pure logic. Process spawns live in `claude_sessions/os.rs`.
 
-mod flash;
 mod focus_check;
+mod highlight;
 mod new_session;
 mod os;
 mod process_list;
@@ -14,10 +14,10 @@ mod terminal_scripts;
 mod titles;
 mod vscode_owner;
 
-pub use flash::flash_scripts;
 pub use focus_check::{
     focused_bundle, is_frontmost, is_selected, session_moved, ITERM_BUNDLE, TERMINAL_BUNDLE,
 };
+pub use highlight::highlight_target;
 pub use new_session::new_session_script;
 pub use os::{
     blink_session, focus_session, iterm_moved_from, list_sessions, open_new_session, send_prompt,

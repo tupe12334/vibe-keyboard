@@ -45,8 +45,8 @@ pub(super) fn session_action(
         }
         Action::BlinkSession { session } => {
             info!("claude sessions: blink {}", session.tty);
-            // Off the device loop: the focus and the flash both wait on osascript.
-            std::thread::spawn(move || blink_session(&session.tty));
+            // Off the device loop: the focus waits on osascript, and the write may block on the tty.
+            std::thread::spawn(move || blink_session(&session.tty, session.app));
         }
         Action::SendPrompt { pid, tty, text } => {
             info!("claude sessions: send prompt to {tty}");

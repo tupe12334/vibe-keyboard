@@ -1,15 +1,17 @@
-//! osascript reads of the tty shown in front, the wait for focus to land on it, and the BLINK flash.
-//! Excluded from the coverage gate; the rules live in `claude_sessions/focus_check.rs` and
-//! `claude_sessions/flash.rs`.
+//! osascript reads of the tty shown in front, the wait for focus to land on it, and the BLINK
+//! highlight. Excluded from the coverage gate; the rules live in `claude_sessions/focus_check.rs`
+//! and `claude_sessions/highlight.rs`.
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use tracing::warn;
 
 use super::terminal::focus_session;
-use super::FOCUS_TIMEOUT;
-use crate::infrastructure::claude_sessions::{flash_scripts, is_selected, session_moved};
+use crate::domain::actions::TerminalApp;
+use crate::infrastructure::claude_sessions::{highlight_target, is_selected, session_moved};
 use crate::infrastructure::process::run;
 
 /// Hard limit for one read. Each read is a separate osascript call.
@@ -68,14 +70,21 @@ pub fn iterm_moved_from(tty: &str) -> bool {
     session_moved(front_tty(0).as_deref(), tty)
 }
 
-/// Focus the session on `tty`, then flash its pane. The flash is skipped for apps with no tab on
-/// `tty` (VS Code): the scripts print `missing` and nothing changes. Blocks; call it from a thread.
-pub fn blink_session(tty: &str) {
+/// Focus the session on `tty`, then ask iTerm2 for a fireworks highlight on that pane. Only iTerm2
+/// reads the escape, so other apps get focus only. Blocks; call it from a thread.
+pub fn blink_session(tty: &str, app: TerminalApp) {
     focus_session(tty);
-    let Some(scripts) = flash_scripts(tty) else {
+    if app != TerminalApp::ITerm {
+        return;
+    }
+    let Some((path, bytes)) = highlight_target(tty) else {
         return;
     };
-    let _ = scripts.iter().any(|script| {
-        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
-    });
+    let written = OpenOptions::new()
+        .write(true)
+        .open(&path)
+        .and_then(|mut device| device.write_all(bytes));
+    if let Err(err) = written {
+        warn!("claude sessions: highlight on {path} failed: {err}");
+    }
 }
