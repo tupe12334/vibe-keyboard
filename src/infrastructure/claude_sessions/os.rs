@@ -15,7 +15,7 @@ mod summary;
 mod tab_scripts;
 mod terminal;
 mod tty_age;
-pub use front_tty::iterm_moved_from;
+pub use front_tty::{blink_session, iterm_moved_from};
 use summary::summary_for;
 use tab_scripts::{ITERM_TITLES, TERMINAL_TITLES};
 pub use terminal::{focus_session, open_new_session, send_prompt};

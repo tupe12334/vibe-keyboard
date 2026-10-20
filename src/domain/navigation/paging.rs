@@ -8,8 +8,11 @@ pub(super) const fn moadim_len(list: &MoadimList) -> usize {
     }
 }
 
-/// Prompt keys on a session action page: keys 1 to 10. Ten prompts fit on one page.
-pub const PROMPTS_PER_PAGE: usize = 10;
+/// Prompt keys on a session action page: keys 1 to 9. Nine prompts fit on one page.
+pub const PROMPTS_PER_PAGE: usize = 9;
+
+/// Key 10 on every session action page: BLINK, which flashes the session's pane.
+pub const BLINK_KEY: u8 = 10;
 
 /// Number of action pages for `count` prompts. Always at least one.
 pub const fn action_pages(count: usize) -> usize {
@@ -27,7 +30,7 @@ pub const fn exit_on_page(page: usize, count: usize) -> bool {
 
 /// Index into the prompt list for `key` on `page`. None for a key with no prompt on that page.
 pub const fn prompt_index(page: usize, key: u8, count: usize) -> Option<usize> {
-    if key < 1 || key > 10 {
+    if key < 1 || key as usize > PROMPTS_PER_PAGE {
         return None;
     }
     let index = page * PROMPTS_PER_PAGE + (key as usize - 1);

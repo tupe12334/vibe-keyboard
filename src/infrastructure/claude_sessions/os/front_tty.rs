@@ -1,12 +1,15 @@
-//! osascript reads of the tty shown in front, and the wait for focus to land on it. Read-only.
-//! Excluded from the coverage gate; the rules live in `claude_sessions/focus_check.rs`.
+//! osascript reads of the tty shown in front, the wait for focus to land on it, and the BLINK flash.
+//! Excluded from the coverage gate; the rules live in `claude_sessions/focus_check.rs` and
+//! `claude_sessions/flash.rs`.
 
 use std::thread;
 use std::time::{Duration, Instant};
 
 use tracing::warn;
 
-use crate::infrastructure::claude_sessions::{is_selected, session_moved};
+use super::terminal::focus_session;
+use super::FOCUS_TIMEOUT;
+use crate::infrastructure::claude_sessions::{flash_scripts, is_selected, session_moved};
 use crate::infrastructure::process::run;
 
 /// Hard limit for one read. Each read is a separate osascript call.
@@ -63,4 +66,16 @@ pub fn settle_on(index: usize, tty: &str) -> bool {
 /// True when iTerm2's current session is no longer `tty`. Read once, for the push-to-talk probe.
 pub fn iterm_moved_from(tty: &str) -> bool {
     session_moved(front_tty(0).as_deref(), tty)
+}
+
+/// Focus the session on `tty`, then flash its pane. The flash is skipped for apps with no tab on
+/// `tty` (VS Code): the scripts print `missing` and nothing changes. Blocks; call it from a thread.
+pub fn blink_session(tty: &str) {
+    focus_session(tty);
+    let Some(scripts) = flash_scripts(tty) else {
+        return;
+    };
+    let _ = scripts.iter().any(|script| {
+        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
+    });
 }

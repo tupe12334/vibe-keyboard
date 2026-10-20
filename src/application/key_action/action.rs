@@ -46,6 +46,9 @@ pub(in crate::application) enum Action {
     OpenConfirmExit {
         session: crate::domain::actions::ClaudeSession,
     },
+    BlinkSession {
+        session: crate::domain::actions::ClaudeSession,
+    },
     SendPrompt {
         pid: u32,
         tty: String,
