@@ -5,6 +5,7 @@ import { KeyPanel } from "./KeyPanel";
 import { PageList } from "./PageList";
 import { DisplayPanel } from "./DisplayPanel";
 import { PromptsPanel } from "./PromptsPanel";
+import { SidePanel } from "./SidePanel";
 import { Toolbar } from "./Toolbar";
 import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
@@ -66,6 +67,7 @@ export function App() {
 
         <PromptsPanel profile={draft} limits={rules} onChange={setDraft} />
         <DisplayPanel display={draft.display} onChange={setDisplay} />
+        <SidePanel side={current.side ?? null} onChange={(side) => updatePage((p) => ({ ...p, side }))} />
 
         {selected !== null && (
           <KeyPanel
