@@ -44,7 +44,7 @@ export function ImageFields({
           <input value={image ?? ""} onChange={(e) => onChange(e.target.value || null)} />
         </Field>
       )}
-      {source === "file" && <GooglePhotoFields onChange={onChange} />}
+      {source === "file" && <GooglePhotoFields preview={preview} onChange={onChange} />}
       {source === "app" && <AppIconFields image={image} preview={preview} onChange={onChange} />}
     </div>
   );
