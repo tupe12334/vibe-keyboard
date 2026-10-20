@@ -29,7 +29,10 @@ impl super::Editor {
                         op = Some(PageOp::Down(index));
                     }
                     if ui
-                        .add_enabled(count > 1, egui::Button::new("Delete"))
+                        .add_enabled(
+                            profile_rules::can_delete_page(&self.session.profile),
+                            egui::Button::new("Delete"),
+                        )
                         .clicked()
                     {
                         op = Some(PageOp::Delete(index));
