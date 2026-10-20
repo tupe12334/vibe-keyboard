@@ -13,16 +13,18 @@ pub struct QuitGuard {
     confirmed: AtomicBool,
 }
 
-/// An exit waits for the editor unless it is confirmed or no editor is open to ask.
-pub fn must_ask(confirmed: bool, has_editor: bool) -> bool {
-    !confirmed && has_editor
+/// An exit waits for the editor only when the editor is open, has loaded the layout, and has not
+/// confirmed yet. Before the first load no edit can exist, so nothing unsaved can be lost.
+pub fn must_ask(confirmed: bool, has_editor: bool, editor_loaded: bool) -> bool {
+    !confirmed && has_editor && editor_loaded
 }
 
 /// Runs on every `ExitRequested`: tray Quit, Cmd+Q, or `app.exit`.
 pub fn on_exit_requested(app: &AppHandle, api: &tauri::ExitRequestApi) {
     let confirmed = app.state::<QuitGuard>().confirmed.load(Ordering::SeqCst);
     let has_editor = app.get_webview_window("main").is_some();
-    if must_ask(confirmed, has_editor) {
+    let editor_loaded = app.state::<App>().editor_loaded.load(Ordering::SeqCst);
+    if must_ask(confirmed, has_editor, editor_loaded) {
         api.prevent_exit();
         crate::tray::show_editor(app);
         // Emit errors only mean no webview is listening. The editor is open here, so none is.

@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { commands, type DisplaySettings_Serialize as DisplaySettings } from "./bindings";
 import type { KeyConfig, Page, Profile } from "./types";
+import { useSaveShortcut } from "./useSaveShortcut";
 
 /** The saved layout, the editor draft, the page shown, and the messages above the grid. */
 export function useProfile() {
@@ -55,6 +56,8 @@ export function useProfile() {
     setConflict(false);
     return true;
   };
+
+  useSaveShortcut(() => void save());
 
   // Edits the page on screen. Every other field of the draft stays as it was.
   const updatePage = (change: (p: Page) => Page) =>

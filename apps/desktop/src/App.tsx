@@ -11,13 +11,11 @@ import { useDeckEvents } from "./useDeckEvents";
 import { usePageActions } from "./usePageActions";
 import { usePreviews } from "./usePreviews";
 import { useProfile } from "./useProfile";
-import { useSaveShortcut } from "./useSaveShortcut";
 
 export function App() {
   const { draft, setDraft, page, setPage, dirty, error, setError, notice, conflict, load, onReload, save, updatePage, setKey, setHoldMs, setDisplay } =
     useProfile();
   const { deck, pressed } = useDeckEvents(onReload);
-  useSaveShortcut(() => void save());
   const previews = usePreviews(draft, page);
   const [selected, setSelected] = useState<number | null>(null);
   const [tab, setTab] = useState<InspectorTab>("key");
