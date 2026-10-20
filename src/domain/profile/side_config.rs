@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use super::bar_style::BarStyle;
 use super::color::{default_bg, default_fg};
 
 /// The side screen: a 480x100 strip. Same image sources as keys, else the label.
@@ -20,6 +21,9 @@ pub struct SideConfig {
     /// `label` and `image`.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub widgets: Vec<Widget>,
+    /// Look of the CPU bar widget. Absent means the default look.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bar_style: Option<BarStyle>,
 }
 
 /// One value on the side screen. TOML: `type = "cpu_percent"`, `type = "text"`, etc.
@@ -50,6 +54,7 @@ impl Default for SideConfig {
             fg: default_fg(),
             image: None,
             widgets: Vec::new(),
+            bar_style: None,
         }
     }
 }

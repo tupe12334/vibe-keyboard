@@ -15,6 +15,7 @@ fn side_round_trip_and_absent_side_is_byte_stable() {
             fg: "#FFFFFF".into(),
             image: Some(PathBuf::from("icon:back")),
             widgets: Vec::new(),
+            bar_style: None,
         }),
     );
     let text = toml::to_string_pretty(&profile).unwrap_or_default();

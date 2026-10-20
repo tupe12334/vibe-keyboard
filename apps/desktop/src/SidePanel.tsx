@@ -1,4 +1,5 @@
-import type { SideConfig_Serialize as SideConfig } from "./bindings";
+import type { EditorRules, SideConfig_Serialize as SideConfig } from "./bindings";
+import { BarStyleFields } from "./BarStyleFields";
 import { Field } from "./Field";
 import { ImageFields } from "./ImageFields";
 import { SideWidgets } from "./SideWidgets";
@@ -6,8 +7,19 @@ import { SideWidgets } from "./SideWidgets";
 // Used when a page has no side screen yet. The first edit writes it into the layout.
 const BLANK_SIDE: SideConfig = { label: "", bg: "#141414", fg: "#E6E6E6", image: null, widgets: [] };
 
-/** The side screen of the current page: add or remove it, then its label, colors, image and widgets. */
-export function SidePanel({ side, onChange }: { side: SideConfig | null; onChange: (side: SideConfig | null) => void }) {
+/** The side screen of the current page: add or remove it, then its label, colors, image, widgets and bar style. */
+export function SidePanel({
+  side,
+  rules,
+  preview,
+  onChange,
+}: {
+  side: SideConfig | null;
+  rules: EditorRules;
+  /** PNG data URL of the side screen, from the draft. Empty until the first render. */
+  preview: string;
+  onChange: (side: SideConfig | null) => void;
+}) {
   if (!side) {
     return (
       <section className="panel">
@@ -23,6 +35,7 @@ export function SidePanel({ side, onChange }: { side: SideConfig | null; onChang
   return (
     <section className="panel">
       <strong>Side screen</strong>
+      {preview && <img className="side-preview" src={preview} alt="Side screen preview" />}
       <div className="row three">
         <Field label="Label">
           <input value={side.label} onChange={(e) => set({ label: e.target.value })} />
@@ -36,6 +49,7 @@ export function SidePanel({ side, onChange }: { side: SideConfig | null; onChang
       </div>
       <ImageFields image={side.image ?? null} onChange={(image) => set({ image })} />
       <SideWidgets widgets={side.widgets ?? []} onChange={(widgets) => set({ widgets })} />
+      <BarStyleFields style={side.bar_style ?? null} rules={rules} textColor={side.fg} onChange={(bar_style) => set({ bar_style })} />
       <div>
         <button className="danger" onClick={() => onChange(null)}>
           Remove side screen

@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+mod bar_style;
 mod builtins;
 mod color;
 mod display;
@@ -11,6 +12,7 @@ mod layout;
 mod legacy;
 mod page;
 mod prompt;
+pub use bar_style::*;
 pub use builtins::BUILTIN_NAMES;
 #[cfg(test)]
 use color::DEFAULT_BG;

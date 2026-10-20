@@ -1,9 +1,9 @@
 use image::{imageops, ImageBuffer, Rgb, RgbImage};
 
 use super::super::text::{draw_label_scaled, draw_line, text_height};
-use super::cpu_bar::{draw_bar, BAR_PAD, BAR_VALUE_SCALE};
+use super::cpu_bar::{draw_bar, BarLook, BAR_PAD, BAR_VALUE_SCALE};
 use super::value_text::{free_text, percent, temperature_text};
-use crate::domain::profile::{PixelRect, Widget};
+use crate::domain::profile::{BarStyle, PixelRect, Widget};
 use crate::infrastructure::system_metrics::Metrics;
 
 /// The text each widget shows, in order. Equal text means equal pixels, so the tick can skip a
@@ -34,30 +34,40 @@ pub(super) fn draw_widgets(
     bg: [u8; 3],
     fg: [u8; 3],
     stack: PixelRect,
+    bar: Option<&BarStyle>,
 ) {
     // `widgets` is never empty here; `max(1)` only keeps the division safe.
     let count = widgets.len().max(1) as u32;
     let slot_h = stack.h / count;
     for (i, widget) in widgets.iter().enumerate() {
         let mut slot = ImageBuffer::from_pixel(stack.w, slot_h, Rgb(bg));
-        draw_widget(&mut slot, widget, metrics, fg);
+        draw_widget(&mut slot, widget, metrics, fg, bar);
         let y = stack.y + i as u32 * slot_h;
         imageops::replace(canvas, &slot, i64::from(stack.x), i64::from(y));
     }
 }
 
-fn draw_widget(slot: &mut RgbImage, widget: &Widget, metrics: &Metrics, fg: [u8; 3]) {
+fn draw_widget(
+    slot: &mut RgbImage,
+    widget: &Widget,
+    metrics: &Metrics,
+    fg: [u8; 3],
+    bar: Option<&BarStyle>,
+) {
     let fg = Rgb(fg);
     match widget {
         Widget::CpuPercent => caption_value(slot, "CPU", &percent(metrics.cpu_percent), fg),
         Widget::CpuBar => {
+            let look = BarLook::resolve(bar, fg.0);
             draw_line(slot, BAR_PAD, "CPU", fg, CAPTION_SCALE);
-            draw_bar(slot, metrics.cpu_percent);
-            let y = slot
-                .height()
-                .saturating_sub(BAR_PAD + text_height(BAR_VALUE_SCALE));
-            let text = percent(metrics.cpu_percent);
-            draw_line(slot, y, &text, fg, BAR_VALUE_SCALE);
+            draw_bar(slot, metrics.cpu_percent, &look);
+            if let Some(text_color) = look.value_color {
+                let y = slot
+                    .height()
+                    .saturating_sub(BAR_PAD + text_height(BAR_VALUE_SCALE));
+                let text = percent(metrics.cpu_percent);
+                draw_line(slot, y, &text, Rgb(text_color), BAR_VALUE_SCALE);
+            }
         }
         Widget::Temperature => {
             caption_value(slot, "TEMP", &temperature_text(metrics.temperature), fg);

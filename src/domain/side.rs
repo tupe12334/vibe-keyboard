@@ -6,7 +6,7 @@ pub enum SideContent {
     /// Leave the side screen as it is.
     Keep,
     /// Show this side screen.
-    Show(SideConfig),
+    Show(Box<SideConfig>),
 }
 
 /// The one decision for the side screen. A screen's own declaration wins. Otherwise the
@@ -16,7 +16,7 @@ pub fn resolve_side(
     screen_side: Option<SideConfig>,
 ) -> SideContent {
     match screen_side.or(main_page_side) {
-        Some(side) => SideContent::Show(side),
+        Some(side) => SideContent::Show(Box::new(side)),
         None => SideContent::Keep,
     }
 }
@@ -36,7 +36,7 @@ mod tests {
     fn built_in_without_declaration_keeps_page_side() {
         assert_eq!(
             resolve_side(Some(side("page")), None),
-            SideContent::Show(side("page"))
+            SideContent::Show(Box::new(side("page")))
         );
     }
 
@@ -44,7 +44,7 @@ mod tests {
     fn declaration_overrides_page_side() {
         assert_eq!(
             resolve_side(Some(side("page")), Some(side("screen"))),
-            SideContent::Show(side("screen"))
+            SideContent::Show(Box::new(side("screen")))
         );
     }
 
@@ -52,7 +52,7 @@ mod tests {
     fn declaration_shows_without_page_side() {
         assert_eq!(
             resolve_side(None, Some(side("screen"))),
-            SideContent::Show(side("screen"))
+            SideContent::Show(Box::new(side("screen")))
         );
     }
 

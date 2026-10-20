@@ -248,6 +248,19 @@ widgets = [
 Widget types: `cpu_percent`, `cpu_bar` (0-100 %, green below 60, amber below 85, red above), `temperature` (hottest CPU die, `N/A` if none), `disk_free` (free space on the user volume), and `text` with `value = "..."`.
 Values refresh every 2 seconds. Only a changed frame is sent to the device.
 
+#### Bar style
+
+The `cpu_bar` widget takes its look from `[pages.side.bar_style]`. Every field is optional. A field left out keeps the built-in look, and a profile without the table is not rewritten on save.
+
+```toml
+[pages.side.bar_style]
+fill = "#2EA043"        # #RRGGBB, absent = green/amber/red by load
+track = "#3C3C3C"       # #RRGGBB, absent = dark grey
+thickness = 40         # 10 to 60 px, absent = 40
+show_value = true      # the percent under the bar, absent = true
+label_color = "#E6E6E6" # #RRGGBB, absent = the side text color
+```
+
 Track the config directory in git. Keep runtime files out of it:
 
 ```gitignore

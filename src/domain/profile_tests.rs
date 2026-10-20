@@ -4,6 +4,8 @@ use super::*;
 mod actions;
 #[path = "profile_tests/app_pages.rs"]
 mod app_pages;
+#[path = "profile_tests/bar_style.rs"]
+mod bar_style;
 #[path = "profile_tests/colors.rs"]
 mod colors;
 #[path = "profile_tests/editing.rs"]

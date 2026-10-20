@@ -18,6 +18,7 @@ pub fn specta_builder() -> Builder<Wry> {
             key_commands::key_preview,
             key_commands::list_builtins,
             key_commands::action_problem,
+            key_commands::side_preview,
             commands::device_status,
             layout_commands::editor_rules,
             layout_commands::add_page,

@@ -18,6 +18,7 @@ fn the_side_screen_survives_a_save_from_the_editor() {
         fg: "#E6E6E6".into(),
         image: None,
         widgets: vec![Widget::CpuBar, Widget::Temperature, Widget::DiskFree],
+        bar_style: None,
     };
 
     let mut edited: Profile = get_ipc_response(&webview, request("get_profile", json!({})))

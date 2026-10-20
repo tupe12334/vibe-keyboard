@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Side screen bar style: `[pages.side.bar_style]` sets the CPU bar fill, track, thickness, value label and label color. The desktop editor has a Bar style section and a live side preview.
 - Voice key (13) on a session page: hold to push to talk into the session. A tap flashes HOLD on the tile.
 - Push-to-talk: `push_to_talk` action, per-key `hold` action, `[input] hold_ms`, and holding a Claude session key to dictate in it
 - Context-aware sort button on button 14 (#9)
