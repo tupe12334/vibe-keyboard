@@ -26,7 +26,7 @@ rules:
   - pattern: "src/infrastructure/app_icon_tests.rs"
     error: 134
   - pattern: "src/presentation/tui/render.rs"
-    error: 224
+    error: 120
   - pattern: "src/infrastructure/claude_sessions/os.rs"
     error: 147
   - pattern: "src/infrastructure/frontmost_tests.rs"
