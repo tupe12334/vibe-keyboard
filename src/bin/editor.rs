@@ -8,9 +8,7 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
-use vibe_keyboard::domain::profile::{
-    format_color, inner_rect, parse_color, Action, ActionKind, Prompt,
-};
+use vibe_keyboard::domain::profile::{format_color, inner_rect, parse_color, Action, ActionKind};
 use vibe_keyboard::infrastructure::images::{
     app_icon_generation, key_image, SIDE_HEIGHT, SIDE_WIDTH,
 };
@@ -24,6 +22,10 @@ mod icon_grid;
 mod image_picker;
 #[path = "editor/page_list.rs"]
 mod page_list;
+#[path = "editor/prompts.rs"]
+mod prompts;
+#[cfg(test)]
+use prompts::{apply_prompt_op, PromptOp};
 #[path = "editor/side_panel.rs"]
 mod side_panel;
 #[path = "editor/side_strip.rs"]
@@ -370,56 +372,6 @@ impl Editor {
         }
     }
 
-    /// Edit the session prompts: label and text, reorder, delete, add. Changes are saved with the
-    /// layout, so the same Save and Discard rules apply.
-    fn prompts_section(&mut self, ui: &mut egui::Ui) {
-        ui.separator();
-        ui.heading("Prompts");
-        if self.session.profile.prompts.is_empty() {
-            ui.label("None set. Session actions show no prompt keys.");
-        }
-        let count = self.session.profile.prompts.len();
-        let mut op = None;
-        for (index, prompt) in self.session.profile.prompts.iter_mut().enumerate() {
-            ui.push_id(index, |ui| {
-                ui.horizontal(|ui| {
-                    ui.add(egui::TextEdit::singleline(&mut prompt.label).desired_width(70.0));
-                    ui.add(egui::TextEdit::singleline(&mut prompt.text).desired_width(120.0));
-                });
-                ui.horizontal(|ui| {
-                    if ui.add_enabled(index > 0, egui::Button::new("Up")).clicked() {
-                        op = Some(PromptOp::Up(index));
-                    }
-                    if ui
-                        .add_enabled(index + 1 < count, egui::Button::new("Down"))
-                        .clicked()
-                    {
-                        op = Some(PromptOp::Down(index));
-                    }
-                    if ui.button("Delete").clicked() {
-                        op = Some(PromptOp::Delete(index));
-                    }
-                });
-            });
-        }
-        if ui.button("Add prompt").clicked() {
-            op = Some(PromptOp::Add);
-        }
-        if let Some(op) = op {
-            apply_prompt_op(&mut self.session.profile.prompts, op);
-        }
-    }
-
-    /// Timing of key holds: the `[input]` table of the profile.
-    fn input_section(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Input");
-        ui.horizontal(|ui| {
-            ui.label("Hold (ms)");
-            ui.add(egui::DragValue::new(&mut self.session.profile.input.hold_ms).range(50..=5000));
-        });
-        ui.weak("A key held this long runs its hold action.");
-    }
-
     fn grid(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> Option<u8> {
         let mut clicked = None;
         let cell = cell_size(ui.available_size());
@@ -722,32 +674,6 @@ impl eframe::App for Editor {
             self.key = Some(key);
             self.side_open = false;
         }
-    }
-}
-
-/// One edit to the prompt list. The index is the row the user pressed on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PromptOp {
-    Up(usize),
-    Down(usize),
-    Delete(usize),
-    Add,
-}
-
-/// Apply `op` to the prompt list. Out-of-range rows do nothing.
-fn apply_prompt_op(prompts: &mut Vec<Prompt>, op: PromptOp) {
-    match op {
-        PromptOp::Up(index) if index > 0 && index < prompts.len() => prompts.swap(index - 1, index),
-        PromptOp::Down(index) if index + 1 < prompts.len() => prompts.swap(index, index + 1),
-        PromptOp::Delete(index) if index < prompts.len() => {
-            prompts.remove(index);
-        }
-        // Empty text fails `problems()`, so the save gate stops until the user fills it in.
-        PromptOp::Add => prompts.push(Prompt {
-            label: "New".into(),
-            text: String::new(),
-        }),
-        _ => {}
     }
 }
 
