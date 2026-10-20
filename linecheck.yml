@@ -43,8 +43,6 @@ rules:
     error: 110
   - pattern: "src/application/pages/input_number.rs"
     error: 108
-  - pattern: "src/domain/switching.rs"
-    error: 105
   - pattern: "src/presentation/tui/app_state.rs"
     error: 104
   - pattern: "src/application/pages/session_actions.rs"
