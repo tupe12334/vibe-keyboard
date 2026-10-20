@@ -1,5 +1,5 @@
 #!/bin/sh
 set -e
 
+# Fast local gate only. clippy, tests, coverage and linecheck run in pre-push and CI.
 cargo fmt --check
-cargo clippy
