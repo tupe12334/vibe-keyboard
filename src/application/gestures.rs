@@ -11,7 +11,8 @@ use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
 use super::actions;
-use super::dictation::{end_hold, start_hold, start_session_dictation};
+use super::dictation::{end_hold, start_hold, start_session_dictation, start_voice};
+use super::voice;
 
 /// Key up: finish the press. A short press runs its tap, a long one ends its hold.
 pub(super) fn end_press(
@@ -62,8 +63,15 @@ pub(super) fn run_gestures(
             } => start_session_dictation(tty, key),
             Gesture::HoldEnd {
                 key,
-                held: Held::Session { .. },
+                held: Held::Session { .. } | Held::Voice,
             } => keyboard::hold_end(key),
+            Gesture::HoldStart {
+                key,
+                held: Held::Voice,
+            } => start_voice(key),
+            Gesture::Tap {
+                held: Held::Voice, ..
+            } => voice::flash(handle, state),
             _ => {}
         }
     }

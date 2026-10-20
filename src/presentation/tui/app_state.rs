@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::time::Instant;
 
 use crate::domain::actions::{ButtonAction, ScreenView};
 use crate::domain::hold::HoldTracker;
@@ -24,6 +25,8 @@ pub struct AppState {
     pub pressed_key: Option<u8>,
     /// Keys down now, to tell a tap from a hold.
     pub holds: HoldTracker,
+    /// When the voice tile's HOLD flash ends and VOICE comes back.
+    pub voice_flash: Option<Instant>,
     pub loading: bool,
     pub log: VecDeque<String>,
     pub actions: HashMap<u8, ButtonAction>,
@@ -48,6 +51,7 @@ impl AppState {
             auto_page: AutoPage::default(),
             pressed_key: None,
             holds: HoldTracker::default(),
+            voice_flash: None,
             loading: false,
             log: VecDeque::with_capacity(LOG_CAPACITY),
             actions: HashMap::new(),

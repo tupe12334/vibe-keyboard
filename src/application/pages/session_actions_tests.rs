@@ -3,6 +3,25 @@ use crate::domain::actions::SessionStatus;
 use crate::domain::navigation::{NavigationStack, Screen};
 
 #[test]
+fn voice_key_never_names_the_voice_command() {
+    let inset = crate::domain::profile::KeyInset::default();
+    for typed in [true, false] {
+        let (_, action) = voice_key(typed, &inset);
+        assert!(!action.name.contains("/voice"));
+        assert!(!action.description.contains("/voice"));
+    }
+}
+
+#[test]
+fn voice_key_is_muted_for_apps_that_take_no_text() {
+    let inset = crate::domain::profile::KeyInset::default();
+    let (_, typed) = voice_key(true, &inset);
+    let (_, other) = voice_key(false, &inset);
+    assert_ne!(typed.description, other.description);
+    assert!(other.description.contains("no typed text"));
+}
+
+#[test]
 fn selecting_a_session_focuses_its_tab_then_opens_actions() {
     let session = ClaudeSession {
         pid: 1,

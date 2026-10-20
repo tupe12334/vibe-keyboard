@@ -9,6 +9,8 @@ pub enum Held {
     Action { short: Action, hold: Option<Action> },
     /// A Claude session key. Its tap focuses the session at press time, so it has no tap gesture.
     Session { tty: String },
+    /// The voice key on a session's action page. A hold pushes to talk. A tap sends nothing.
+    Voice,
 }
 
 /// One outcome of a key. A hold start always comes before its hold end.

@@ -48,6 +48,13 @@ pub(super) fn end_hold(key: u8, hold: &crate::domain::profile::Action) {
     }
 }
 
+/// Voice key held on a session page: Space into the frontmost terminal, which auto-focus already
+/// brought forward. Same guard and posting path as a held session key, without the focus step.
+pub(super) fn start_voice(key: u8) {
+    let generation = keyboard::hold_begin(key);
+    keyboard::push_to_talk_start(generation, key, &default_push_to_talk());
+}
+
 /// Session key held: focus its tab, let the terminal settle, then start dictation.
 /// Runs off the device loop, because focusing waits for osascript.
 pub(super) fn start_session_dictation(tty: String, key: u8) {
