@@ -3,8 +3,6 @@ rules:
     error: 311
   - pattern: "src/domain/profile.rs"
     error: 346
-  - pattern: "src/infrastructure/claude_sessions.rs"
-    error: 137
   - pattern: "src/infrastructure/claude_sessions_tests.rs"
     error: 367
   - pattern: "src/application/mod.rs"
