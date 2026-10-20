@@ -52,12 +52,19 @@ const CLAUDE_SUFFIX: &str = " (claude)";
 /// Longest session name shown on a key. The key font fits about three short lines.
 const SUMMARY_CHARS: usize = 60;
 
-/// True when `pid` is still a `claude` process on `tty`, per a fresh `ps` output. A tty that
-/// closed and was reused by another tab fails this check.
-pub fn is_session_on_tty(ps: &str, pid: u32, tty: &str) -> bool {
-    claude_processes(ps)
-        .iter()
-        .any(|(live_pid, live_tty)| *live_pid == pid && live_tty == tty)
+/// The pid to act on for `tty`, per a fresh `ps` output. `pid` while it still runs `claude` there.
+/// Else the `claude` now on that tty, when the session restarted. Else None.
+pub fn resolve_session_pid(ps: &str, pid: u32, tty: &str) -> Option<u32> {
+    let on_tty: Vec<u32> = claude_processes(ps)
+        .into_iter()
+        .filter(|(_, live_tty)| live_tty == tty)
+        .map(|(live_pid, _)| live_pid)
+        .collect();
+    if on_tty.contains(&pid) {
+        Some(pid)
+    } else {
+        on_tty.first().copied()
+    }
 }
 
 /// True for `ttysNNN` only. The tty goes into an `AppleScript` string, so anything else is refused.
