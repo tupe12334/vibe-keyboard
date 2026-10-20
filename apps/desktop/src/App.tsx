@@ -3,15 +3,17 @@ import { commands, type EditorRules } from "./bindings";
 import { KeyGrid } from "./KeyGrid";
 import { KeyPanel } from "./KeyPanel";
 import { PageList } from "./PageList";
+import { DisplayPanel } from "./DisplayPanel";
 import { PromptsPanel } from "./PromptsPanel";
 import { Toolbar } from "./Toolbar";
 import type { Page } from "./types";
 import { useDeckEvents } from "./useDeckEvents";
+import { usePageActions } from "./usePageActions";
 import { usePreviews } from "./usePreviews";
 import { useProfile } from "./useProfile";
 
 export function App() {
-  const { draft, setDraft, page, setPage, dirty, error, setError, notice, load, onReload, save, updatePage, setKey, setHoldMs } =
+  const { draft, setDraft, page, setPage, dirty, error, setError, notice, load, onReload, save, updatePage, setKey, setHoldMs, setDisplay } =
     useProfile();
   const { deck, pressed } = useDeckEvents(onReload);
   const previews = usePreviews(draft, page);
@@ -31,21 +33,7 @@ export function App() {
 
   const current: Page = draft.pages[page];
   const navKeys = new Set(rules?.nav_keys ?? []);
-  // Page rules come from the core crate, through these commands.
-  const addPage = async () => {
-    setDraft(await commands.addPage(draft));
-    setPage(draft.pages.length);
-  };
-  const deletePage = async () => {
-    const result = await commands.deletePage(draft, page);
-    if (result.status === "error") {
-      setError(result.error);
-      return;
-    }
-    setDraft(result.data);
-    setPage((p) => Math.max(0, p - 1));
-    setSelected(null);
-  };
+  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
 
   return (
     <div className="shell">
@@ -77,6 +65,7 @@ export function App() {
         <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={setSelected} />
 
         <PromptsPanel profile={draft} limits={rules} onChange={setDraft} />
+        <DisplayPanel display={draft.display} onChange={setDisplay} />
 
         {selected !== null && (
           <KeyPanel

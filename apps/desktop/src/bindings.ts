@@ -39,6 +39,8 @@ export const commands = {
 	listRunningApps: () => __TAURI_INVOKE<RunningApp[]>("list_running_apps"),
 	/**  Whether `text` is a bundle id, by the core rule the layout uses for `open_app`. */
 	checkBundleId: (text: string) => __TAURI_INVOKE<boolean>("check_bundle_id", { text }),
+	/**  The built-in insets. The layout file omits a value that equals its default. */
+	displayDefaults: () => __TAURI_INVOKE<DisplayDefaults>("display_defaults"),
 };
 
 /** Events */
@@ -100,6 +102,11 @@ export type DeviceStatus = {
 	running: boolean,
 	/**  Why the controller refused to start or stopped with an error. Absent when fine. */
 	error: string | null,
+};
+
+export type DisplayDefaults = {
+	key_inset: KeyInset,
+	side_inset: SideInset,
 };
 
 /**  Bands the bezel hides. Content goes inside them; the background fills them. */
