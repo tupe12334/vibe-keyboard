@@ -1,6 +1,4 @@
 rules:
-  - pattern: "src/domain/navigation/movement.rs"
-    error: 114
   - pattern: "src/main.rs"
     error: 284
   - pattern: "src/application/pages/centy/issues.rs"
