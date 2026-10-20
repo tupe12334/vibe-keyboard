@@ -1,5 +1,6 @@
 //! osascript calls that focus a session tab, type a prompt into it, or open a new session window.
 
+use super::front_tty::settle_on;
 use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
 use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
@@ -14,10 +15,9 @@ use std::time::{Duration, Instant};
 const FRONT_WAIT: Duration = Duration::from_millis(500);
 const FRONT_POLL: Duration = Duration::from_millis(50);
 
-/// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab,
-/// it activates VS Code only if the session runs under VS Code, and returns false. Returns true only when
-/// the tab was found and its terminal is verified frontmost. Blocks until done, so call it from a
-/// thread.
+/// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. Activates VS Code only if the
+/// session runs under it. True only when the tab is found, its app is frontmost, and that tab is the
+/// front session (two iTerm2 windows share one bundle id). Blocks; call it from a thread.
 pub fn focus_session(tty: &str) -> bool {
     let Some(scripts) = focus_scripts(tty) else {
         return false;
@@ -26,14 +26,14 @@ pub fn focus_session(tty: &str) -> bool {
         let out = run("osascript", &["-e", script], FOCUS_TIMEOUT)?;
         (out.trim() == "found").then_some(index)
     });
-    let Some(bundle) = found.and_then(focused_bundle) else {
+    let Some(index) = found else {
         // Open VS Code only for a session that runs under it. Others have no app to bring forward.
         if runs_in_vscode(tty) {
             run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
         }
         return false;
     };
-    ensure_frontmost(bundle)
+    focused_bundle(index).is_some_and(ensure_frontmost) && settle_on(index, tty)
 }
 
 /// True when the `claude` on `tty` runs under VS Code, per a fresh `ps`.

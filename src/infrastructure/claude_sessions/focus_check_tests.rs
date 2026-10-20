@@ -1,6 +1,21 @@
 use super::*;
 
 #[test]
+fn selected_tty_matches_its_device_path_only() {
+    assert!(is_selected(Some("/dev/ttys001\n"), "ttys001"));
+    assert!(!is_selected(Some("/dev/ttys002"), "ttys001"));
+    assert!(!is_selected(None, "ttys001"));
+}
+
+#[test]
+fn session_moves_only_to_a_known_other_tty() {
+    assert!(session_moved(Some("/dev/ttys002"), "ttys001"));
+    assert!(!session_moved(Some("/dev/ttys001"), "ttys001"));
+    assert!(!session_moved(Some("  "), "ttys001"), "blank is unknown");
+    assert!(!session_moved(None, "ttys001"), "unknown is not moved");
+}
+
+#[test]
 fn script_index_maps_to_its_terminal_bundle() {
     assert_eq!(focused_bundle(0), Some("com.googlecode.iterm2"));
     assert_eq!(focused_bundle(1), Some("com.apple.Terminal"));

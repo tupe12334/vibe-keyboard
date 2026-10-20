@@ -23,6 +23,23 @@ pub fn is_frontmost(front: Option<&str>, expected: &str) -> bool {
     front == Some(expected)
 }
 
+/// The `/dev/<tty>` path that iTerm2 and Terminal.app report for `tty`.
+pub fn device_path(tty: &str) -> String {
+    format!("/dev/{tty}")
+}
+
+/// True when the front session's tty is `tty`. An unknown front session is never a match.
+pub fn is_selected(front: Option<&str>, tty: &str) -> bool {
+    front.map(str::trim) == Some(device_path(tty).as_str())
+}
+
+/// True when iTerm2's current session is a tty other than `tty`. An unknown session is not moved.
+pub fn session_moved(current: Option<&str>, tty: &str) -> bool {
+    current
+        .map(str::trim)
+        .is_some_and(|c| !c.is_empty() && !is_selected(Some(c), tty))
+}
+
 #[cfg(test)]
 #[path = "focus_check_tests.rs"]
 mod tests;
