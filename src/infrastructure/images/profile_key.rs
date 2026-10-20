@@ -8,7 +8,8 @@ use image::{ImageBuffer, Rgb, RgbImage};
 
 use super::fit;
 use super::icon_image;
-use super::text::{draw_label, draw_tag, draw_title};
+use super::status_tile::status_tile;
+use super::text::draw_label;
 use super::{
     generate_centy_image, generate_claude_image, generate_log_file_image,
     generate_numpad_entry_image, generate_terminal_image, generate_vscode_config_image,
@@ -23,10 +24,10 @@ use crate::infrastructure::profile_store::resolve_image;
 use crate::infrastructure::usb::DECK_IMAGE_SIZE;
 
 /// Render size before the inset step. Icons and labels are drawn at this size.
-const KEY_SIZE: u32 = 100;
-const FALLBACK_BG: [u8; 3] = [20, 20, 20];
-const FALLBACK_FG: [u8; 3] = [230, 230, 230];
-const BLANK: [u8; 3] = [0, 0, 0];
+pub(super) const KEY_SIZE: u32 = 100;
+pub(super) const FALLBACK_BG: [u8; 3] = [20, 20, 20];
+pub(super) const FALLBACK_FG: [u8; 3] = [230, 230, 230];
+pub(super) const BLANK: [u8; 3] = [0, 0, 0];
 const NAV_BG: [u8; 3] = [40, 40, 40];
 
 /// The bitmap the deck shows for `key`, `DECK_IMAGE_SIZE` square. The controller sends this
@@ -172,17 +173,11 @@ pub fn muted_image(label: &str, inset: &KeyInset) -> RgbImage {
 /// A Claude session tile: a status bar on top (green active, orange stale), the age in the bar's
 /// right corner, and the title below, wrapped to three lines.
 pub fn session_image(title: &str, status: SessionStatus, age: &str, inset: &KeyInset) -> RgbImage {
-    const BAR_H: u32 = 12;
     let bar = match status {
         SessionStatus::Active => [40, 180, 90],
         SessionStatus::Stale => [255, 120, 0],
     };
-    let mut body = ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE - BAR_H, Rgb(FALLBACK_BG));
-    draw_title(&mut body, &title.to_uppercase(), Rgb(FALLBACK_FG));
-    let mut img = ImageBuffer::from_pixel(KEY_SIZE, KEY_SIZE, Rgb(bar));
-    draw_tag(&mut img, age, Rgb(BLANK));
-    image::imageops::replace(&mut img, &body, 0, i64::from(BAR_H));
-    inset_key(&img, inset, FALLBACK_BG)
+    inset_key(&status_tile(title, bar, age), inset, FALLBACK_BG)
 }
 
 /// Keys 11, 12 and 13 always navigate. Each shows a fixed label.

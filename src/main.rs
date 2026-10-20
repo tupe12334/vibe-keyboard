@@ -4,7 +4,7 @@ mod presentation;
 
 use application::{
     handle_filter_query, handle_frontmost, handle_key_event, refresh_side_widgets, render_screen,
-    SessionsRefresh,
+    Refresh,
 };
 use signal_hook::consts::{SIGINT, SIGTERM};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -123,7 +123,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let frontmost_rx = frontmost::watch(FRONTMOST_POLL);
     let mut was_on_main_page = nav.main_page().is_some();
     let mut icon_generation = app_icon_generation();
-    let mut sessions_refresh = SessionsRefresh::default();
+    let mut pages = Refresh::default();
     let metrics = system_metrics::start();
     let mut last_side_tick = Instant::now();
 
@@ -174,7 +174,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let read_lost = match read_event(&handle, Duration::from_millis(500)) {
             Ok(Some(data)) => {
                 if data.len() >= 11 {
-                    handle_key_event(&data, &handle, &mut nav, &app_state, &dev_state);
+                    handle_key_event(&data, &handle, &mut nav, &app_state, &dev_state, &mut pages);
                 }
                 false
             }
@@ -209,7 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         was_on_main_page = on_main_page;
 
-        sessions_refresh.tick(&mut nav, &handle, &app_state, &dev_state);
+        pages.tick(&mut nav, &handle, &app_state, &dev_state);
 
         if read_lost || handle.has_failed() {
             warn!("device disconnected");
