@@ -15,6 +15,17 @@ pub enum SaveRefusal {
     Failed(String),
 }
 
+impl std::fmt::Display for SaveRefusal {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Changed => {
+                f.write_str("profile.toml changed on disk. Discard your edits to load it.")
+            }
+            Self::Failed(e) => f.write_str(e),
+        }
+    }
+}
+
 /// Write `profile` only when the file still has the modification time `loaded`.
 /// The check and the write run under an exclusive lock on `<file>.lock`, so two
 /// editors cannot interleave. Threads in this process share one guard.
@@ -26,7 +37,8 @@ pub fn save_if_unchanged(
     static IN_PROCESS: Mutex<()> = Mutex::new(());
     let _guard = IN_PROCESS.lock().unwrap_or_else(PoisonError::into_inner);
     let lock_path = path.with_extension("toml.lock");
-    let lock = OpenOptions::new()
+    // Held until the function returns: the write happens under this lock.
+    let _lock = OpenOptions::new()
         .create(true)
         .write(true)
         .truncate(false)
@@ -50,6 +62,12 @@ mod tests {
             std::env::temp_dir().join(format!("vibe-keyboard-save-{name}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("create dir");
         dir.join("profile.toml")
+    }
+
+    #[test]
+    fn refusals_read_as_messages() {
+        assert!(SaveRefusal::Changed.to_string().contains("changed on disk"));
+        assert_eq!(SaveRefusal::Failed("boom".into()).to_string(), "boom");
     }
 
     #[test]

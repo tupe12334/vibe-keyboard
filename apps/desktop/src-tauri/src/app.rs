@@ -10,7 +10,8 @@ use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::presentation::tui::AppState;
 
-use crate::thread::{spawn, Running};
+use crate::lifecycle::{start_with, Running};
+use crate::thread::spawn;
 
 /// Managed by Tauri. One controller thread at most.
 pub struct App {
@@ -42,39 +43,32 @@ impl App {
         if std::env::var_os("VIBE_NO_DEVICE").is_some() {
             return Ok(());
         }
-        let mut slot = self.running.lock().unwrap_or_else(PoisonError::into_inner);
-        if self.is_running() {
-            return Ok(());
-        }
-        // A thread that already ended: collect it before starting another.
-        if let Some(old) = slot.take() {
-            let _ = old.thread.join();
-        }
-        let lock = match controller::claim() {
-            Ok(lock) => lock,
-            Err(AcquireError::Held) => {
-                let message = controller::held_message(&controller_lock::default_lock_path());
-                self.set_error(Some(message.clone()));
-                return Err(message);
-            }
-            Err(AcquireError::Io(e)) => {
-                let message = format!("controller lock: {e}");
-                self.set_error(Some(message.clone()));
-                return Err(message);
-            }
-        };
-        // The same profile load as `listen`. The controller needs the page count.
-        controller::load_profile(&self.state);
-        self.set_error(None);
-        let shutdown = Arc::new(AtomicBool::new(false));
-        let thread = spawn(
-            app.clone(),
-            Arc::clone(&self.state),
-            Arc::clone(&shutdown),
-            lock,
-        );
-        *slot = Some(Running { shutdown, thread });
-        Ok(())
+        start_with(&self.running, || {
+            let lock = match controller::claim() {
+                Ok(lock) => lock,
+                Err(AcquireError::Held) => {
+                    let message = controller::held_message(&controller_lock::default_lock_path());
+                    self.set_error(Some(message.clone()));
+                    return Err(message);
+                }
+                Err(AcquireError::Io(e)) => {
+                    let message = format!("controller lock: {e}");
+                    self.set_error(Some(message.clone()));
+                    return Err(message);
+                }
+            };
+            // The same profile load as `listen`. The controller needs the page count.
+            controller::load_profile(&self.state);
+            self.set_error(None);
+            let shutdown = Arc::new(AtomicBool::new(false));
+            let thread = spawn(
+                app.clone(),
+                Arc::clone(&self.state),
+                Arc::clone(&shutdown),
+                lock,
+            );
+            Ok(Running { shutdown, thread })
+        })
     }
 
     pub fn record_profile_mtime(&self) {

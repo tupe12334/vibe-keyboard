@@ -9,6 +9,7 @@ mod commands;
 mod events;
 mod key_commands;
 mod layout_commands;
+mod lifecycle;
 mod login_item;
 mod status;
 mod thread;

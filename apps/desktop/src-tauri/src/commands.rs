@@ -7,7 +7,7 @@ use specta::Type;
 use tauri::State;
 use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::domain::profile_rules;
-use vibe_keyboard::infrastructure::profile_save::{save_if_unchanged, SaveRefusal};
+use vibe_keyboard::infrastructure::profile_save::save_if_unchanged;
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
@@ -53,10 +53,7 @@ pub fn save_profile(profile: Profile, app: State<'_, App>) -> Result<(), String>
             app.record_profile_mtime();
             Ok(())
         }
-        Err(SaveRefusal::Changed) => {
-            Err("profile.toml changed on disk. Discard your edits to load it.".into())
-        }
-        Err(SaveRefusal::Failed(e)) => Err(e),
+        Err(refusal) => Err(refusal.to_string()),
     }
 }
 

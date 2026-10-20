@@ -1,6 +1,6 @@
 //! The controller thread. Its exit reaches the tray and the webview, panic or not.
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::atomic::AtomicBool;
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use tauri::{AppHandle, Manager};
@@ -12,12 +12,6 @@ use vibe_keyboard::presentation::tui::AppState;
 use crate::app::App;
 use crate::events::{self, DeviceDisconnected};
 use crate::tray;
-
-/// A running controller thread and the flag that stops it.
-pub struct Running {
-    pub(crate) shutdown: Arc<AtomicBool>,
-    pub(crate) thread: JoinHandle<()>,
-}
 
 /// Run the controller on a new thread. `lock` is held until the thread ends.
 pub fn spawn(
@@ -65,20 +59,5 @@ impl Drop for ExitReport {
         state.set_error(reason);
         tray::set_controller_running(&self.app, false);
         let _ = DeviceDisconnected {}.emit(&self.app);
-    }
-}
-
-impl App {
-    /// Stop the controller and wait for it. The controller clears the deck on the way out.
-    pub fn stop(&self) {
-        let running = self
-            .running
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-        if let Some(running) = running {
-            running.shutdown.store(true, Ordering::Relaxed);
-            let _ = running.thread.join();
-        }
     }
 }
