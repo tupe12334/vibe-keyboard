@@ -9,10 +9,10 @@ use std::time::{Duration, Instant};
 use eframe::egui::{self, Align2, Color32, FontId, Rect, Sense, Stroke, StrokeKind, Vec2};
 use vibe_keyboard::domain::keys::is_nav_key;
 use vibe_keyboard::domain::profile::{
-    format_color, inner_rect, parse_color, Action, ActionKind, Prompt, SideConfig,
+    format_color, inner_rect, parse_color, Action, ActionKind, Prompt,
 };
 use vibe_keyboard::infrastructure::images::{
-    app_icon_generation, key_image, safe_rect, side_image, SIDE_HEIGHT, SIDE_WIDTH,
+    app_icon_generation, key_image, SIDE_HEIGHT, SIDE_WIDTH,
 };
 #[path = "editor/app_picker.rs"]
 mod app_picker;
@@ -24,6 +24,10 @@ mod icon_grid;
 mod image_picker;
 #[path = "editor/page_list.rs"]
 mod page_list;
+#[path = "editor/side_panel.rs"]
+mod side_panel;
+#[path = "editor/side_strip.rs"]
+mod side_strip;
 use vibe_keyboard::infrastructure::profile_store;
 use vibe_keyboard::infrastructure::system_metrics::{self, Shared};
 use vibe_keyboard::infrastructure::usb::DECK_IMAGE_SIZE;
@@ -74,7 +78,7 @@ mod image_kind;
 #[path = "editor/previews.rs"]
 mod previews;
 use image_kind::ImageKind;
-use previews::{shade_hidden, texture_from, Preview, SidePreview};
+use previews::{shade_hidden, Preview, SidePreview};
 
 #[path = "editor/session.rs"]
 mod session;
@@ -309,120 +313,6 @@ impl Editor {
             },
         );
         texture
-    }
-
-    /// Texture of the side screen of the current page. Re-rendered only when its config changes.
-    /// Re-rendered when its config or the latest system sample changes. Widget pages ask for
-    /// a repaint every sample, so the values stay live.
-    fn side_texture(&mut self, ctx: &egui::Context) -> egui::TextureHandle {
-        let config = self
-            .session
-            .profile
-            .pages
-            .get(self.page)
-            .and_then(|p| p.side.clone());
-        let inset = self.session.profile.display.side_inset;
-        let metrics = system_metrics::snapshot(&self.metrics);
-        if config.as_ref().is_some_and(|c| !c.widgets.is_empty()) {
-            ctx.request_repaint_after(system_metrics::SAMPLE_INTERVAL);
-        }
-        if let Some(cached) = &self.side_preview {
-            if cached.config == config && cached.metrics == metrics && cached.inset == inset {
-                return cached.texture.clone();
-            }
-        }
-        let img = side_image(config.as_ref(), &self.root, &metrics, &inset);
-        let texture = texture_from(ctx, "side", &img);
-        self.side_preview = Some(SidePreview {
-            config,
-            inset,
-            metrics,
-            texture: texture.clone(),
-        });
-        texture
-    }
-
-    /// Tall side preview beside the keys, with the hidden bezel band shaded. True when clicked.
-    fn side_strip(&mut self, ui: &mut egui::Ui, ctx: &egui::Context) -> bool {
-        let size = side_strip_size(ui.available_height());
-        let (rect, response) = ui.allocate_exact_size(size, Sense::click());
-        let texture = self.side_texture(ctx);
-        let painter = ui.painter_at(rect);
-        let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
-        painter.image(texture.id(), rect, uv, Color32::WHITE);
-        let inset = self.session.profile.display.side_inset;
-        let visible = safe_rect(&inset);
-        shade_hidden(&painter, rect, (SIDE_WIDTH, SIDE_HEIGHT), visible);
-        if self.side_open {
-            painter.rect_stroke(
-                rect,
-                4.0,
-                Stroke::new(2.0, Color32::LIGHT_BLUE),
-                StrokeKind::Inside,
-            );
-        }
-        ui.add_space(GAP);
-        response.clicked()
-    }
-
-    /// Edit the side screen of the current page: label, colors, image. Add or remove it.
-    fn side_panel(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Side screen");
-        let page = self.page;
-        let Some(original) = self
-            .session
-            .profile
-            .pages
-            .get(page)
-            .and_then(|p| p.side.clone())
-        else {
-            ui.label("This page has no side screen.");
-            if ui.button("Add side screen").clicked() {
-                self.session
-                    .profile
-                    .set_side(page, Some(SideConfig::default()));
-            }
-            return;
-        };
-        let mut edited = original.clone();
-        let ctx = ui.ctx().clone();
-        ui.horizontal(|ui| {
-            ui.label("Label");
-            ui.text_edit_singleline(&mut edited.label);
-        });
-        ui.horizontal(|ui| {
-            ui.label("Background");
-            let mut rgb = parse_color(&edited.bg).unwrap_or([20, 20, 20]);
-            if egui::color_picker::color_edit_button_srgb(ui, &mut rgb).changed() {
-                edited.bg = format_color(rgb);
-            }
-            ui.label("Text");
-            let mut rgb = parse_color(&edited.fg).unwrap_or([230, 230, 230]);
-            if egui::color_picker::color_edit_button_srgb(ui, &mut rgb).changed() {
-                edited.fg = format_color(rgb);
-            }
-        });
-        self.image_picker(ui, &ctx, &mut edited.image);
-        widget_editor(ui, &mut edited.widgets);
-        ui.separator();
-        let remove = ui.button("Remove side screen").clicked();
-        // Write only real changes, so an untouched panel never dirties the profile.
-        if remove {
-            self.session.profile.set_side(page, None);
-        } else if edited != original {
-            self.session.profile.set_side(page, Some(edited));
-        }
-    }
-
-    /// Margins for the band the bezel hides, on keys and on the side screen. Shaded in previews.
-    fn display_section(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Display");
-        ui.label("Hidden bezel band, in px. Shaded in the previews.");
-        let display = &mut self.session.profile.display;
-        ui.add(egui::Slider::new(&mut display.key_inset.top, 0..=40).text("Key top"));
-        ui.add(egui::Slider::new(&mut display.key_inset.bottom, 0..=40).text("Key bottom"));
-        ui.add(egui::Slider::new(&mut display.side_inset.top, 0..=200).text("Side top"));
-        ui.add(egui::Slider::new(&mut display.side_inset.bottom, 0..=200).text("Side bottom"));
     }
 
     fn top_bar(&mut self, ui: &mut egui::Ui) {
@@ -690,7 +580,6 @@ mod action_form;
 #[path = "editor/widgets.rs"]
 mod widgets;
 use action_form::action_fields;
-use widgets::widget_editor;
 
 /// Size of the side strip for `avail_height`: at most the device render height, 100:480 ratio.
 fn side_strip_size(avail_height: f32) -> Vec2 {
