@@ -8,6 +8,9 @@ use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
+#[path = "filter_match.rs"]
+mod filter_match;
+
 pub fn handle_filter_query(
     query: &str,
     handle: &Device,
@@ -15,77 +18,9 @@ pub fn handle_filter_query(
     state: &Arc<Mutex<tui::AppState>>,
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
-    use crate::domain::actions::{CentyIssue, CentyProject};
+    use filter_match::FilterAction;
 
-    enum FilterAction {
-        Projects {
-            projects: Vec<CentyProject>,
-            filter: Option<String>,
-        },
-        Issues {
-            issues: Vec<CentyIssue>,
-            project_name: String,
-            org: String,
-            filter: Option<String>,
-        },
-        None,
-    }
-
-    let q = query.to_lowercase();
-    let filter = if q.trim().is_empty() {
-        None
-    } else {
-        Some(query.to_string())
-    };
-
-    let fa = match nav.current() {
-        Screen::CentyProjectList { projects, .. } => {
-            let filtered: Vec<CentyProject> = if q.trim().is_empty() {
-                projects.clone()
-            } else {
-                projects
-                    .iter()
-                    .filter(|p| {
-                        p.name.to_lowercase().contains(&q) || p.org.to_lowercase().contains(&q)
-                    })
-                    .cloned()
-                    .collect()
-            };
-            FilterAction::Projects {
-                projects: filtered,
-                filter,
-            }
-        }
-        Screen::CentyIssueList {
-            issues,
-            project_name,
-            org,
-            ..
-        } => {
-            let filtered: Vec<CentyIssue> = if q.trim().is_empty() {
-                issues.clone()
-            } else {
-                issues
-                    .iter()
-                    .filter(|i| {
-                        i.title.to_lowercase().contains(&q)
-                            || i.number.to_string().contains(&q)
-                            || i.status.to_lowercase().contains(&q)
-                    })
-                    .cloned()
-                    .collect()
-            };
-            FilterAction::Issues {
-                issues: filtered,
-                project_name: project_name.clone(),
-                org: org.clone(),
-                filter,
-            }
-        }
-        _ => FilterAction::None,
-    };
-
-    match fa {
+    match filter_match::filter_action(nav, query) {
         FilterAction::Projects { projects, filter } => {
             info!(
                 "filter applied: {} project(s) match {:?}",

@@ -11,8 +11,6 @@ rules:
     error: 367
   - pattern: "src/application/mod.rs"
     error: 202
-  - pattern: "src/application/filter_query.rs"
-    error: 124
   - pattern: "src/infrastructure/profile_store.rs"
     error: 152
   - pattern: "src/infrastructure/profile_store_tests.rs"
