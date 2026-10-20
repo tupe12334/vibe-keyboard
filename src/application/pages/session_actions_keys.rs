@@ -1,5 +1,6 @@
 use image::RgbImage;
 
+use crate::application::voice::VOICE_LABEL;
 use crate::domain::actions::{ButtonAction, ClaudeSession};
 use crate::domain::navigation::{exit_on_page, NavigationStack, Screen};
 use crate::domain::profile::KeyInset;
@@ -22,9 +23,9 @@ pub fn open_session_actions(
 /// The Voice key (13): its tile and its action. Muted for apps that take no typed text.
 pub fn voice_key(typed: bool, inset: &KeyInset) -> (RgbImage, ButtonAction) {
     let tile = if typed {
-        label_image("VOICE", inset)
+        label_image(VOICE_LABEL, inset)
     } else {
-        muted_image("VOICE", inset)
+        muted_image(VOICE_LABEL, inset)
     };
     let action = ButtonAction {
         name: "Voice".into(),
