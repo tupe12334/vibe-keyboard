@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+#[cfg(test)]
 use std::path::PathBuf;
 use std::time::Duration;
 
@@ -11,6 +12,8 @@ mod display;
 pub use display::{inner_rect, is_default, DisplaySettings, KeyInset, PixelRect, SideInset};
 mod key;
 pub use key::{Action, ActionKind, KeyConfig};
+mod side_config;
+pub use side_config::{SideConfig, Widget};
 
 /// Largest physical key number. Keys 1–15 are usable; 11–13 are navigation.
 pub const KEY_COUNT: u8 = 15;
@@ -108,56 +111,6 @@ pub struct Page {
     /// Content for the side screen next to keys 5, 10 and 15. Absent means no side content.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub side: Option<SideConfig>,
-}
-
-/// The side screen: a 480x100 strip. Same image sources as keys, else the label.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-pub struct SideConfig {
-    #[serde(default)]
-    pub label: String,
-    #[serde(default = "default_bg")]
-    pub bg: String,
-    #[serde(default = "default_fg")]
-    pub fg: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub image: Option<PathBuf>,
-    /// Live values shown left to right. When set, the side screen shows these instead of
-    /// `label` and `image`.
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub widgets: Vec<Widget>,
-}
-
-/// One value on the side screen. TOML: `type = "cpu_percent"`, `type = "text"`, etc.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-#[cfg_attr(feature = "specta", derive(specta::Type))]
-pub enum Widget {
-    /// Global CPU use as a number.
-    CpuPercent,
-    /// Global CPU use as a bar from 0 to 100 %.
-    CpuBar,
-    /// Hottest CPU sensor in degrees Celsius, or `N/A`.
-    Temperature,
-    /// Free space on the user volume.
-    DiskFree,
-    /// Fixed text.
-    Text {
-        #[serde(default)]
-        value: String,
-    },
-}
-
-impl Default for SideConfig {
-    fn default() -> Self {
-        Self {
-            label: String::new(),
-            bg: default_bg(),
-            fg: default_fg(),
-            image: None,
-            widgets: Vec::new(),
-        }
-    }
 }
 
 /// TOML tables need string keys, so key numbers are written as `"1"`, `"14"`, etc.
