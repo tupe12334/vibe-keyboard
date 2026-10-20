@@ -12,7 +12,7 @@ import { usePreviews } from "./usePreviews";
 import { useProfile } from "./useProfile";
 
 export function App() {
-  const { draft, setDraft, page, setPage, dirty, error, setError, notice, load, onReload, save, updatePage, setKey, setHoldMs, setDisplay } =
+  const { draft, setDraft, page, setPage, dirty, error, setError, notice, conflict, load, onReload, save, updatePage, setKey, setHoldMs, setDisplay } =
     useProfile();
   const { deck, pressed } = useDeckEvents(onReload);
   const previews = usePreviews(draft, page);
@@ -68,6 +68,13 @@ export function App() {
         {deck.error && <div className="error">{deck.error}</div>}
         {error && <div className="error">{error}</div>}
         {notice && <div className="error">{notice}</div>}
+        {conflict && (
+          <div className="error">
+            profile.toml changed on disk. Reload to discard your edits, or overwrite the disk version.
+            <button onClick={() => void load()}>Reload from disk</button>
+            <button onClick={() => void save(true)}>Overwrite</button>
+          </div>
+        )}
         <KeyGrid navKeys={navKeys} selected={selected} pressed={pressed} previews={previews} onSelect={pickKey} />
       </main>
       <Inspector

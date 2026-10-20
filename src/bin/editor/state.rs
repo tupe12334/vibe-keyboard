@@ -4,6 +4,7 @@ use std::sync::mpsc;
 
 use eframe::egui;
 
+use vibe_keyboard::infrastructure::profile_save::{version_of, Version};
 use vibe_keyboard::infrastructure::system_metrics::Shared;
 use vibe_keyboard::infrastructure::{profile_store, system_metrics};
 
@@ -15,8 +16,8 @@ pub(super) struct Editor {
     pub(super) session: Session,
     /// The unsaved-changes dialog is open (window close was requested while dirty).
     pub(super) close_prompt: bool,
-    /// File modification time when it was last loaded or written by this editor.
-    pub(super) loaded_mtime: Option<std::time::SystemTime>,
+    /// File version (content hash) when it was last loaded or written by this editor.
+    pub(super) loaded_version: Option<Version>,
     /// The file changed on disk since it was loaded. Save waits for the user's choice.
     pub(super) disk_conflict: bool,
     pub(super) page: usize,
@@ -51,7 +52,7 @@ impl Editor {
             root,
             session: Session::new(profile),
             close_prompt: false,
-            loaded_mtime: profile_store::modified_at(&profile_store::profile_path()),
+            loaded_version: version_of(&profile_store::profile_path()),
             disk_conflict: false,
             page: 0,
             key: None,

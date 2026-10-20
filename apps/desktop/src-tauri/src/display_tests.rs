@@ -48,7 +48,7 @@ fn insets_survive_the_desktop_load_and_save_path() {
     edited.display = with_insets().display;
     get_ipc_response(
         &webview,
-        request("save_profile", json!({ "profile": edited })),
+        request("save_profile", json!({ "profile": edited, "force": false })),
     )
     .expect("save accepted");
 

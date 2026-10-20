@@ -87,7 +87,7 @@ fn the_real_layout_survives_the_desktop_load_and_save_path() {
         .expect("parse layout");
     get_ipc_response(
         &webview,
-        request("save_profile", json!({ "profile": loaded })),
+        request("save_profile", json!({ "profile": loaded, "force": false })),
     )
     .expect("save accepted");
 

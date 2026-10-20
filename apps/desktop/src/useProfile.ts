@@ -9,6 +9,8 @@ export function useProfile() {
   const [page, setPage] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // The file changed on disk since it loaded. The user picks: reload or overwrite.
+  const [conflict, setConflict] = useState(false);
 
   const dirty = draft !== null && saved !== null && JSON.stringify(draft) !== JSON.stringify(saved);
   // Event handlers read this ref, so they see the current value without re-subscribing.
@@ -26,6 +28,7 @@ export function useProfile() {
     setPage((p) => Math.min(p, result.data.pages.length - 1));
     setError(null);
     setNotice(null);
+    setConflict(false);
   }, []);
 
   // The layout changed on disk. Keep unsaved edits and ask the user instead of reloading.
@@ -37,16 +40,19 @@ export function useProfile() {
     }
   }, [load]);
 
-  const save = async () => {
+  // `force` overwrites the file on disk. Only the Overwrite choice passes it.
+  const save = async (force = false) => {
     if (!draft) return;
-    const result = await commands.saveProfile(draft);
+    const result = await commands.saveProfile(draft, force);
     if (result.status === "error") {
-      setError(result.error);
+      if (result.error.kind === "conflict") setConflict(true);
+      else setError(result.error.message);
       return;
     }
     setSaved(draft);
     setError(null);
     setNotice(null);
+    setConflict(false);
   };
 
   // Edits the page on screen. Every other field of the draft stays as it was.
@@ -71,6 +77,7 @@ export function useProfile() {
     error,
     setError,
     notice,
+    conflict,
     load,
     onReload,
     save,

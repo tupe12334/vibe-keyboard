@@ -5,7 +5,7 @@
 
 use super::*;
 use std::fs::File;
-use std::time::Duration;
+use std::time::SystemTime;
 
 fn temp_profile(name: &str) -> std::path::PathBuf {
     let dir =
@@ -17,15 +17,17 @@ fn temp_profile(name: &str) -> std::path::PathBuf {
     path
 }
 
-/// Another editor (or the user) edits the file and its time moves forward.
-fn external_edit(path: &Path) {
+/// Another editor (or the user) edits the file. The modification time is put back.
+fn external_edit_keeping_time(path: &Path) {
+    let before = std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .unwrap_or(SystemTime::UNIX_EPOCH);
     std::fs::write(path, "[external]\n").expect("external edit");
-    let later = SystemTime::now() + Duration::from_secs(60);
     File::options()
         .write(true)
         .open(path)
-        .and_then(|f| f.set_modified(later))
-        .expect("set mtime");
+        .and_then(|f| f.set_modified(before))
+        .expect("restore mtime");
 }
 
 #[test]
@@ -48,23 +50,23 @@ fn a_lock_file_that_cannot_open_refuses_without_writing() {
 }
 
 #[test]
-fn writes_when_the_file_is_as_loaded_and_returns_its_new_time() {
+fn writes_when_the_file_is_as_loaded_and_returns_its_new_version() {
     let path = temp_profile("guard");
-    let (profile, loaded) = load_with_mtime(&path).expect("load");
+    let (profile, loaded) = load_with_version(&path).expect("load");
     let written = save_if_unchanged(&path, &profile, loaded).expect("save");
-    assert_eq!(written, modified_at(&path));
+    assert_eq!(written, version_of(&path));
+    assert!(written.is_some());
 }
 
 #[test]
 fn a_concurrent_external_edit_after_load_is_refused() {
     let path = temp_profile("external");
-    let (profile, loaded) = load_with_mtime(&path).expect("load");
-    external_edit(&path);
+    let (profile, loaded) = load_with_version(&path).expect("load");
+    external_edit_keeping_time(&path);
     assert_eq!(
         save_if_unchanged(&path, &profile, loaded),
         Err(SaveRefusal::Changed)
     );
-    // The refused save left the external edit in place.
     assert_eq!(
         std::fs::read_to_string(&path).expect("read"),
         "[external]\n"
@@ -72,19 +74,15 @@ fn a_concurrent_external_edit_after_load_is_refused() {
 }
 
 #[test]
-fn a_stale_time_is_refused() {
+fn a_stale_version_is_refused() {
     let path = temp_profile("stale");
     let profile = Profile::default_from_legacy();
-    let stale = Some(SystemTime::now() - Duration::from_secs(3600));
+    let stale = version_of(&path).map(|v| v.wrapping_add(1));
     assert_eq!(
         save_if_unchanged(&path, &profile, stale),
         Err(SaveRefusal::Changed)
     );
 }
 
-#[test]
-fn load_reports_the_time_it_read_at() {
-    let path = temp_profile("load");
-    let (_, mtime) = load_with_mtime(&path).expect("load");
-    assert_eq!(mtime, modified_at(&path));
-}
+#[path = "profile_save_version_tests.rs"]
+mod version_tests;

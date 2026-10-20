@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use vibe_keyboard::infrastructure::profile_save::version_of;
 use vibe_keyboard::infrastructure::profile_store;
 
 use super::{load_from_disk, saving};
@@ -18,10 +19,10 @@ impl super::Editor {
                 format!("Cannot save: {error}. Fix the file by hand, then reopen the editor.");
             return false;
         }
-        match saving::write(&self.session.profile, self.loaded_mtime, overwrite) {
+        match saving::write(&self.session.profile, self.loaded_version, overwrite) {
             saving::Outcome::Saved => {
                 self.session.mark_saved();
-                self.loaded_mtime = profile_store::modified_at(&profile_store::profile_path());
+                self.loaded_version = version_of(&profile_store::profile_path());
                 self.disk_conflict = false;
                 self.status = "Saved. The controller reloads within a second.".into();
                 true
@@ -42,7 +43,7 @@ impl super::Editor {
         let (disk, error) = load_from_disk();
         self.load_error = error;
         self.session.replace_with_disk(disk);
-        self.loaded_mtime = profile_store::modified_at(&profile_store::profile_path());
+        self.loaded_version = version_of(&profile_store::profile_path());
         self.disk_conflict = false;
         self.key = None;
         self.previews.clear();
@@ -57,7 +58,7 @@ impl super::Editor {
         let (disk, error) = load_from_disk();
         if self.session.discard(disk, Instant::now()) {
             self.load_error = error;
-            self.loaded_mtime = profile_store::modified_at(&profile_store::profile_path());
+            self.loaded_version = version_of(&profile_store::profile_path());
             self.key = None;
             self.previews.clear();
             self.clamp_selection();

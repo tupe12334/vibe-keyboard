@@ -7,6 +7,8 @@ use tracing::warn;
 use crate::domain::profile::Profile;
 use crate::infrastructure::persistence::config_dir;
 
+use super::profile_save::{self, SaveRefusal};
+
 #[path = "profile_images.rs"]
 mod profile_images;
 pub use profile_images::{import_image, resolve_image};
@@ -31,15 +33,19 @@ pub fn modified_at(path: &Path) -> Option<SystemTime> {
 
 /// Read the profile at `path`. `Ok(None)` when the file is missing. Never writes.
 pub fn read(path: &Path) -> Result<Option<Profile>, String> {
-    let text = match fs::read_to_string(path) {
-        Ok(text) => text,
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(e) => return Err(format!("read {}: {e}", path.display())),
-    };
+    match fs::read_to_string(path) {
+        Ok(text) => parse(&text, path).map(Some),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(format!("read {}: {e}", path.display())),
+    }
+}
+
+/// Parse profile text that was read from `path`. Only the error message uses the path.
+pub fn parse(text: &str, path: &Path) -> Result<Profile, String> {
     let mut profile: Profile =
-        toml::from_str(&text).map_err(|e| format!("parse {}: {e}", path.display()))?;
+        toml::from_str(text).map_err(|e| format!("parse {}: {e}", path.display()))?;
     profile.ensure_one_page();
-    Ok(Some(profile))
+    Ok(profile)
 }
 
 /// Startup only: read the profile, or write the legacy layout once when it is missing.
@@ -51,9 +57,12 @@ pub fn ensure_default(path: &Path) -> Result<Profile, String> {
     if let Some(profile) = read(path)? {
         Ok(profile)
     } else {
+        // Expects "missing": if another editor created the file since the read, keep theirs.
         let profile = Profile::default_from_legacy();
-        if let Err(e) = save(path, &profile) {
-            warn!("could not write default profile: {e}");
+        match profile_save::save_if_unchanged(path, &profile, None) {
+            Err(SaveRefusal::Changed) => warn!("profile.toml appeared; kept it"),
+            Err(SaveRefusal::Failed(e)) => warn!("could not write default profile: {e}"),
+            Ok(_) => {}
         }
         Ok(profile)
     }

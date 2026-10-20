@@ -7,7 +7,7 @@ use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
-use crate::profile_io::{load_layout, save_layout};
+use crate::profile_io::{load_layout, save_layout, SaveError};
 
 #[derive(Serialize, Type)]
 pub struct DeviceStatus {
@@ -21,15 +21,20 @@ pub struct DeviceStatus {
 #[tauri::command]
 #[specta::specta]
 pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
-    load_layout(&app.loaded_mtime, &profile_store::profile_path())
+    load_layout(&app.loaded_version, &profile_store::profile_path())
 }
 
-/// Write the layout. Refused while it has problems, or when the file changed on disk
-/// since the editor last loaded it. Discard the edits to load the disk version first.
+/// Write the layout. Refused while it has problems. Refused with `Conflict` when the file changed
+/// on disk since the editor last loaded it, unless `force` overwrites the disk version.
 #[tauri::command]
 #[specta::specta]
-pub fn save_profile(profile: Profile, app: State<'_, App>) -> Result<(), String> {
-    save_layout(&app.loaded_mtime, &profile_store::profile_path(), &profile)
+pub fn save_profile(profile: Profile, force: bool, app: State<'_, App>) -> Result<(), SaveError> {
+    save_layout(
+        &app.loaded_version,
+        &profile_store::profile_path(),
+        &profile,
+        force,
+    )
 }
 
 #[tauri::command]

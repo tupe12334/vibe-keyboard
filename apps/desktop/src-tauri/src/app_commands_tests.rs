@@ -30,7 +30,7 @@ fn an_app_icon_key_survives_a_save_from_the_editor() {
     );
     get_ipc_response(
         &webview,
-        request("save_profile", json!({ "profile": edited })),
+        request("save_profile", json!({ "profile": edited, "force": false })),
     )
     .expect("save accepted");
 

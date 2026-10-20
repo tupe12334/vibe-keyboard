@@ -27,7 +27,7 @@ fn the_side_screen_survives_a_save_from_the_editor() {
     edited.set_side(0, Some(side.clone()));
     get_ipc_response(
         &webview,
-        request("save_profile", json!({ "profile": edited })),
+        request("save_profile", json!({ "profile": edited, "force": false })),
     )
     .expect("save accepted");
 

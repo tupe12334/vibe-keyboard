@@ -8,10 +8,10 @@ export const commands = {
 	/**  The saved layout. Missing file gives the built-in layout. */
 	getProfile: () => typedError<Profile_Serialize, string>(__TAURI_INVOKE("get_profile")),
 	/**
-	 *  Write the layout. Refused while it has problems, or when the file changed on disk
-	 *  since the editor last loaded it. Discard the edits to load the disk version first.
+	 *  Write the layout. Refused while it has problems. Refused with `Conflict` when the file changed
+	 *  on disk since the editor last loaded it, unless `force` overwrites the disk version.
 	 */
-	saveProfile: (profile: Profile_Deserialize) => typedError<null, string>(__TAURI_INVOKE("save_profile", { profile })),
+	saveProfile: (profile: Profile_Deserialize, force: boolean) => typedError<null, SaveError>(__TAURI_INVOKE("save_profile", { profile, force })),
 	/**
 	 *  PNG data URL of one key, drawn by the same `key_image` the deck uses.
 	 *  `profile` is the layout to preview, which may be unsaved.
@@ -246,6 +246,13 @@ export type RunningApp = {
 	name: string,
 	bundle_id: string,
 };
+
+/**  Why a save did not write. The webview reads `kind`. */
+export type SaveError = 
+/**  The file changed on disk since the editor loaded it. Nothing was written. */
+{ kind: "conflict" } | 
+/**  Nothing was written. The message says why. */
+{ kind: "refused"; message: string };
 
 /**  The side screen: a 480x100 strip. Same image sources as keys, else the label. */
 export type SideConfig = SideConfig_Serialize | SideConfig_Deserialize;
