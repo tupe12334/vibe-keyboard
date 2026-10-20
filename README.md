@@ -66,6 +66,10 @@ List screens (projects, issues) are paginated at 10 items per page.
 - Stream Dock 293S connected via USB
 - `pnpm` (for Centy integration)
 
+### Download
+
+Prebuilt macOS installers (DMG and app zip) are on the [Releases page](https://github.com/tupe12334/vibe-keyboard/releases). The builds are unsigned: the first time, right-click the app and choose **Open**. Push-to-talk also needs the Accessibility step below.
+
 ### Install
 
 ```bash

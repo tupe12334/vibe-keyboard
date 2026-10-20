@@ -1,0 +1,105 @@
+name: Release
+
+# Tag push builds the macOS installers and publishes them to a GitHub Release.
+# Manual run builds the same artifacts only, with no release.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The tag is the source of truth. The app version must match it.
+      - name: Read and check app version
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          CONF=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
+          CARGO=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
+          echo "tauri.conf.json: ${CONF}  Cargo.toml: ${CARGO}"
+          if [ "${CONF}" != "${CARGO}" ]; then
+            echo "error: tauri.conf.json (${CONF}) and Cargo.toml (${CARGO}) differ." >&2
+            exit 1
+          fi
+          if [ "${IS_TAG}" = "true" ] && [ "${REF_NAME#v}" != "${CONF}" ]; then
+            echo "error: tag ${REF_NAME} does not match app version ${CONF}." >&2
+            exit 1
+          fi
+          echo "version=${CONF}" >> "$GITHUB_OUTPUT"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/desktop/package.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+      - name: Install desktop dependencies
+        working-directory: apps/desktop
+        run: pnpm install --frozen-lockfile
+
+      # Empty tagName builds only. Set it on tag pushes so the release is created.
+      - name: Build universal app and DMG
+        id: tauri
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # action-v1.0.0
+        with:
+          projectPath: apps/desktop
+          args: --target universal-apple-darwin
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: "Vibe Keyboard v__VERSION__"
+          releaseBody: |
+            Download the DMG below, drag **Vibe Keyboard** to Applications.
+
+            - First launch: this build is unsigned. Right-click the app, choose **Open**, then confirm.
+            - Push-to-talk: add Vibe Keyboard in System Settings → Privacy & Security → Accessibility.
+
+            Full install notes: https://github.com/tupe12334/vibe-keyboard#download
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: false
+
+      # tauri-action uploads the DMG. Zip the .app here, for the release and for the run artifacts.
+      - name: Zip app bundle
+        id: zip
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          APP_DIR="target/universal-apple-darwin/release/bundle/macos"
+          ZIP="Vibe-Keyboard_${VERSION}_universal.app.zip"
+          ditto -c -k --keepParent "${APP_DIR}/Vibe Keyboard.app" "${ZIP}"
+          echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
+
+      - name: Attach app zip to release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          ZIP: ${{ steps.zip.outputs.zip }}
+        run: gh release upload "${TAG}" "${ZIP}" --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vibe-keyboard-macos-universal
+          path: |
+            ${{ steps.zip.outputs.zip }}
+            target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
