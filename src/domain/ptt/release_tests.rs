@@ -53,3 +53,12 @@ fn releasing_another_key_keeps_the_hold() {
     guard.end(1);
     assert_eq!(up_count(&log), 1);
 }
+
+#[test]
+fn key_up_after_a_screen_change_release_sends_no_second_key_up() {
+    let (mut guard, log) = setup();
+    start_hold(&mut guard, 1, Instant::now());
+    guard.release_all();
+    guard.end(1);
+    assert_eq!(up_count(&log), 1);
+}

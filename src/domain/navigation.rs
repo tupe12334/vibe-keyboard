@@ -118,6 +118,9 @@ impl Screen {
     }
 }
 
+/// Which screen is shown: stack depth, screen kind, and its page (0 when it has none).
+pub type ScreenId = (usize, std::mem::Discriminant<Screen>, usize);
+
 pub struct NavigationStack {
     stack: Vec<Screen>,
     total_main_pages: usize,
@@ -150,6 +153,21 @@ impl NavigationStack {
             Some(Screen::MainPage { page }) => Some(*page),
             _ => None,
         }
+    }
+
+    /// Identity of the shown screen. It changes on any navigation: push, pop, or a page turn.
+    pub fn screen_id(&self) -> ScreenId {
+        let top = self.current();
+        let page = match top {
+            Screen::MainPage { page }
+            | Screen::CentyProjectList { page, .. }
+            | Screen::CentyIssueList { page, .. }
+            | Screen::ClaudeSessions { page, .. }
+            | Screen::SessionActions { page, .. }
+            | Screen::MoadimList { page, .. } => *page,
+            _ => 0,
+        };
+        (self.stack.len(), std::mem::discriminant(top), page)
     }
 
     /// The main page the stack opened from. Built-in screens keep its side screen.
@@ -493,6 +511,9 @@ mod moadim_list;
 #[cfg(test)]
 #[path = "navigation_tests/out_and_actions.rs"]
 mod out_and_actions;
+#[cfg(test)]
+#[path = "navigation_tests/screen_id.rs"]
+mod screen_id;
 #[cfg(test)]
 #[path = "navigation_tests/session_actions.rs"]
 mod session_actions;
