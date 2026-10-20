@@ -9,6 +9,7 @@ use crate::domain::actions::{ButtonAction, ScreenView};
 use crate::domain::navigation::NavigationStack;
 use crate::domain::profile::{SideConfig, SideInset};
 use crate::domain::side::{resolve_side, SideContent};
+use crate::infrastructure::images::widget_texts;
 use crate::infrastructure::images::{page_images, side_image};
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::profile_store;
@@ -160,19 +161,26 @@ fn side_to_show(
     }
 }
 
-/// Sends `frame` unless the device already shows it. `side_frame` is cleared on every full
-/// redraw, because that redraw blanks the side screen too.
-fn send_side_frame(handle: &Device, state: &Arc<Mutex<tui::AppState>>, frame: &RgbImage) {
+/// Sends `frame` unless the device already shows it. Returns whether the device shows it now.
+/// `side_frame` is set only after the send succeeds, so a failed write is retried. `side_frame`
+/// is cleared on every full redraw, because that redraw blanks the side screen too.
+fn send_side_frame(handle: &Device, state: &Arc<Mutex<tui::AppState>>, frame: &RgbImage) -> bool {
     {
-        let mut s = state
+        let s = state
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         if s.side_frame.as_deref() == Some(frame.as_raw().as_slice()) {
-            return;
+            return true;
         }
-        s.side_frame = Some(frame.as_raw().clone());
     }
-    send_side_image(handle, DynamicImage::ImageRgb8(frame.clone()));
+    if !send_side_image(handle, DynamicImage::ImageRgb8(frame.clone())) {
+        return false;
+    }
+    state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .side_frame = Some(frame.as_raw().clone());
+    true
 }
 
 /// Draws the side screen `nav` shows. Called after every full redraw.
@@ -196,8 +204,23 @@ pub fn refresh_side_widgets(
     else {
         return;
     };
+    let texts = widget_texts(&side.widgets, &metrics);
+    if state
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .side_texts
+        .as_deref()
+        == Some(texts.as_slice())
+    {
+        return;
+    }
     let frame = side_image(Some(&side), &profile_store::root_dir(), &metrics, &inset);
-    send_side_frame(handle, state, &frame);
+    if send_side_frame(handle, state, &frame) {
+        state
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .side_texts = Some(texts);
+    }
 }
 
 #[cfg(test)]

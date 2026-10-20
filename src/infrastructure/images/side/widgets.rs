@@ -6,6 +6,20 @@ use super::value_text::{free_text, percent, temperature_text};
 use crate::domain::profile::{PixelRect, Widget};
 use crate::infrastructure::system_metrics::Metrics;
 
+/// The text each widget shows, in order. Equal text means equal pixels, so the tick can skip a
+/// redraw when nothing it shows changed.
+pub fn widget_texts(widgets: &[Widget], metrics: &Metrics) -> Vec<String> {
+    widgets
+        .iter()
+        .map(|widget| match widget {
+            Widget::CpuPercent | Widget::CpuBar => percent(metrics.cpu_percent),
+            Widget::Temperature => temperature_text(metrics.temperature),
+            Widget::DiskFree => free_text(metrics.disk),
+            Widget::Text { value } => value.clone(),
+        })
+        .collect()
+}
+
 // Caption + value block, centered in a widget slot. Scales as `draw_line` takes them.
 pub(super) const CAPTION_SCALE: u32 = 2;
 const VALUE_SCALE: u32 = 5;

@@ -1,6 +1,7 @@
 //! The only sysinfo calls. Everything here is untested by the coverage gate; the
 //! pure logic it feeds lives in `system_metrics.rs`.
 
+use std::panic::{self, AssertUnwindSafe};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -17,10 +18,13 @@ pub fn start() -> Shared {
         // CPU usage needs two samples at least `MINIMUM_CPU_UPDATE_INTERVAL` apart.
         thread::sleep(MINIMUM_CPU_UPDATE_INTERVAL);
         loop {
-            let metrics = probe.read();
-            *writer
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(metrics);
+            if let Ok(metrics) = panic::catch_unwind(AssertUnwindSafe(|| probe.read())) {
+                *writer
+                    .lock()
+                    .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(metrics);
+            } else {
+                tracing::error!("system metrics sample panicked");
+            }
             thread::sleep(SAMPLE_INTERVAL);
         }
     });

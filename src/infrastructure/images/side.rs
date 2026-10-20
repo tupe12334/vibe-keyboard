@@ -9,7 +9,7 @@ use crate::infrastructure::system_metrics::Metrics;
 
 mod cpu_bar;
 mod value_text;
-mod widgets;
+pub(super) mod widgets;
 
 use widgets::draw_widgets;
 

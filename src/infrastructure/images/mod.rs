@@ -31,6 +31,7 @@ pub use profile_key::{
 };
 pub use project_item::generate_project_item_image;
 pub use search::generate_search_image;
+pub use side::widgets::widget_texts;
 pub use side::{safe_rect, side_image, SIDE_HEIGHT, SIDE_WIDTH};
 pub use sort::generate_sort_image;
 pub use status_tile::routine_image;
