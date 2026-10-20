@@ -153,6 +153,7 @@ match_wildcard_for_single_variants = "deny"
 single_match_else = "deny"
 needless_pass_by_value = "deny"
 explicit_iter_loop = "deny"
+if_not_else = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
