@@ -8,7 +8,17 @@ pub use refresh::Refresh;
 
 mod refresh;
 
-use crate::domain::actions::NewSessionTerminal;
+mod dictation;
+mod frontmost;
+mod gestures;
+mod holds;
+
+pub use frontmost::handle_frontmost;
+use gestures::end_press;
+use holds::track_press;
+pub use holds::{install_panic_release, poll_holds, read_wait, release_all_holds};
+
+use crate::domain::actions::{NewSessionTerminal, TerminalApp};
 use crate::domain::navigation::prompt_index;
 use crate::infrastructure::claude_sessions::{focus_session, open_new_session, send_prompt};
 use crate::infrastructure::usb::Device;
@@ -52,6 +62,7 @@ pub fn handle_key_event(
     // Release always clears the highlight, even while loading.
     if state_byte != 1 {
         lock(state).pressed_key = None;
+        end_press(key, handle, nav, state, dev_state);
         return;
     }
     if lock(state).loading {
@@ -59,6 +70,7 @@ pub fn handle_key_event(
     }
     lock(state).pressed_key = Some(key);
     info!("key {:2} {state_str}", key);
+    track_press(key, nav, state);
 
     let is_input_number = matches!(nav.current(), Screen::InputNumber { .. });
     if matches!(key, 11 | 13) && nav.main_page().is_some() {
@@ -177,7 +189,12 @@ fn handle_action_key(
     // Main page keys come from the user's profile, not from code.
     if let Screen::MainPage { page } = nav.current() {
         let page = *page;
-        let configured = lock(state).profile.action_at(page, key).cloned();
+        // A key with `hold` waits for its gesture. `end_press` runs the tap.
+        let configured = lock(state)
+            .profile
+            .key_at(page, key)
+            .filter(|config| config.hold.is_none())
+            .map(|config| config.action.clone());
         if let Some(action) = configured {
             actions::run_action(&action, nav, handle, state, dev_state);
         }
@@ -479,30 +496,6 @@ fn handle_action_key(
             s.text_input_confirmed = false;
         }
         Action::None => {}
-    }
-}
-
-/// The app in front changed to `bundle_id`. Show the page that lists it, or return
-/// to the manual page when no page does. Does nothing while a sub-screen is open.
-pub fn handle_frontmost(
-    bundle_id: &str,
-    nav: &mut NavigationStack,
-    handle: &Device,
-    state: &Arc<Mutex<tui::AppState>>,
-    dev_state: &Arc<Mutex<DeviceState>>,
-) {
-    let Some(current) = nav.main_page() else {
-        return;
-    };
-    let decision = {
-        let mut s = lock(state);
-        let target = s.profile.page_for_app(bundle_id);
-        s.auto_page.on_frontmost(true, current, target)
-    };
-    if let Some(page) = decision {
-        info!("app {bundle_id} in front: showing page {}", page + 1);
-        nav.go_to_page(page);
-        render_screen(nav, handle, state, dev_state);
     }
 }
 

@@ -47,6 +47,7 @@ fn prompt_problems_flag_empty_multiline_and_long_text() {
             prompt(&"L".repeat(PROMPT_LABEL_MAX_CHARS + 1), "/l"),
         ],
         display: DisplaySettings::default(),
+        input: InputConfig::default(),
     };
     let problems = profile.problems();
     assert_eq!(problems.len(), 6, "{problems:?}");

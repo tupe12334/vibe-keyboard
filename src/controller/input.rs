@@ -2,7 +2,7 @@
 use super::ctx::Ctx;
 use super::event::ControllerEvent;
 use super::keys::key_press;
-use crate::application::{handle_frontmost, handle_key_event};
+use crate::application::{handle_frontmost, handle_key_event, read_wait};
 use crate::infrastructure::frontmost;
 use crate::infrastructure::usb::{keep_alive, read_event, Device};
 use std::time::{Duration, Instant};
@@ -10,7 +10,7 @@ use tracing::warn;
 
 /// Read one key event. Returns true when the read failed, which means the device is lost.
 pub fn read_key(c: &mut Ctx, handle: &Device) -> bool {
-    match read_event(handle, Duration::from_millis(500)) {
+    match read_event(handle, read_wait(&c.app_state)) {
         Ok(Some(data)) => {
             if data.len() >= 11 {
                 handle_key_event(

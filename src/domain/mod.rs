@@ -1,9 +1,11 @@
 pub mod actions;
 pub mod button;
+pub mod hold;
 pub mod hotkey;
 pub mod keys;
 pub mod moadim;
 pub mod navigation;
 pub mod profile;
+pub mod ptt;
 pub mod side;
 pub mod switching;

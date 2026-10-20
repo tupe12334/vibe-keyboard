@@ -1,6 +1,7 @@
 use std::collections::{HashMap, VecDeque};
 
 use crate::domain::actions::{ButtonAction, ScreenView};
+use crate::domain::hold::HoldTracker;
 use crate::domain::profile::Profile;
 use crate::domain::switching::AutoPage;
 use crate::infrastructure::system_metrics::Metrics;
@@ -21,6 +22,8 @@ pub struct AppState {
     /// Whether the shown main page was picked by the app in front.
     pub auto_page: AutoPage,
     pub pressed_key: Option<u8>,
+    /// Keys down now, to tell a tap from a hold.
+    pub holds: HoldTracker,
     pub loading: bool,
     pub log: VecDeque<String>,
     pub actions: HashMap<u8, ButtonAction>,
@@ -44,6 +47,7 @@ impl AppState {
             side_texts: None,
             auto_page: AutoPage::default(),
             pressed_key: None,
+            holds: HoldTracker::default(),
             loading: false,
             log: VecDeque::with_capacity(LOG_CAPACITY),
             actions: HashMap::new(),
