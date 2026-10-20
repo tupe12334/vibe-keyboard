@@ -56,22 +56,19 @@ pub fn side_image(side: Option<&SideConfig>, root: &Path, metrics: &Metrics) -> 
             .image
             .as_deref()
             .and_then(|image| source_image(image, root, SAFE_HEIGHT));
-        match picture {
-            Some(img) => {
-                let fill = DynamicImage::ImageRgb8(img)
-                    .resize_to_fill(
-                        SAFE_WIDTH,
-                        SAFE_HEIGHT,
-                        image::imageops::FilterType::Triangle,
-                    )
-                    .to_rgb8();
-                imageops::replace(&mut canvas, &fill, i64::from(SAFE_X), i64::from(SAFE_Y));
-            }
-            None => {
-                let mut safe = ImageBuffer::from_pixel(SAFE_WIDTH, SAFE_HEIGHT, Rgb(bg));
-                draw_label(&mut safe, &side.label, Rgb(fg));
-                imageops::replace(&mut canvas, &safe, i64::from(SAFE_X), i64::from(SAFE_Y));
-            }
+        if let Some(img) = picture {
+            let fill = DynamicImage::ImageRgb8(img)
+                .resize_to_fill(
+                    SAFE_WIDTH,
+                    SAFE_HEIGHT,
+                    image::imageops::FilterType::Triangle,
+                )
+                .to_rgb8();
+            imageops::replace(&mut canvas, &fill, i64::from(SAFE_X), i64::from(SAFE_Y));
+        } else {
+            let mut safe = ImageBuffer::from_pixel(SAFE_WIDTH, SAFE_HEIGHT, Rgb(bg));
+            draw_label(&mut safe, &side.label, Rgb(fg));
+            imageops::replace(&mut canvas, &safe, i64::from(SAFE_X), i64::from(SAFE_Y));
         }
     } else {
         draw_widgets(&mut canvas, &side.widgets, metrics, bg, fg);
