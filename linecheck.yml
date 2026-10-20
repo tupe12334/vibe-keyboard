@@ -37,8 +37,6 @@ rules:
     error: 157
   - pattern: "src/application/pages/centy/issues.rs"
     error: 110
-  - pattern: "src/application/pages/input_number.rs"
-    error: 108
   - pattern: "src/presentation/tui/app_state.rs"
     error: 104
   - pattern: "src/application/pages/main_page_tests.rs"

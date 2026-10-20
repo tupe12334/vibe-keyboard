@@ -1,71 +1,20 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use crate::infrastructure::usb::Device;
 use image::DynamicImage;
 
-use crate::domain::actions::{ButtonAction, ScreenView};
+use crate::domain::actions::ScreenView;
 use crate::infrastructure::images::{
     generate_numpad_backspace_image, generate_numpad_clear_image, generate_numpad_digit_image,
 };
 use crate::infrastructure::usb::send_button_image;
 use crate::presentation::tui;
 
+#[path = "numpad.rs"]
+mod numpad;
+
 pub fn render_input_number(value: &str, handle: &Device, state: &Arc<Mutex<tui::AppState>>) {
-    let mut actions: HashMap<u8, ButtonAction> = HashMap::new();
-
-    actions.insert(
-        1,
-        ButtonAction {
-            name: "CLR".into(),
-            title: "Clear".into(),
-            description: "Clear all input".into(),
-        },
-    );
-    actions.insert(
-        2,
-        ButtonAction {
-            name: "⌫".into(),
-            title: "Backspace".into(),
-            description: "Delete last digit".into(),
-        },
-    );
-
-    // Keys 3–5 → digits 1–3
-    for (key, digit) in [(3u8, '1'), (4, '2'), (5, '3')] {
-        actions.insert(
-            key,
-            ButtonAction {
-                name: digit.to_string(),
-                title: format!("Digit {digit}"),
-                description: String::new(),
-            },
-        );
-    }
-
-    // Keys 8–10 → digits 4–6
-    for (key, digit) in [(8u8, '4'), (9, '5'), (10, '6')] {
-        actions.insert(
-            key,
-            ButtonAction {
-                name: digit.to_string(),
-                title: format!("Digit {digit}"),
-                description: String::new(),
-            },
-        );
-    }
-
-    // Keys 13–15 → digits 7–9
-    for (key, digit) in [(13u8, '7'), (14, '8'), (15, '9')] {
-        actions.insert(
-            key,
-            ButtonAction {
-                name: digit.to_string(),
-                title: format!("Digit {digit}"),
-                description: String::new(),
-            },
-        );
-    }
+    let actions = numpad::numpad_buttons();
 
     {
         let mut s = state
