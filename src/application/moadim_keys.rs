@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use tracing::info;
 
-use crate::application::{render_screen, MoadimRefresh};
+use super::pages::moadim::MoadimRefresh;
+use crate::application::render_screen;
 use crate::domain::moadim::{MoadimList, Routine};
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::infrastructure::moadim::RoutineAction;

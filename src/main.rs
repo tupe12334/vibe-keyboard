@@ -210,6 +210,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         was_on_main_page = on_main_page;
 
         pages.tick(&mut nav, &handle, &app_state, &dev_state);
+        application::prompt_return::poll_sent_prompt(&mut nav, &handle, &app_state, &dev_state);
 
         if read_lost || handle.has_failed() {
             warn!("device disconnected");
