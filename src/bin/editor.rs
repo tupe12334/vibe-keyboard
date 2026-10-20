@@ -1,11 +1,7 @@
 //! Layout editor for `~/.config/vibe-keyboard/profile.toml`.
 //! The running controller hot-reloads the file after you save.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::sync::mpsc;
-
-use eframe::egui::{self, Color32};
+use eframe::egui::Color32;
 use vibe_keyboard::infrastructure::images::SIDE_HEIGHT;
 #[path = "editor/app.rs"]
 mod app;
@@ -33,6 +29,9 @@ mod layout;
 mod page_list;
 #[path = "editor/prompts.rs"]
 mod prompts;
+#[path = "editor/state.rs"]
+mod state;
+use state::Editor;
 #[path = "editor/running_apps.rs"]
 mod running_apps;
 #[path = "editor/status_bar.rs"]
@@ -46,8 +45,6 @@ use running_apps::parse_lsappinfo;
 mod side_panel;
 #[path = "editor/side_strip.rs"]
 mod side_strip;
-use vibe_keyboard::infrastructure::profile_store;
-use vibe_keyboard::infrastructure::system_metrics::{self, Shared};
 
 /// Physical layout as seen from the front. Matches `device.md`.
 const GRID: [[u8; 5]; 3] = [[1, 2, 3, 4, 5], [6, 7, 8, 9, 10], [11, 12, 13, 14, 15]];
@@ -97,90 +94,15 @@ mod previews;
 #[path = "editor/saving.rs"]
 mod saving;
 use image_kind::ImageKind;
-use previews::{Preview, SidePreview};
+use previews::Preview;
 
 #[path = "editor/session.rs"]
 mod session;
+use session::load_from_disk;
+#[cfg(test)]
+use session::Session;
 #[cfg(test)]
 use session::UNDO_WINDOW;
-use session::{load_from_disk, Session};
-
-struct Editor {
-    root: PathBuf,
-    session: Session,
-    /// The unsaved-changes dialog is open (window close was requested while dirty).
-    close_prompt: bool,
-    /// File modification time when it was last loaded or written by this editor.
-    loaded_mtime: Option<std::time::SystemTime>,
-    /// The file changed on disk since it was loaded. Save waits for the user's choice.
-    disk_conflict: bool,
-    page: usize,
-    key: Option<u8>,
-    status: String,
-    /// Last rendered preview per key, with the config it was rendered from.
-    previews: HashMap<u8, Preview>,
-    /// Running apps as (name, bundle id), refreshed on demand.
-    running: Vec<(String, String)>,
-    /// Pending result of a background `lsappinfo` run.
-    running_rx: Option<mpsc::Receiver<Vec<(String, String)>>>,
-    new_app: String,
-    /// Bundle id typed into the app image picker.
-    image_app_text: String,
-    /// Textures of the icon pack, loaded on first use.
-    icon_textures: HashMap<&'static str, egui::TextureHandle>,
-    /// Set when `profile.toml` could not be read. Saving is refused while it is set.
-    load_error: Option<String>,
-    /// Latest system sample, shared with the sampler thread. Widgets in the preview use it.
-    metrics: Shared,
-    /// Last rendered side preview of the current page.
-    side_preview: Option<SidePreview>,
-    /// The side panel is shown instead of the key panel.
-    side_open: bool,
-}
-
-impl Editor {
-    fn new() -> Self {
-        let root = profile_store::root_dir();
-        let (profile, load_error) = load_from_disk();
-        let mut editor = Self {
-            root,
-            session: Session::new(profile),
-            close_prompt: false,
-            loaded_mtime: profile_store::modified_at(&profile_store::profile_path()),
-            disk_conflict: false,
-            page: 0,
-            key: None,
-            status: "Loaded profile.".to_string(),
-            previews: HashMap::new(),
-            running: Vec::new(),
-            running_rx: None,
-            new_app: String::new(),
-            image_app_text: String::new(),
-            icon_textures: HashMap::new(),
-            load_error,
-            side_preview: None,
-            side_open: false,
-            metrics: system_metrics::start(),
-        };
-        editor.start_running_refresh();
-        editor
-    }
-
-    fn dirty(&self) -> bool {
-        self.session.profile != self.session.saved
-    }
-
-    /// Keep the selected page inside the current layout. The key selection is dropped when
-    /// the page moves.
-    fn clamp_selection(&mut self) {
-        let count = self.session.profile.pages.len();
-        let page = self.page.min(count.saturating_sub(1));
-        if page != self.page {
-            self.page = page;
-            self.key = None;
-        }
-    }
-}
 
 #[path = "editor/action_form.rs"]
 mod action_form;
