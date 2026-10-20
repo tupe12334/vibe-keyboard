@@ -4,22 +4,37 @@
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::hold::{lock, read_probe};
+use tracing::warn;
 
-/// Gap between repeated key downs while held. Terminal key repeat is about 30 ms.
-const REPEAT_EVERY: Duration = Duration::from_millis(30);
+use super::hold::{lock, read_probe};
+use crate::domain::ptt::{deadline, next_index};
+
 /// How often a hold re-checks the frontmost app and Accessibility.
 const PROBE_EVERY: Duration = Duration::from_millis(250);
+/// `QOS_CLASS_USER_INTERACTIVE`, from `<sys/qos.h>`.
+const QOS_CLASS_USER_INTERACTIVE: u32 = 0x21;
 
-/// Post a repeat key down every `REPEAT_EVERY` until the hold ends.
+extern "C" {
+    fn pthread_set_qos_class_self_np(qos_class: u32, relative_priority: i32) -> i32;
+}
+
+/// Post a repeat key down every 30 ms until the hold ends. The beats sit on an absolute
+/// grid from the first one, so a slow beat never shifts the later ones.
 pub(super) fn beat(generation: u64) {
-    let mut next = Instant::now() + REPEAT_EVERY;
+    // SAFETY: takes a QoS class and a priority by value, touches no memory, and only changes this thread.
+    let status = unsafe { pthread_set_qos_class_self_np(QOS_CLASS_USER_INTERACTIVE, 0) };
+    if status != 0 {
+        warn!("push to talk: repeat thread stays at default QoS (status {status})");
+    }
+    let start = Instant::now();
+    let mut next = 1;
     loop {
-        thread::sleep(next.saturating_duration_since(Instant::now()));
-        next += REPEAT_EVERY;
-        if !lock().pump(generation, Instant::now()) {
+        thread::sleep(deadline(start, next).saturating_duration_since(Instant::now()));
+        let now = Instant::now();
+        if !lock().pump(generation, now) {
             break;
         }
+        next = next_index(start, next, now);
     }
 }
 

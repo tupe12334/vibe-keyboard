@@ -81,13 +81,13 @@ fn every_reason_has_its_log_label() {
 }
 
 #[test]
-fn key_up_summary_has_count_reason_and_widest_gap() {
+fn key_up_summary_has_count_reason_gap_and_late_beats() {
     let t0 = Instant::now();
     let mut beats = Beats::new(t0);
     beats.beat(t0 + Duration::from_millis(30));
     beats.beat(t0 + Duration::from_millis(130));
     assert_eq!(
         key_up_summary(beats, Release::Moved { to: Some(7) }),
-        "key up after 2 repeats: moved to pid 7, max repeat gap 100 ms"
+        "key up after 2 repeats: moved to pid 7, max repeat gap 100 ms, late beats 1"
     );
 }
