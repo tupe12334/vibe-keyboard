@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-20
+
+### Fixed
+
+- Release workflow: pass `GITHUB_TOKEN` to `tauri-action` so the DMG uploads to the GitHub release. The v0.1.0 run built the DMG but failed to publish it.
+
 ### Added
 
 - Voice key (13) on a session page: hold to push to talk into the session. A tap flashes HOLD on the tile.
