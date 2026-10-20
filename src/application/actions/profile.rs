@@ -10,10 +10,11 @@ use super::{
 use crate::application::pages::fetch_centy_projects;
 use crate::application::render_screen;
 use crate::domain::actions::CentyProject;
-use crate::domain::hotkey::parse_hotkey;
+use crate::domain::hotkey::{parse_hotkey, push_to_talk_key};
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::domain::profile::{is_bundle_id, Action};
 use crate::infrastructure::claude_sessions::list_sessions;
+use crate::infrastructure::keyboard;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
@@ -51,6 +52,13 @@ pub fn run_action(
                 spawn_detached("osascript", &["-e", script.as_str()]);
             }
             Err(e) => error!("profile: bad hotkey '{keys}': {e}"),
+        },
+        Action::PushToTalk { key } => match push_to_talk_key(key.as_deref()) {
+            Ok(hotkey) => {
+                info!("profile: push-to-talk tap");
+                keyboard::tap(&hotkey);
+            }
+            Err(e) => error!("profile: bad push-to-talk key: {e}"),
         },
         Action::GoToPage { page } => {
             crate::application::lock(state).auto_page.on_manual_page();

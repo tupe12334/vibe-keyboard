@@ -31,6 +31,8 @@ pub struct Ctx {
     pub frontmost_rx: Receiver<String>,
     pub icon_generation: u64,
     pub was_on_main_page: bool,
+    /// Main page last seen, to end the holds when the page changes.
+    pub last_page: Option<usize>,
     pub last_heartbeat: Instant,
     pub pages: Refresh,
     pub last_profile_mtime: Option<SystemTime>,
@@ -51,6 +53,7 @@ impl Ctx {
     ) -> Self {
         Self {
             was_on_main_page: nav.main_page().is_some(),
+            last_page: nav.main_page(),
             nav,
             app_state,
             dev_state,

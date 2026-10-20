@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
-use super::hotkey::parse_hotkey;
+use super::hotkey::{key_code, parse_hotkey};
 use super::keys::is_nav_key;
 
 /// Largest physical key number. Keys 1–15 are usable; 11–13 are navigation.
@@ -36,6 +37,9 @@ pub struct Profile {
     /// Device-wide display settings: the band the bezel hides, in pixels.
     #[serde(default, skip_serializing_if = "is_default")]
     pub display: DisplaySettings,
+    /// Timing of key holds. Absent means the defaults, so older files still load.
+    #[serde(default, skip_serializing_if = "InputConfig::is_default")]
+    pub input: InputConfig,
 }
 
 /// A prompt a session action types into a Claude Code session, followed by Enter.
@@ -136,6 +140,34 @@ pub fn inner_rect(
 #[cfg(test)]
 #[path = "profile_display_tests.rs"]
 mod display_tests;
+
+/// The `[input]` table of `profile.toml`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct InputConfig {
+    /// Milliseconds a key must stay down before its `hold` action starts.
+    #[serde(default = "default_hold_ms")]
+    pub hold_ms: u64,
+}
+
+const DEFAULT_HOLD_MS: u64 = 400;
+
+const fn default_hold_ms() -> u64 {
+    DEFAULT_HOLD_MS
+}
+
+impl Default for InputConfig {
+    fn default() -> Self {
+        Self {
+            hold_ms: DEFAULT_HOLD_MS,
+        }
+    }
+}
+
+impl InputConfig {
+    pub fn is_default(&self) -> bool {
+        *self == Self::default()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Page {
@@ -244,6 +276,9 @@ pub struct KeyConfig {
     pub image: Option<PathBuf>,
     #[serde(default)]
     pub action: Action,
+    /// Runs while the key is held, for at least `[input] hold_ms`. A short press still runs `action`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hold: Option<Action>,
 }
 
 /// What a key does when pressed. TOML: `type = "open_url"`, etc.
@@ -275,6 +310,12 @@ pub enum Action {
     Builtin {
         name: String,
     },
+    /// Claude Code push-to-talk. As a hold: key down at hold start, key up at hold end.
+    /// As a tap: one press and release. `key` defaults to `Space`.
+    PushToTalk {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        key: Option<String>,
+    },
 }
 
 /// The kind of an `Action`, without its fields. Used by the editor's type picker.
@@ -287,10 +328,11 @@ pub enum ActionKind {
     Hotkey,
     GoToPage,
     Builtin,
+    PushToTalk,
 }
 
 impl ActionKind {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::None,
         Self::OpenUrl,
         Self::RunCommand,
@@ -298,6 +340,7 @@ impl ActionKind {
         Self::Hotkey,
         Self::GoToPage,
         Self::Builtin,
+        Self::PushToTalk,
     ];
 
     pub const fn label(self) -> &'static str {
@@ -309,6 +352,7 @@ impl ActionKind {
             Self::Hotkey => "Hotkey",
             Self::GoToPage => "Go to page",
             Self::Builtin => "Built-in",
+            Self::PushToTalk => "Push to talk",
         }
     }
 }
@@ -321,6 +365,7 @@ impl Default for KeyConfig {
             fg: default_fg(),
             image: None,
             action: Action::None,
+            hold: None,
         }
     }
 }
@@ -351,6 +396,11 @@ pub fn is_bundle_id(text: &str) -> bool {
 }
 
 impl Profile {
+    /// How long a key must stay down to count as a hold.
+    pub const fn hold_threshold(&self) -> Duration {
+        Duration::from_millis(self.input.hold_ms)
+    }
+
     /// The layout that matches the hard-coded main pages before profiles existed.
     pub fn default_from_legacy() -> Self {
         let builtin = |label: &str, name: &str| KeyConfig {
@@ -360,6 +410,7 @@ impl Profile {
         };
         Self {
             prompts: Vec::new(),
+            input: InputConfig::default(),
             pages: vec![
                 Page {
                     name: "Main".into(),
@@ -509,6 +560,13 @@ impl Profile {
                 if let Some(problem) = config.action.problem(self.pages.len()) {
                     out.push(format!("{place}: {problem}"));
                 }
+                if let Some(problem) = config
+                    .hold
+                    .as_ref()
+                    .and_then(|h| h.problem(self.pages.len()))
+                {
+                    out.push(format!("{place}: hold {problem}"));
+                }
             }
         }
         out
@@ -525,6 +583,7 @@ impl Action {
             Self::Hotkey { .. } => ActionKind::Hotkey,
             Self::GoToPage { .. } => ActionKind::GoToPage,
             Self::Builtin { .. } => ActionKind::Builtin,
+            Self::PushToTalk { .. } => ActionKind::PushToTalk,
         }
     }
 
@@ -543,6 +602,7 @@ impl Action {
                 keys: String::new(),
             },
             ActionKind::GoToPage => Self::GoToPage { page: 0 },
+            ActionKind::PushToTalk => Self::PushToTalk { key: None },
             ActionKind::Builtin => Self::Builtin {
                 name: BUILTIN_NAMES[0].into(),
             },
@@ -564,7 +624,18 @@ impl Action {
             }
             Self::Builtin { name } => (!BUILTIN_NAMES.contains(&name.as_str()))
                 .then(|| format!("unknown built-in '{name}'")),
+            Self::PushToTalk { key } => key.as_deref().and_then(push_to_talk_problem),
         }
+    }
+}
+
+/// Why a push-to-talk key cannot be posted. `None` when it can.
+fn push_to_talk_problem(text: &str) -> Option<String> {
+    match parse_hotkey(text) {
+        Err(e) => Some(e),
+        Ok(hotkey) => key_code(&hotkey.key)
+            .is_none()
+            .then(|| format!("push-to-talk key '{text}' has no key code")),
     }
 }
 
@@ -586,3 +657,7 @@ pub fn format_color(rgb: [u8; 3]) -> String {
 #[cfg(test)]
 #[path = "profile_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "profile_input_tests.rs"]
+mod input_tests;

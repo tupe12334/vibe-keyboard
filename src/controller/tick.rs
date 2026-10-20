@@ -4,7 +4,10 @@ use super::event::ControllerEvent;
 use super::input;
 use super::reload::reload_profile;
 use super::side;
-use crate::application::{handle_filter_query, handle_frontmost, prompt_return, render_screen};
+use crate::application::{
+    handle_filter_query, handle_frontmost, poll_holds, prompt_return, release_all_holds,
+    render_screen,
+};
 use crate::infrastructure::images::app_icon_generation;
 use crate::infrastructure::profile_store;
 use crate::infrastructure::usb::Device;
@@ -25,6 +28,8 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
     redraw_on_icon_change(c, handle);
     confirm_filter(c, handle);
     let read_lost = input::read_key(c, handle);
+    poll_holds(handle, &mut c.nav, &c.app_state, &c.dev_state);
+    release_on_page_change(c);
     side::tick(c, handle);
     input::heartbeat(c, handle);
     input::back_on_main_page(c, handle);
@@ -34,6 +39,15 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
         Flow::Lost
     } else {
         Flow::Continue
+    }
+}
+
+/// A page change ends every hold: the key that went down belongs to the old page.
+fn release_on_page_change(c: &mut Ctx) {
+    let page = c.nav.main_page();
+    if page != c.last_page {
+        c.last_page = page;
+        release_all_holds(&c.app_state);
     }
 }
 

@@ -8,10 +8,11 @@ use crate::infrastructure::claude_sessions::{
 use crate::infrastructure::process::run;
 
 /// Select the terminal tab for `tty`. Tries iTerm2, then Terminal.app. When neither has the tab
-/// (VS Code and other terminals), it activates VS Code. Blocks until done, so call it from a thread.
-pub fn focus_session(tty: &str) {
+/// (VS Code and other terminals), it activates VS Code. Returns true only when a tab was found.
+/// Blocks until done, so call it from a thread.
+pub fn focus_session(tty: &str) -> bool {
     let Some(scripts) = focus_scripts(tty) else {
-        return;
+        return false;
     };
     let found = scripts.iter().any(|script| {
         run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
@@ -19,6 +20,7 @@ pub fn focus_session(tty: &str) {
     if !found {
         run("open", &["-b", "com.microsoft.VSCode"], FOCUS_TIMEOUT);
     }
+    found
 }
 
 /// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. Skips when `pid`

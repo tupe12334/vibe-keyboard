@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Push-to-talk: `push_to_talk` action, per-key `hold` action, `[input] hold_ms`, and holding a Claude session key to dictate in it
 - Context-aware sort button on button 14 (#9)
 - Numpad-style input number page for entering numbers directly on the device (#8)
 - Context-aware search button on button 15 (#7)

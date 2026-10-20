@@ -122,7 +122,7 @@ label = "Claude"
 action = { type = "builtin", name = "claude_sessions" }
 ```
 
-Action types: `none`, `open_url`, `run_command`, `open_app`, `hotkey`, `go_to_page` (0-based index), `builtin`.
+Action types: `none`, `open_url`, `run_command`, `open_app`, `hotkey`, `go_to_page` (0-based index), `builtin`, `push_to_talk`.
 `open_app` takes an app name (`open -a`), or a bundle id (`open -b`) when the value contains a dot and no spaces. Names ending in `.app` are app names.
 `run_command` runs `sh -c` with the text stored in `profile.toml`. Anyone who can write that file can run commands, so track it only in a repo you trust.
 Built-in names: `centy_projects`, `terminal`, `claude`, `centy_web`, `numpad`, `log_file`, `vscode_config`, `claude_sessions`.
@@ -132,6 +132,38 @@ A built-in key shows its icon unless `image` is set.
 A malformed file is logged with its line and column. The controller keeps the last good layout.
 
 Run the controller without a terminal (for example at login) with `listen --headless`. It runs the same device loop and actions, with no TUI. Logs go to `~/.config/vibe-keyboard/app.log`. It exits cleanly on SIGINT or SIGTERM.
+
+### Hold a key
+
+A key can have a second action, `hold`. A short press runs `action`, as before. A press held for `[input] hold_ms` (default `400`) starts `hold`. When the key comes up, the hold ends. A `push_to_talk` hold presses its key down at the start and releases it at the end.
+
+```toml
+[input]
+hold_ms = 400
+
+[pages.keys.5]
+label = "Claude"
+action = { type = "builtin", name = "claude" }   # short press: open Claude
+hold = { type = "push_to_talk" }                  # hold: Claude Code dictation
+```
+
+`push_to_talk` takes an optional `key`, a shortcut such as `"space"` or `"cmd+k"`. Without it the key is `Space`. As a plain `action`, `push_to_talk` sends one press and release.
+On the Claude sessions page, a held session key focuses that session, waits 150 ms, then starts dictation. Release stops it. A short press only focuses, as before. If the controller stalls for more than 2 seconds during a hold, the key is lifted and dictation stops.
+
+Claude Code dictation (checked on 2026-10-20):
+
+- [Voice dictation](https://code.claude.com/docs/en/voice-dictation). `/voice` turns it on. `/voice hold` is the default: hold `Space` to record, release to stop. `/voice tap` is the other mode: tap to start, tap to send.
+- The key is the `voice:pushToTalk` binding in the `Chat` context of `~/.claude/keybindings.json`. It defaults to `Space`.
+- Settings: `"voice": { "enabled": true, "mode": "hold", "autoSubmit": false }`.
+- Hold mode detects a hold by counting key-repeat events from the terminal. A single key down does not start it. So `push_to_talk` sends key down, then repeated key down with the auto-repeat flag, then key up. Keep `/voice hold` on. In tap mode each repeat would toggle recording.
+- Dictation needs a claude.ai sign-in and a local microphone.
+
+Push-to-talk posts keys with CoreGraphics. macOS only lets a process post keys when it has Accessibility permission:
+
+1. Open System Settings > Privacy & Security > Accessibility.
+2. Click `+`. Add the app that runs `listen`: your terminal app when you start it by hand, or the app that launches it at login.
+3. Turn the switch on.
+4. Hold the key again. Without permission, `app.log` shows `push to talk needs Accessibility`, and holds do nothing.
 
 ### App-aware pages
 

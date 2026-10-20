@@ -4,6 +4,7 @@ pub mod controller_lock;
 pub mod focused_session;
 pub mod frontmost;
 pub mod images;
+pub mod keyboard;
 pub mod moadim;
 pub mod persistence;
 pub mod process;
