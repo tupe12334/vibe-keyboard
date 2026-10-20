@@ -8,7 +8,7 @@ use tracing::{error, info};
 
 use super::actions;
 use crate::domain::hotkey::{default_push_to_talk, push_to_talk_key};
-use crate::domain::navigation::NavigationStack;
+use crate::domain::navigation::{NavigationStack, Screen};
 use crate::infrastructure::claude_sessions::focus_session;
 use crate::infrastructure::keyboard;
 use crate::infrastructure::persistence::DeviceState;
@@ -48,11 +48,15 @@ pub(super) fn end_hold(key: u8, hold: &crate::domain::profile::Action) {
     }
 }
 
-/// Voice key held on a session page: Space into the frontmost terminal, which auto-focus already
-/// brought forward. Same guard and posting path as a held session key, without the focus step.
-pub(super) fn start_voice(key: u8) {
-    let generation = keyboard::hold_begin(key);
-    keyboard::push_to_talk_start(generation, key, &default_push_to_talk());
+/// Voice key held on a session page: dictate in that session, the same as a held session key.
+/// Focus runs first. No session on screen means no push-to-talk.
+// ponytail: Space only. The voice tile has no profile binding; read one here when it does.
+pub(super) fn start_voice(key: u8, nav: &NavigationStack) {
+    if let Screen::SessionActions { session, .. } = nav.current() {
+        start_session_dictation(session.tty.clone(), key);
+    } else {
+        error!("voice: no session on screen, dictation not started");
+    }
 }
 
 /// Session key held: focus its tab, let the terminal settle, then start dictation.
@@ -61,12 +65,25 @@ pub(super) fn start_session_dictation(tty: String, key: u8) {
     let generation = keyboard::hold_begin(key);
     info!("claude sessions: dictate in {tty}");
     thread::spawn(move || {
-        // No terminal tab: Space would reach the wrong app, so dictation does not start.
-        if !focus_session(&tty) {
-            error!("claude sessions: NO FOCUS for {tty}, dictation not started");
-            return;
-        }
-        thread::sleep(FOCUS_SETTLE);
-        keyboard::push_to_talk_start(generation, key, &default_push_to_talk());
+        dictate_once_focused(
+            || focus_session(&tty),
+            || keyboard::push_to_talk_start(generation, key, &default_push_to_talk()),
+        );
     });
 }
+
+/// Focus, let the terminal settle, then run `start`. `start` runs only when focus succeeded,
+/// so Space never reaches an app other than the session's terminal.
+fn dictate_once_focused(focus: impl FnOnce() -> bool, start: impl FnOnce()) -> bool {
+    if !focus() {
+        error!("claude sessions: NO FOCUS, dictation not started");
+        return false;
+    }
+    thread::sleep(FOCUS_SETTLE);
+    start();
+    true
+}
+
+#[cfg(test)]
+#[path = "dictation_tests.rs"]
+mod tests;

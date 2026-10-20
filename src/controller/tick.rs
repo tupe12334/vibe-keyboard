@@ -43,11 +43,11 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
     }
 }
 
-/// A page change ends every hold: the key that went down belongs to the old page.
+/// A screen change ends every hold: the key that went down belongs to the old screen.
 fn release_on_page_change(c: &mut Ctx) {
-    let page = c.nav.main_page();
-    if page != c.last_page {
-        c.last_page = page;
+    let screen = c.nav.screen_id();
+    if screen != c.last_screen {
+        c.last_screen = screen;
         release_all_holds(&c.app_state);
     }
 }

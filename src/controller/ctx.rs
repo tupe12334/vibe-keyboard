@@ -2,7 +2,7 @@
 use super::run::EventSink;
 use super::side::SideMetrics;
 use crate::application::Refresh;
-use crate::domain::navigation::NavigationStack;
+use crate::domain::navigation::{NavigationStack, ScreenId};
 use crate::infrastructure::frontmost;
 use crate::infrastructure::images::app_icon_generation;
 use crate::infrastructure::persistence::DeviceState;
@@ -31,8 +31,8 @@ pub struct Ctx {
     pub frontmost_rx: Receiver<String>,
     pub icon_generation: u64,
     pub was_on_main_page: bool,
-    /// Main page last seen, to end the holds when the page changes.
-    pub last_page: Option<usize>,
+    /// Screen last seen, to end the holds when any screen changes.
+    pub last_screen: ScreenId,
     pub last_heartbeat: Instant,
     pub pages: Refresh,
     pub last_profile_mtime: Option<SystemTime>,
@@ -53,7 +53,7 @@ impl Ctx {
     ) -> Self {
         Self {
             was_on_main_page: nav.main_page().is_some(),
-            last_page: nav.main_page(),
+            last_screen: nav.screen_id(),
             nav,
             app_state,
             dev_state,

@@ -40,7 +40,7 @@ pub fn expire_flash(
     now: Instant,
 ) {
     let expired = take_expired(&mut super::lock(state).voice_flash, now);
-    if expired && matches!(nav.current(), Screen::SessionActions { .. }) {
+    if expired && holds_voice(nav.current(), VOICE_KEY) {
         draw(handle, state, "VOICE");
     }
 }
