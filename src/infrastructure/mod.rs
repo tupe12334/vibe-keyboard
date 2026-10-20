@@ -5,6 +5,7 @@ pub mod focused_session;
 pub mod frontmost;
 pub mod images;
 pub mod keyboard;
+pub mod login_path;
 pub mod moadim;
 pub mod mouse_release;
 pub mod persistence;
