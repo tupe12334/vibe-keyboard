@@ -26,9 +26,10 @@ git remote add origin git@github.com:YOUR_USER/vibe-keyboard-config.git
 git add -A && git commit -m "Initial config" && git push -u origin main
 ```
 
-On another Mac, quit the app first. Then pull the setup. This replaces local files with the same names:
+On another Mac, quit the app first. Then back up the local folder and pull the setup. The pull replaces local files with the same names. The backup copies them to `~/.config/vibe-keyboard.bak`:
 
 ```sh
+cp -R ~/.config/vibe-keyboard ~/.config/vibe-keyboard.bak   # back up local files first
 cd ~/.config/vibe-keyboard
 git init
 git remote add origin git@github.com:YOUR_USER/vibe-keyboard-config.git
