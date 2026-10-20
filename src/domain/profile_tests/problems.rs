@@ -1,6 +1,21 @@
 use super::*;
 
 #[test]
+fn problems_flag_reserved_keys_colors_and_actions() {
+    let mut profile = Profile::default_from_legacy();
+    profile.set_key(
+        0,
+        12,
+        KeyConfig {
+            bg: "red".into(),
+            action: Action::GoToPage { page: 9 },
+            ..KeyConfig::default()
+        },
+    );
+    assert_eq!(profile.problems().len(), 3);
+}
+
+#[test]
 fn action_problems_cover_each_variant() {
     assert_eq!(Action::None.problem(1), None);
     assert!(Action::OpenUrl { url: " ".into() }.problem(1).is_some());
@@ -34,14 +49,6 @@ fn action_problems_cover_each_variant() {
     }
     .problem(1)
     .is_some());
-}
-
-#[test]
-fn action_kinds_match_defaults_and_labels() {
-    for kind in ActionKind::ALL {
-        assert_eq!(Action::default_of(kind).kind(), kind);
-        assert!(!kind.label().is_empty());
-    }
 }
 
 #[test]

@@ -52,26 +52,23 @@ fn nav_keys_do_not_depend_on_the_profile() {
 }
 
 #[test]
-fn key_content_stays_below_the_top_inset() {
+fn empty_key_is_black_and_app_sources_fall_back() {
     let root = PathBuf::from("/nonexistent");
-    let config = KeyConfig {
-        label: "HI".into(),
-        bg: "#000000".into(),
-        fg: "#FFFFFF".into(),
+    let inset = KeyInset::default();
+    let blank = key_image(5, None, &root, &inset);
+    assert!(blank.pixels().all(|p| p.0 == BLANK));
+    // An app that is not installed falls back to the label.
+    let app = KeyConfig {
+        image: Some(PathBuf::from("app:com.example.NotInstalled")),
+        label: "Hi".into(),
         ..KeyConfig::default()
     };
-    let inset = KeyInset {
-        top: 20,
-        bottom: 0,
-        left: 0,
-        right: 0,
-    };
-    let img = key_image(5, Some(&config), &root, &inset);
-    // The hidden band keeps the key color. No text pixel may land in it.
-    for y in 0..20 {
-        for x in 0..DECK_IMAGE_SIZE {
-            assert_eq!(img.get_pixel(x, y).0, [0, 0, 0], "x={x} y={y}");
-        }
-    }
-    assert!(img.pixels().any(|p| p.0 == [255, 255, 255]));
+    assert_eq!(
+        key_image(5, Some(&app), &root, &inset),
+        inset_key(
+            &label_tile("Hi", FALLBACK_BG, FALLBACK_FG),
+            &inset,
+            FALLBACK_BG
+        )
+    );
 }

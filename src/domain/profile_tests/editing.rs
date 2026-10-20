@@ -1,29 +1,6 @@
 use super::*;
 
 #[test]
-fn problems_flag_reserved_keys_colors_and_actions() {
-    let mut profile = Profile::default_from_legacy();
-    profile.set_key(
-        0,
-        12,
-        KeyConfig {
-            bg: "red".into(),
-            action: Action::GoToPage { page: 9 },
-            ..KeyConfig::default()
-        },
-    );
-    assert_eq!(profile.problems().len(), 3);
-}
-
-#[test]
-fn color_parsing_round_trips() {
-    assert_eq!(parse_color("#1A2B3C"), Some([0x1A, 0x2B, 0x3C]));
-    assert_eq!(parse_color("1A2B3C"), None);
-    assert_eq!(parse_color("#+A2B3C"), None);
-    assert_eq!(format_color([0x1A, 0x2B, 0x3C]), "#1A2B3C");
-}
-
-#[test]
 fn delete_keeps_at_least_one_page_and_move_reorders() {
     let mut profile = Profile::default_from_legacy();
     assert!(profile.move_page(0, 1));

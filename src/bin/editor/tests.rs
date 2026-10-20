@@ -20,8 +20,11 @@ fn edited_layout() -> Profile {
     profile
 }
 
-#[path = "tests/part1.rs"]
-mod part1;
-
-#[path = "tests/part2.rs"]
-mod part2;
+#[path = "tests/app_names.rs"]
+mod app_names;
+#[path = "tests/prompt_edits.rs"]
+mod prompt_edits;
+#[path = "tests/session_undo.rs"]
+mod session_undo;
+#[path = "tests/window_grid.rs"]
+mod window_grid;
