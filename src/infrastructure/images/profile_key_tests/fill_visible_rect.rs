@@ -3,6 +3,7 @@ use super::*;
 use crate::domain::profile::inner_rect;
 
 #[test]
+#[allow(clippy::print_stderr)]
 fn key_content_fills_the_visible_rect() {
     use crate::domain::profile::BUILTIN_NAMES;
     use crate::infrastructure::images::ICON_NAMES;

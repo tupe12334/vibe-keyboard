@@ -8,6 +8,7 @@ use vibe_keyboard::infrastructure::usb::calibrate::calibrate;
 use vibe_keyboard::logging;
 use vibe_keyboard::presentation::tui::AppState;
 
+#[allow(clippy::print_stderr)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // One controller per deck. Taken before logging (which truncates app.log) and before any
     // device access. The guard lives until exit, so the lock stays held for the whole run.
