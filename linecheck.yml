@@ -43,8 +43,6 @@ rules:
     error: 102
   - pattern: "src/application/pages/main_page_tests.rs"
     error: 108
-  - pattern: "src/application/pages/mod.rs"
-    error: 102
   - pattern: "**/*.rs"
     error: 100
     error_message: "Over 100 lines: split this file. Caps only go down."
