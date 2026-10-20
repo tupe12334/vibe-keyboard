@@ -41,13 +41,14 @@ impl Release {
     }
 }
 
-/// The key-up log line: repeat count, reason and widest repeat gap.
+/// The key-up log line: repeat count, reason, widest repeat gap and late beats.
 pub(super) fn key_up_summary(beats: Beats, reason: Release) -> String {
     format!(
-        "key up after {} repeats: {}, max repeat gap {} ms",
+        "key up after {} repeats: {}, max repeat gap {} ms, late beats {}",
         beats.count,
         reason.label(),
-        beats.max_gap.as_millis()
+        beats.max_gap.as_millis(),
+        beats.late
     )
 }
 

@@ -5,10 +5,28 @@ use std::time::{Duration, Instant};
 use super::guard::PttGuard;
 use super::{KeyEvent, KeyPoster, Release, WATCHDOG};
 
-/// Repeat count and the widest gap between two repeats of one hold, for the key-up log.
+/// Gap between repeated key downs while held. Terminal key repeat is about 30 ms.
+pub const REPEAT_EVERY: Duration = Duration::from_millis(30);
+/// A gap wider than this counts as a late beat in the key-up log.
+pub const LATE_AFTER: Duration = Duration::from_millis(50);
+
+/// Deadline of repeat `index` (1-based) on the grid that starts at `start`. Never drifts.
+pub fn deadline(start: Instant, index: u32) -> Instant {
+    start + REPEAT_EVERY * index
+}
+
+/// The next repeat index to wait for, after repeat `index` was posted at `now`. Grid points
+/// already passed are skipped, so a late wake posts once and never bursts to catch up.
+pub fn next_index(start: Instant, index: u32, now: Instant) -> u32 {
+    let elapsed = now.saturating_duration_since(start).as_nanos() / REPEAT_EVERY.as_nanos();
+    index.max(u32::try_from(elapsed).unwrap_or(u32::MAX)) + 1
+}
+
+/// Repeat count, late beats and the widest gap between two repeats of one hold, for the key-up log.
 #[derive(Debug, Clone, Copy)]
 pub(super) struct Beats {
     pub(super) count: u32,
+    pub(super) late: u32,
     last: Instant,
     pub(super) max_gap: Duration,
 }
@@ -18,6 +36,7 @@ impl Beats {
     pub(super) const fn new(now: Instant) -> Self {
         Self {
             count: 0,
+            late: 0,
             last: now,
             max_gap: Duration::ZERO,
         }
@@ -25,7 +44,11 @@ impl Beats {
 
     /// One repeat was posted at `now`.
     pub(super) fn beat(&mut self, now: Instant) {
-        self.max_gap = self.max_gap.max(now.duration_since(self.last));
+        let gap = now.duration_since(self.last);
+        self.max_gap = self.max_gap.max(gap);
+        if gap > LATE_AFTER {
+            self.late += 1;
+        }
         self.last = now;
         self.count += 1;
     }

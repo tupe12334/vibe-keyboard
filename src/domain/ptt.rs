@@ -14,6 +14,7 @@ mod support;
 
 pub use guard::PttGuard;
 pub use release::Release;
+pub use repeat::{deadline, next_index, REPEAT_EVERY};
 
 /// A hold lifts its key when the app has not touched the guard for this long.
 pub const WATCHDOG: Duration = Duration::from_secs(2);
