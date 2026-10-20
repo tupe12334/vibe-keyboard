@@ -9,7 +9,7 @@ linecheck .
 
 cargo test
 cargo-machete
-cargo clippy
+cargo clippy --workspace --all-targets --locked -- -D warnings
 
 # Enforce 100% line coverage on pure-logic modules (hardware/UI code excluded).
 # Uses cargo-llvm-cov; install with: cargo install cargo-llvm-cov
