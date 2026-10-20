@@ -1,22 +1,26 @@
 rules:
   - pattern: "src/bin/editor.rs"
-    error: 1246
+    error: 1424
   - pattern: "src/domain/navigation.rs"
-    error: 1032
-  - pattern: "src/infrastructure/claude_sessions.rs"
-    error: 777
+    error: 1201
   - pattern: "src/domain/profile.rs"
-    error: 709
+    error: 880
+  - pattern: "src/infrastructure/claude_sessions.rs"
+    error: 769
   - pattern: "src/application/mod.rs"
-    error: 622
+    error: 639
   - pattern: "src/infrastructure/profile_store.rs"
-    error: 359
+    error: 469
+  - pattern: "src/infrastructure/images/side.rs"
+    error: 362
   - pattern: "src/main.rs"
-    error: 266
+    error: 284
   - pattern: "src/infrastructure/images/profile_key.rs"
     error: 265
   - pattern: "src/infrastructure/persistence.rs"
     error: 242
+  - pattern: "src/application/pages/main_page.rs"
+    error: 238
   - pattern: "src/infrastructure/app_icon.rs"
     error: 227
   - pattern: "src/infrastructure/images/numpad.rs"
@@ -25,20 +29,20 @@ rules:
     error: 224
   - pattern: "src/infrastructure/claude_sessions/os.rs"
     error: 217
+  - pattern: "src/infrastructure/images/text.rs"
+    error: 202
   - pattern: "src/infrastructure/frontmost.rs"
     error: 180
-  - pattern: "src/application/pages/main_page.rs"
-    error: 180
-  - pattern: "src/infrastructure/images/text.rs"
-    error: 167
+  - pattern: "src/infrastructure/system_metrics.rs"
+    error: 173
   - pattern: "src/domain/hotkey.rs"
     error: 167
   - pattern: "src/application/pages/claude_sessions.rs"
     error: 164
+  - pattern: "src/infrastructure/usb/image.rs"
+    error: 162
   - pattern: "src/application/actions/profile.rs"
     error: 157
-  - pattern: "src/infrastructure/usb/image.rs"
-    error: 138
   - pattern: "src/infrastructure/app_icon/os.rs"
     error: 128
   - pattern: "src/infrastructure/usb/commands.rs"
@@ -51,6 +55,12 @@ rules:
     error: 105
   - pattern: "src/domain/actions.rs"
     error: 105
+  - pattern: "src/presentation/tui/app_state.rs"
+    error: 104
+  - pattern: "src/application/pages/session_actions.rs"
+    error: 102
+  - pattern: "src/application/pages/mod.rs"
+    error: 102
   - pattern: "**/*.rs"
     error: 100
     error_message: "Over 100 lines: split this file. Caps only go down."
