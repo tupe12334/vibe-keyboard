@@ -31,3 +31,10 @@ fn a_create_only_save_keeps_a_file_another_writer_made() {
 fn a_directory_in_place_of_the_file_fails_to_load() {
     assert!(load_with_version(&std::env::temp_dir()).is_err());
 }
+
+#[test]
+fn a_file_that_is_not_utf8_fails_to_load() {
+    let path = temp_profile("not-utf8");
+    std::fs::write(&path, [0xff_u8, 0xfe]).expect("write bytes");
+    assert!(load_with_version(&path).is_err());
+}
