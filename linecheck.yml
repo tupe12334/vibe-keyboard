@@ -1,6 +1,6 @@
 rules:
   - pattern: "src/domain/navigation.rs"
-    error: 376
+    error: 311
   - pattern: "src/domain/profile.rs"
     error: 346
   - pattern: "src/domain/profile/validate.rs"

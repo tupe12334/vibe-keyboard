@@ -1,59 +1,16 @@
+#[cfg(test)]
 use crate::domain::actions::{CentyIssue, CentyProject, ClaudeSession};
-use crate::domain::moadim::{Flash, MoadimList, Routine};
-use crate::domain::profile::SideConfig;
+use crate::domain::moadim::MoadimList;
+#[cfg(test)]
+use crate::domain::moadim::{Flash, Routine};
 #[cfg(test)]
 use std::time::Instant;
 
 mod input_digits;
+mod screen;
+pub use screen::Screen;
 mod lists;
 mod moadim;
-
-#[derive(Clone)]
-pub enum Screen {
-    MainPage {
-        page: usize,
-    },
-    CentyProjectList {
-        projects: Vec<CentyProject>,
-        page: usize,
-        filter: Option<String>,
-    },
-    CentyProjectActions {
-        project: CentyProject,
-    },
-    CentyIssueList {
-        issues: Vec<CentyIssue>,
-        page: usize,
-        project_name: String,
-        org: String,
-        filter: Option<String>,
-    },
-    CentyIssueActions {
-        issue: CentyIssue,
-        project_name: String,
-        org: String,
-    },
-    InputNumber {
-        value: String,
-    },
-    ClaudeSessions {
-        sessions: Vec<ClaudeSession>,
-        page: usize,
-    },
-    NewSessionChoice,
-    SessionActions {
-        session: ClaudeSession,
-        page: usize,
-    },
-    MoadimList {
-        list: MoadimList,
-        page: usize,
-    },
-    MoadimRoutine {
-        routine: Routine,
-        flash: Option<Flash>,
-    },
-}
 
 /// Routines on one list page. Same page size as the other lists.
 const fn moadim_len(list: &MoadimList) -> usize {
@@ -101,25 +58,6 @@ pub const fn back_key_on(screen: &Screen) -> BackKey {
     match screen {
         Screen::MainPage { .. } => BackKey::Back,
         _ => BackKey::Out,
-    }
-}
-
-impl Screen {
-    /// Side content this screen declares. None keeps the side screen of the home page.
-    pub const fn side(&self) -> Option<SideConfig> {
-        match self {
-            Self::MainPage { .. }
-            | Self::CentyProjectList { .. }
-            | Self::CentyProjectActions { .. }
-            | Self::CentyIssueList { .. }
-            | Self::CentyIssueActions { .. }
-            | Self::InputNumber { .. }
-            | Self::ClaudeSessions { .. }
-            | Self::SessionActions { .. }
-            | Self::MoadimList { .. }
-            | Self::MoadimRoutine { .. }
-            | Self::NewSessionChoice => None,
-        }
     }
 }
 
