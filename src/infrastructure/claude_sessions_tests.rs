@@ -18,6 +18,9 @@ mod tty;
 #[path = "claude_sessions_tests/scripts.rs"]
 mod scripts;
 
+#[path = "claude_sessions_tests/focus_order.rs"]
+mod focus_order;
+
 #[path = "claude_sessions_tests/vscode.rs"]
 mod vscode;
 
