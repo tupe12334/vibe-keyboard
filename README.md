@@ -66,21 +66,31 @@ List screens (projects, issues) are paginated at 10 items per page.
 - Stream Dock 293S connected via USB
 - `pnpm` (for Centy integration)
 
-### Build & Run
+### Install
 
 ```bash
 git clone https://github.com/tupe12334/vibe-keyboard
 cd vibe-keyboard
-cargo build --release
-cargo run --release
+packaging/macos/build-app.sh
 ```
 
-The app runs as a normal user. No `sudo` or setuid is needed: it opens the
-device's HID vendor interface in non-exclusive mode. To install the binary to
-`~/.cargo/bin`, run `make install`.
+This installs `Vibe Keyboard.app` to `~/Applications`. No `sudo` is needed.
 
-The `hidapi` crate builds its bundled C backend. No system library is needed,
-so no `brew install hidapi`.
+The app runs as a normal user. It opens the device's HID vendor interface in
+non-exclusive mode. The `hidapi` crate builds its bundled C backend, so no
+`brew install hidapi` is needed.
+
+The app has three parts:
+
+- Controller: drives the Stream Dock 293S.
+- Tray icon: menu bar entry. Start at login is in this menu. Quit is here too.
+- Editor: key layout window.
+
+Push-to-talk needs System Settings → Privacy & Security → Accessibility →
+Vibe Keyboard.
+
+Headless option: `cargo run --release --bin listen -- --headless` runs the
+controller only, with no window and no tray. Use it for a CLI or a script.
 
 ### Troubleshooting
 
@@ -91,15 +101,15 @@ Logs are written to `~/.config/vibe-keyboard/app.log`.
 
 ### Desktop app (Tauri)
 
-`apps/desktop` is one app: a menu bar tray icon, the key editor window, and the
-device loop. Closing the window hides it. Quit from the tray.
+`apps/desktop` is the app that `packaging/macos/build-app.sh` installs. It holds
+the device loop, a menu bar tray icon, and the key editor window. Closing the
+window hides it. Quit from the tray.
 
 Needs Node 22+ and `pnpm`.
 
 ```bash
 pnpm -C apps/desktop install
 pnpm -C apps/desktop tauri dev      # run with hot reload
-pnpm -C apps/desktop tauri build    # macOS app bundle (macOS 12+)
 ```
 
 Set `VIBE_NO_DEVICE=1` to run the UI without the controller. The app then never
@@ -113,16 +123,17 @@ VIBE_NO_DEVICE=1 pnpm -C apps/desktop tauri dev
 Typed bindings for the frontend go to `apps/desktop/src/bindings.ts` on every
 debug run. Commit the file when the Rust API changes.
 
-The desktop app replaces the TUI, `--headless` and the egui editor. Those are
-still in the repo. They go in a follow-up, once this app is verified.
+The TUI and the egui editor are legacy, being replaced by the desktop app.
 
 ## Customize
 
 All main-page keys come from `~/.config/vibe-keyboard/profile.toml` (or `$XDG_CONFIG_HOME/vibe-keyboard/profile.toml`).
 It is created on first run with the default layout.
 
+Legacy egui editor (being replaced by the desktop app; saving reloads the controller):
+
 ```bash
-cargo run --bin editor   # GUI editor; saving reloads the controller
+cargo run --bin editor
 ```
 
 ```toml
@@ -158,7 +169,7 @@ Keys 11, 12 and 13 are navigation and cannot be bound.
 A built-in key shows its icon unless `image` is set.
 A malformed file is logged with its line and column. The controller keeps the last good layout.
 
-Run the controller without a terminal (for example at login) with `listen --headless`. It runs the same device loop and actions, with no TUI. Logs go to `~/.config/vibe-keyboard/app.log`. It exits cleanly on SIGINT or SIGTERM.
+Run the controller headless (no window, no tray) with `listen --headless`. The desktop app runs the same controller. It runs the same device loop and actions, with no TUI. Logs go to `~/.config/vibe-keyboard/app.log`. It exits cleanly on SIGINT or SIGTERM.
 
 ### Hold a key
 
@@ -188,7 +199,7 @@ Claude Code dictation (checked on 2026-10-20):
 Push-to-talk posts keys with CoreGraphics. macOS only lets a process post keys when it has Accessibility permission:
 
 1. Open System Settings > Privacy & Security > Accessibility.
-2. Click `+`. Add the app that runs `listen`: your terminal app when you start it by hand, or the app that launches it at login.
+2. Click `+`. Add the app that runs `listen`: your terminal app when you start it by hand, or `Vibe Keyboard` for the desktop app.
 3. Turn the switch on.
 4. Hold the key again. Without permission, `app.log` shows `push to talk needs Accessibility`, and holds do nothing.
 
