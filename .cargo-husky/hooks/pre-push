@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+if ! command -v linecheck >/dev/null 2>&1; then
+  echo "linecheck is not installed. Install it with: cargo install linecheck --locked" >&2
+  exit 1
+fi
+linecheck .
+
 cargo test
 cargo-machete
 cargo clippy

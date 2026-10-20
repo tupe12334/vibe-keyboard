@@ -186,6 +186,16 @@ Runtime state (current page, brightness, auto or manual page) stays out of it: `
 
 The controller runs as your normal user and writes its files as that user, so they stay editable and committable.
 
+## File size limit
+
+Rust source files are limited by [`linecheck`](https://crates.io/crates/linecheck), configured in `linecheck.yml`.
+
+- **General limit:** 100 lines (error) for every `**/*.rs` file.
+- **Per-file caps:** each Rust file that is over 100 lines has its own rule in `linecheck.yml`. The cap equals its line count when the rule was set. Rules are first-match, so per-file rules come before the general rule.
+- **Ratchet:** caps only go down. A capped file can shrink, never grow. When a file drops to 100 lines or fewer, delete its rule.
+- **Plan:** split the largest file in each PR, lower its cap, and remove rules as files reach 100.
+- **Run locally:** `cargo install linecheck --locked`, then `linecheck .` from the repo root. `linecheck --status .` shows how close each file is to its cap.
+
 ## See also
 
 - [AKP153E protocol capture and hidapi tools](tools/akp153e/README.md)

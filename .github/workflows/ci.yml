@@ -21,6 +21,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
 
+      - name: Install linecheck
+        run: cargo install linecheck --locked
+
+      - name: Check file length
+        run: linecheck .
+
       - name: Check formatting
         run: cargo fmt --check
 

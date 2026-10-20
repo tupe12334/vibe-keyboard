@@ -1,0 +1,64 @@
+rules:
+  - pattern: "src/bin/editor.rs"
+    error: 1246
+  - pattern: "src/domain/navigation.rs"
+    error: 1032
+  - pattern: "src/infrastructure/claude_sessions.rs"
+    error: 777
+  - pattern: "src/domain/profile.rs"
+    error: 709
+  - pattern: "src/application/mod.rs"
+    error: 622
+  - pattern: "src/infrastructure/profile_store.rs"
+    error: 359
+  - pattern: "src/main.rs"
+    error: 266
+  - pattern: "src/infrastructure/images/profile_key.rs"
+    error: 265
+  - pattern: "src/infrastructure/persistence.rs"
+    error: 242
+  - pattern: "src/infrastructure/app_icon.rs"
+    error: 227
+  - pattern: "src/infrastructure/images/numpad.rs"
+    error: 225
+  - pattern: "src/presentation/tui/render.rs"
+    error: 224
+  - pattern: "src/infrastructure/claude_sessions/os.rs"
+    error: 217
+  - pattern: "src/infrastructure/frontmost.rs"
+    error: 180
+  - pattern: "src/application/pages/main_page.rs"
+    error: 180
+  - pattern: "src/infrastructure/images/text.rs"
+    error: 167
+  - pattern: "src/domain/hotkey.rs"
+    error: 167
+  - pattern: "src/application/pages/claude_sessions.rs"
+    error: 164
+  - pattern: "src/application/actions/profile.rs"
+    error: 157
+  - pattern: "src/infrastructure/usb/image.rs"
+    error: 138
+  - pattern: "src/infrastructure/app_icon/os.rs"
+    error: 128
+  - pattern: "src/infrastructure/usb/commands.rs"
+    error: 111
+  - pattern: "src/application/pages/centy/issues.rs"
+    error: 110
+  - pattern: "src/application/pages/input_number.rs"
+    error: 108
+  - pattern: "src/domain/switching.rs"
+    error: 105
+  - pattern: "src/domain/actions.rs"
+    error: 105
+  - pattern: "**/*.rs"
+    error: 100
+    error_message: "Over 100 lines: split this file. Caps only go down."
+
+  # Non-Rust files: no limit for now.
+  - pattern: "**/*"
+
+exclude:
+  - "target/**"
+  - "node_modules/**"
+  - ".claude/**"
