@@ -50,6 +50,10 @@ jobs:
       - name: Build
         run: cargo build --workspace --all-targets --locked
 
+      # Compiles the iTerm2 AppleScripts too, so the runner needs the app bundle.
+      - name: Install iTerm2
+        run: brew install --cask iterm2
+
       - name: Test
         run: cargo test --workspace --locked
 
