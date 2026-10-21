@@ -8,6 +8,8 @@ mod app;
 mod app_commands;
 mod bindings;
 #[cfg(test)]
+mod bundle_info_tests;
+#[cfg(test)]
 mod command_harness;
 mod commands;
 mod display_commands;
