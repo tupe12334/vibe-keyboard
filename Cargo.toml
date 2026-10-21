@@ -6,6 +6,7 @@ resolver = "2"
 name = "vibe-keyboard"
 version = "0.1.1"
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "vibe_keyboard"
