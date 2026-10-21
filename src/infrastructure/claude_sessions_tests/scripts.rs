@@ -5,8 +5,8 @@ fn focus_scripts_embed_the_device_path() {
     let [iterm, terminal] = focus_scripts("ttys003").unwrap_or_default();
     assert!(iterm.contains(r#"tty of s is "/dev/ttys003""#));
     assert!(terminal.contains(r#"tty of t is "/dev/ttys003""#));
-    assert!(iterm.contains(r#"application "iTerm2""#));
-    assert!(terminal.contains(r#"application "Terminal""#));
+    assert!(iterm.contains(r#"application id "com.googlecode.iterm2""#));
+    assert!(terminal.contains(r#"application id "com.apple.Terminal""#));
 }
 
 #[test]

@@ -25,7 +25,7 @@ fn every_applescript_compiles_with_osacompile() {
         scripts::SCRIPT_COUNT,
         "a builder returned no script"
     );
-    all.retain(|(_, text)| iterm_installed() || !text.contains("iTerm2"));
+    all.retain(|(_, text)| iterm_installed() || !text.contains("com.googlecode.iterm2"));
     let mut failures = Vec::new();
     for (index, (label, text)) in all.iter().enumerate() {
         let out = dir.join(format!("script-{index}.scpt"));
