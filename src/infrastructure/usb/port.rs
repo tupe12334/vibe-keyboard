@@ -6,7 +6,7 @@ use crate::infrastructure::mouse_release::clear_stuck_left_button;
 use crate::infrastructure::persistence::DeviceState;
 use std::time::Duration;
 
-pub trait DeckPort {
+pub(crate) trait DeckPort {
     fn load_state(&self) -> DeviceState;
     fn open(&self) -> Result<Device, String>;
     fn retry_interval(&self) -> Duration;
@@ -14,7 +14,7 @@ pub trait DeckPort {
 }
 
 /// The real deck and the real OS.
-pub struct Hardware;
+pub(crate) struct Hardware;
 
 impl DeckPort for Hardware {
     fn load_state(&self) -> DeviceState {

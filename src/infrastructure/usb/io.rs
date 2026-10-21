@@ -2,7 +2,7 @@
 use hidapi::{HidDevice, HidResult};
 
 /// Write and read one HID handle.
-pub trait HidIo: Send {
+pub(crate) trait HidIo: Send {
     fn write(&self, packet: &[u8]) -> HidResult<usize>;
     fn read_timeout(&self, buf: &mut [u8], timeout_ms: i32) -> HidResult<usize>;
 }

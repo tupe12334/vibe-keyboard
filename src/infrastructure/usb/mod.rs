@@ -7,9 +7,9 @@ mod reconnect;
 
 pub use commands::{clear_all, device_init, keep_alive, read_event};
 pub use image::{send_button_image, send_side_image, DECK_IMAGE_SIZE};
-pub use io::HidIo;
-pub use port::{DeckPort, Hardware};
-pub use reconnect::wait_for_device;
+pub(crate) use io::HidIo;
+pub(crate) use port::{DeckPort, Hardware};
+pub(crate) use reconnect::wait_for_device;
 
 use hidapi::{HidApi, HidResult};
 use std::cell::Cell;
@@ -54,7 +54,7 @@ impl Device {
     }
 
     /// A handle over any `HidIo`. The real deck comes from `open`; tests pass a fake.
-    pub fn from_io(io: Box<dyn HidIo>) -> Self {
+    pub(crate) fn from_io(io: Box<dyn HidIo>) -> Self {
         Self {
             io,
             failed: Cell::new(false),

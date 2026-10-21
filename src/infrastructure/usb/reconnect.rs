@@ -23,7 +23,7 @@ fn open_and_init(port: &dyn DeckPort, brightness: u8) -> Result<Device, String> 
 
 /// Retry open + init every second until one attempt succeeds or `shutdown` is set.
 /// Sleeps before every attempt, so a handle that opens but fails at once cannot spin the loop.
-pub fn wait_for_device(
+pub(crate) fn wait_for_device(
     port: &dyn DeckPort,
     shutdown: &AtomicBool,
     brightness: u8,
