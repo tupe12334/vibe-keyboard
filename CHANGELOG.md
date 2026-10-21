@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - BLINK key (10) on the session action page. It focuses the session, then shows an iTerm2 fireworks highlight on its pane. Prompts now use keys 1 to 9.
 - FULL SCREEN key (9) on the session action page. It focuses the session, then toggles full screen on its iTerm2 or Terminal.app window. Prompts now use keys 1 to 8.
 
+### Fixed
+
+- FULL SCREEN key and full screen for new sessions now target the focused iTerm2 or Terminal.app window. Before, they used System Events `window 1`, which could be a different window.
+
 ## [0.1.1] - 2026-10-20
 
 ### Fixed

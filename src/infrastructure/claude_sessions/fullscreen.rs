@@ -12,10 +12,20 @@ pub enum FullScreenStep {
 }
 
 /// Toggles full screen on iTerm2's front window. Fixed text, no user input.
-const ITERM_TOGGLE: &str = r#"tell application "System Events" to tell process "iTerm2" to set value of attribute "AXFullScreen" of window 1 to (not (value of attribute "AXFullScreen" of window 1))"#;
+const ITERM_TOGGLE: &str = r#"tell application "System Events"
+  tell process "iTerm2"
+    set w to value of attribute "AXFocusedWindow"
+    set value of attribute "AXFullScreen" of w to (not (value of attribute "AXFullScreen" of w))
+  end tell
+end tell"#;
 
 /// Toggles full screen on Terminal.app's front window. Fixed text, no user input.
-const TERMINAL_TOGGLE: &str = r#"tell application "System Events" to tell process "Terminal" to set value of attribute "AXFullScreen" of window 1 to (not (value of attribute "AXFullScreen" of window 1))"#;
+const TERMINAL_TOGGLE: &str = r#"tell application "System Events"
+  tell process "Terminal"
+    set w to value of attribute "AXFocusedWindow"
+    set value of attribute "AXFullScreen" of w to (not (value of attribute "AXFullScreen" of w))
+  end tell
+end tell"#;
 
 /// The steps for `app`. Focus always comes first. Other apps get focus only, since no toggle is known.
 pub fn full_screen_steps(app: TerminalApp) -> Vec<FullScreenStep> {
