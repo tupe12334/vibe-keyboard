@@ -73,6 +73,13 @@ jobs:
         working-directory: apps/desktop
         run: pnpm build
 
+      # Compiles the iTerm2 AppleScripts too, so the runner needs the app bundle.
+      - name: Install iTerm2
+        run: |
+          brew install --cask iterm2
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
+          osascript -e 'id of application id "com.googlecode.iterm2"'
+
       - name: Test
         run: cargo test --workspace --locked
 
