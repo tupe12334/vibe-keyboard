@@ -29,6 +29,7 @@ pub fn specta_builder() -> Builder<Wry> {
             app_commands::list_running_apps,
             app_commands::check_bundle_id,
             display_commands::display_defaults,
+            commands::build_info,
             quit::confirm_quit,
             quit::acknowledge_quit,
         ])
