@@ -10,7 +10,8 @@ TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/bin" "$TMP/target"
 # shellcheck disable=SC2016 # the fake cargo reads $CARGO_LOG when it runs, not now
-printf '#!/bin/sh\necho "cargo $*" >> "$CARGO_LOG"\n' > "$TMP/bin/cargo"
+# The tool check probes "cargo llvm-cov --version" on every push; that probe is not a build step, so it is not logged.
+printf '#!/bin/sh\n[ "$1" = llvm-cov ] && exit 0\necho "cargo $*" >> "$CARGO_LOG"\n' > "$TMP/bin/cargo"
 printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/linecheck"
 printf '#!/bin/sh\nexit 0\n' > "$TMP/bin/cargo-machete"
 chmod +x "$TMP/bin/"*
