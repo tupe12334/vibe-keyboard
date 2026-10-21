@@ -1,20 +1,14 @@
-//! osascript reads of the tty shown in front, the tab scan, the wait for focus to land, and the
-//! BLINK highlight. Excluded from the coverage gate; rules live in `focus_check.rs`, `highlight.rs`.
+//! osascript reads of the tty shown in front, the tab scan, and the wait for focus to land.
+//! Excluded from the coverage gate; rules live in `focus_check.rs`.
 
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use tracing::warn;
 
 use super::tab_scripts::{ITERM_FRONT_TTY, TERMINAL_FRONT_TTY};
-use super::terminal::focus_session;
 use super::FOCUS_TIMEOUT;
-use crate::domain::actions::TerminalApp;
-use crate::infrastructure::claude_sessions::{
-    highlight_target, is_selected, scan_result, session_moved, Scan,
-};
+use crate::infrastructure::claude_sessions::{is_selected, scan_result, session_moved, Scan};
 use crate::infrastructure::process::run;
 
 /// Hard limit for one read. Each read is a separate osascript call.
@@ -78,23 +72,4 @@ pub fn settle_on(index: usize, tty: &str) -> bool {
 /// True when iTerm2's current session is no longer `tty`. Read once, for the push-to-talk probe.
 pub fn iterm_moved_from(tty: &str) -> bool {
     session_moved(front_tty(0).as_deref(), tty)
-}
-
-/// Focus the session on `tty`, then ask iTerm2 for a fireworks highlight on that pane. Only iTerm2
-/// reads the escape, so other apps get focus only. Blocks; call it from a thread.
-pub fn blink_session(tty: &str, app: TerminalApp) {
-    focus_session(tty);
-    if app != TerminalApp::ITerm {
-        return;
-    }
-    let Some((path, bytes)) = highlight_target(tty) else {
-        return;
-    };
-    let written = OpenOptions::new()
-        .write(true)
-        .open(&path)
-        .and_then(|mut device| device.write_all(bytes));
-    if let Err(err) = written {
-        warn!("claude sessions: highlight on {path} failed: {err}");
-    }
 }
