@@ -79,3 +79,7 @@ impl App {
         stop_running(&self.running);
     }
 }
+
+#[cfg(test)]
+#[path = "app_identity_tests.rs"]
+mod app_identity_tests;
