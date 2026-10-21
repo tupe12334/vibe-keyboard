@@ -48,6 +48,8 @@ export const commands = {
 	logWebviewError: (kind: string, message: string) => __TAURI_INVOKE<void>("log_webview_error", { kind, message }),
 	/**  The built-in insets. The layout file omits a value that equals its default. */
 	displayDefaults: () => __TAURI_INVOKE<DisplayDefaults>("display_defaults"),
+	/**  The root crate's build line: `vibe-keyboard <version> (<sha>, built <date>)`. The footer shows it. */
+	buildInfo: () => __TAURI_INVOKE<string>("build_info"),
 	/**  The editor allows the quit: nothing unsaved, or Save or Discard was chosen. */
 	confirmQuit: () => __TAURI_INVOKE<void>("confirm_quit"),
 	/**  The editor got a quit request and is alive. The next quit asks again. */

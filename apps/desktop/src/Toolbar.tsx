@@ -1,3 +1,4 @@
+import { BuildFooter } from "./BuildFooter";
 import type { DeckStatus } from "./useDeckEvents";
 
 interface Props {
@@ -27,6 +28,7 @@ export function Toolbar({ name, onRename, deleteDisabled, onDelete, deck, dirty,
       <span className="status">
         Device {deck.connected ? "connected" : "not connected"} · controller {deck.running ? "running" : "paused"}
       </span>
+      <BuildFooter />
       <button onClick={onDiscard} disabled={discardDisabled}>
         Discard
       </button>

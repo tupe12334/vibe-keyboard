@@ -65,6 +65,13 @@ pub fn device_status(app: State<'_, App>) -> DeviceStatus {
     }
 }
 
+/// The root crate's build line: `vibe-keyboard <version> (<sha>, built <date>)`. The footer shows it.
+#[tauri::command]
+#[specta::specta]
+pub fn build_info() -> String {
+    vibe_keyboard::build_info::startup_line()
+}
+
 #[cfg(test)]
 #[path = "commands_tests.rs"]
 mod tests;
