@@ -49,10 +49,16 @@ fn fake_ptt_start(generation: u64, key: u8, hotkey: &Hotkey, tty: Option<&str>) 
     ));
 }
 
+/// No Accessibility grant, so the hotkey path takes its log branch and makes no OS call.
+fn fake_trusted() -> bool {
+    false
+}
+
 pub const FAKE: Effects = Effects {
     spawn: fake_spawn,
     tap: fake_tap,
     hold_begin: fake_hold_begin,
     hold_end: fake_hold_end,
     push_to_talk_start: fake_ptt_start,
+    trusted: fake_trusted,
 };

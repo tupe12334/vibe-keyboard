@@ -18,6 +18,7 @@ pub struct Effects {
     pub hold_begin: fn(u8) -> u64,
     pub hold_end: fn(u8),
     pub push_to_talk_start: fn(u64, u8, &Hotkey, Option<&str>),
+    pub trusted: fn() -> bool,
 }
 
 const REAL: Effects = Effects {
@@ -26,6 +27,7 @@ const REAL: Effects = Effects {
     hold_begin: keyboard::hold_begin,
     hold_end: keyboard::hold_end,
     push_to_talk_start: keyboard::push_to_talk_start,
+    trusted: keyboard::accessibility_trusted,
 };
 
 thread_local! {
