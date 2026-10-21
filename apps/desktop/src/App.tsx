@@ -28,13 +28,14 @@ export function App() {
     void commands.editorRules().then(setRules);
   }, [load]);
 
+  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
+
   if (!draft || !rules) {
     return <div className="main">{error ? <div className="error">{error}</div> : "Loading…"}</div>;
   }
 
   const current: Page = draft.pages[page];
   const navKeys = new Set(rules?.nav_keys ?? []);
-  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
   // Picking a key shows its fields first.
   const pickKey = (key: number) => {
     setSelected(key);
