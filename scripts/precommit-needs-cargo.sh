@@ -1,9 +1,14 @@
 #!/bin/sh
 # Exit 0 when a staged path could change the Rust build, 1 when none can.
-# Used by the pre-commit hook. Fail safe: an empty staged list counts as Rust-affecting.
+# Used by the pre-commit and pre-push hooks. Fail safe: an empty list counts as Rust-affecting.
+# Default: paths are the staged files. With --stdin: paths are read from stdin, one per line.
 set -eu
 
-changed=$(git diff --cached --name-only --no-renames)
+if [ "${1:-}" = "--stdin" ]; then
+  changed=$(cat)
+else
+  changed=$(git diff --cached --name-only --no-renames)
+fi
 if [ -z "$changed" ]; then
   exit 0
 fi
