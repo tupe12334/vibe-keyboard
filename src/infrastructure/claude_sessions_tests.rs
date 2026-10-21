@@ -29,3 +29,6 @@ mod routines;
 
 #[path = "claude_sessions_tests/highlight.rs"]
 mod highlight;
+
+#[path = "claude_sessions_tests/owners.rs"]
+mod owners;

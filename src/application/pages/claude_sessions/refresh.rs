@@ -57,12 +57,13 @@ impl SessionsRefresh {
     }
 }
 
-/// True when the page would look the same: same tty, label, status and age as shown.
+/// True when the page would look the same: same tty, label, status, age and Remote Control as shown.
 fn same_view(old: &[ClaudeSession], new: &[ClaudeSession]) -> bool {
     old.len() == new.len()
         && old.iter().zip(new).all(|(a, b)| {
             a.tty == b.tty
                 && a.focused == b.focused
+                && a.remote_control == b.remote_control
                 && a.label == b.label
                 && a.status == b.status
                 && age_label(a.age) == age_label(b.age)

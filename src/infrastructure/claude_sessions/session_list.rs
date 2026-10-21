@@ -5,6 +5,18 @@ use crate::domain::actions::{ClaudeSession, SessionStatus, TerminalApp};
 
 use super::{label_for, parse_title, status_for};
 
+/// The app that owns each tty tab: Terminal.app or iTerm2, whichever listed the tty.
+pub fn tab_owners(
+    terminal: &HashMap<String, String>,
+    iterm: &HashMap<String, String>,
+) -> HashMap<String, TerminalApp> {
+    terminal
+        .keys()
+        .map(|tty| (tty.clone(), TerminalApp::Terminal))
+        .chain(iterm.keys().map(|tty| (tty.clone(), TerminalApp::ITerm)))
+        .collect()
+}
+
 /// Build the session list from `(pid, tty, cwd)` triples. `ages` holds the tty age per tty.
 /// `owners` maps each tty to the app whose tab output listed it. Unlisted ttys are `Other`.
 ///
@@ -47,6 +59,7 @@ pub fn build_sessions(
                 status,
                 age,
                 focused: false,
+                remote_control: false,
             }
         })
         .collect();

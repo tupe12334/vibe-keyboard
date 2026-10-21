@@ -2,11 +2,13 @@
 //!
 //! This file holds the pure logic. Process spawns live in `claude_sessions/os.rs`.
 
+mod applescript;
 mod focus_check;
 mod highlight;
 mod new_session;
 mod os;
 mod process_list;
+mod remote_control;
 mod routine_filter;
 mod session_list;
 mod session_status;
@@ -14,6 +16,7 @@ mod terminal_scripts;
 mod titles;
 mod vscode_owner;
 
+pub use applescript::{applescript_string, is_valid_tty};
 pub use focus_check::{
     focused_bundle, is_frontmost, is_selected, scan_result, session_moved, Scan, ITERM_BUNDLE,
     TERMINAL_BUNDLE,
@@ -24,8 +27,9 @@ pub use os::{
     blink_session, focus_session, iterm_moved_from, list_sessions, open_new_session, send_prompt,
 };
 pub use process_list::{claude_processes, cwds_from_lsof};
+pub use remote_control::{mark_remote_control, remote_control_on};
 pub use routine_filter::drop_routines;
-pub use session_list::build_sessions;
+pub use session_list::{build_sessions, tab_owners};
 pub use session_status::{age_label, label_for, status_for};
 pub use terminal_scripts::{focus_scripts, send_text_scripts};
 pub use titles::{parse_tab_titles, parse_title, summary_from_jsonl};
@@ -65,33 +69,6 @@ pub fn resolve_session_pid(ps: &str, pid: u32, tty: &str) -> Option<u32> {
     } else {
         on_tty.first().copied()
     }
-}
-
-/// True for `ttysNNN` only. The tty goes into an `AppleScript` string, so anything else is refused.
-pub fn is_valid_tty(tty: &str) -> bool {
-    tty.strip_prefix("ttys")
-        .is_some_and(|digits| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()))
-}
-
-/// `AppleScript` expression for `text`. Escapes backslash and double quote. `\n`, `\r` and `\t`
-/// become `linefeed`, `return` and `tab` joined by `&`. Any other control character gives None.
-pub fn applescript_string(text: &str) -> Option<String> {
-    let mut out = String::from("\"");
-    let mut joined = false;
-    for c in text.chars() {
-        match c {
-            '\\' => out.push_str("\\\\"),
-            '"' => out.push_str("\\\""),
-            '\n' => out.push_str("\" & linefeed & \""),
-            '\r' => out.push_str("\" & return & \""),
-            '\t' => out.push_str("\" & tab & \""),
-            c if c.is_control() => return None,
-            c => out.push(c),
-        }
-        joined |= matches!(c, '\n' | '\r' | '\t');
-    }
-    out.push('"');
-    Some(if joined { format!("({out})") } else { out })
 }
 
 #[cfg(test)]

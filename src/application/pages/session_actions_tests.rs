@@ -34,6 +34,7 @@ fn selecting_a_session_focuses_its_tab_then_opens_actions() {
         status: SessionStatus::Active,
         age: None,
         focused: false,
+        remote_control: false,
     };
     let mut nav = NavigationStack::new(0, 1);
     let mut focused = Vec::new();

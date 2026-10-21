@@ -1,5 +1,6 @@
 use crate::domain::actions::SessionStatus;
 
+mod nav_keys;
 mod refresh;
 mod render;
 pub use refresh::SessionsRefresh;
