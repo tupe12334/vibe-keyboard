@@ -25,6 +25,8 @@ export function App() {
 
   const { startupError, retry } = useStartupCalls(load, setBuiltins, setRules);
 
+  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
+
   if (!draft || !rules) {
     const problem = startupError ?? error;
     return <div className="main">{problem ? <div className="error">{problem} <button onClick={retry}>Retry</button></div> : "Loading…"}</div>;
@@ -32,7 +34,6 @@ export function App() {
 
   const current: Page = draft.pages[page];
   const navKeys = new Set(rules?.nav_keys ?? []);
-  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
   // Picking a key shows its fields first.
   const pickKey = (key: number) => {
     setSelected(key);
