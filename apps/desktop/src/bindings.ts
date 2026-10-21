@@ -386,16 +386,13 @@ async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; dat
         return { status: "ok", data: await result };
     } catch (e) {
         if (e instanceof Error) throw e;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixed in #249
         return { status: "error", error: e as any };
     }
 }
 
 type EventEmit<T> = [T] extends [null] ? () => Promise<void> : (payload: T) => Promise<void>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixed in #249
 function makeEvent<T>(name: string, serialize?: (payload: T) => unknown, deserialize?: (payload: any) => T) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixed in #249
     const mapEvent = (cb: __TAURI_EVENT.EventCallback<T>) => (event: __TAURI_EVENT.Event<any>) => cb({ ...event, payload: deserialize ? deserialize(event.payload) : event.payload });
     const mapPayload = (payload: T) => serialize ? serialize(payload) : payload;
 
