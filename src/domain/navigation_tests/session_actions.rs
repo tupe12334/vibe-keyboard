@@ -36,6 +36,7 @@ fn action_page_turns_within_its_range() {
         status: SessionStatus::Active,
         age: None,
         focused: false,
+        remote_control: false,
     };
     let mut nav = NavigationStack::new(0, 1);
     nav.push(Screen::SessionActions { session, page: 0 });
@@ -76,6 +77,7 @@ fn open_action_page_clamps_when_prompts_shrink() {
         status: SessionStatus::Active,
         age: None,
         focused: false,
+        remote_control: false,
     };
     let mut nav = NavigationStack::new(0, 1);
     nav.push(Screen::SessionActions { session, page: 1 });

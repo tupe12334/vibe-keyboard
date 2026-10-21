@@ -5,9 +5,10 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use super::{
-    build_sessions, claude_processes, cwds_from_lsof, drop_routines, is_valid_tty, parse_tab_titles,
+    build_sessions, claude_processes, cwds_from_lsof, drop_routines, is_valid_tty,
+    mark_remote_control, parse_tab_titles, tab_owners,
 };
-use crate::domain::actions::{ClaudeSession, TerminalApp};
+use crate::domain::actions::ClaudeSession;
 use crate::infrastructure::process::run;
 
 mod front_tty;
@@ -72,15 +73,7 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
         .map(|out| parse_tab_titles(&out))
         .unwrap_or_default();
     // The app whose tab output lists a tty owns that tab. Title or not, the tab is there.
-    let owners = terminal_titles
-        .keys()
-        .map(|tty| (tty.clone(), TerminalApp::Terminal))
-        .chain(
-            iterm_titles
-                .keys()
-                .map(|tty| (tty.clone(), TerminalApp::ITerm)),
-        )
-        .collect::<HashMap<_, _>>();
+    let owners = tab_owners(&terminal_titles, &iterm_titles);
     let mut tab_titles = terminal_titles;
     tab_titles.extend(iterm_titles);
 
@@ -94,7 +87,8 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
         .into_iter()
         .map(|(pid, tty)| (pid, tty, cwds.get(&pid).cloned()))
         .collect();
-    build_sessions(entries, &tab_titles, &owners, &ages, &home, |cwd| {
+    let sessions = build_sessions(entries, &tab_titles, &owners, &ages, &home, |cwd| {
         summary_for(cwd, &home)
-    })
+    });
+    mark_remote_control(sessions, &home)
 }

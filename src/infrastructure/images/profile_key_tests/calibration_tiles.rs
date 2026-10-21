@@ -11,9 +11,12 @@ fn label_session_and_calibration_tiles_respect_the_inset() {
     let label = label_image("HI", &inset);
     assert_eq!(label.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
     assert!((0..20).all(|y| label.get_pixel(0, y).0 == FALLBACK_BG));
-    let session = session_image("X", SessionStatus::Active, "1m", &inset, false);
+    let session = session_image("X", SessionStatus::Active, "1m", false, &inset, false);
     assert_eq!(session.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));
     assert!((0..20).all(|y| session.get_pixel(0, y).0 == FALLBACK_BG));
+    // Remote Control adds the RC tag to the bar, so the tile changes.
+    let rc = session_image("X", SessionStatus::Active, "1m", true, &inset, false);
+    assert_ne!(rc.as_raw(), session.as_raw());
     // Calibration: the red outline starts on the inset edge, and the hidden band stays black.
     let tile = calibration_image(7, &inset);
     assert_eq!(tile.dimensions(), (DECK_IMAGE_SIZE, DECK_IMAGE_SIZE));

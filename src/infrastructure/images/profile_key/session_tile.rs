@@ -7,11 +7,13 @@ use crate::domain::actions::SessionStatus;
 use crate::domain::profile::KeyInset;
 /// A Claude session tile: a status bar on top (green active, orange stale), the age in the bar's
 /// right corner, and the title below, wrapped to three lines.
-/// `focused` adds a white frame and a dot in the corner. The bar keeps its status colour.
+/// `remote_control` puts `RC` in front of the age in the bar. `focused` adds a white frame and a dot
+/// in the corner. The bar keeps its status colour.
 pub fn session_image(
     title: &str,
     status: SessionStatus,
     age: &str,
+    remote_control: bool,
     inset: &KeyInset,
     focused: bool,
 ) -> RgbImage {
@@ -19,7 +21,12 @@ pub fn session_image(
         SessionStatus::Active => [40, 180, 90],
         SessionStatus::Stale => [255, 120, 0],
     };
-    let mut tile = status_tile(title, bar, age);
+    let tag = match (remote_control, age.is_empty()) {
+        (false, _) => age.to_string(),
+        (true, true) => "RC".to_string(),
+        (true, false) => format!("RC {age}"),
+    };
+    let mut tile = status_tile(title, bar, &tag);
     if focused {
         draw_focus_marker(&mut tile);
     }

@@ -44,4 +44,6 @@ pub struct ClaudeSession {
     pub status: SessionStatus,
     pub age: Option<Duration>,
     pub focused: bool,
+    /// Claude Code Remote Control is connected for this session.
+    pub remote_control: bool,
 }

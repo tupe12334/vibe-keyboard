@@ -13,6 +13,7 @@ fn session(app: TerminalApp) -> ClaudeSession {
         status: SessionStatus::Active,
         age: None,
         focused: false,
+        remote_control: false,
     }
 }
 
