@@ -3,10 +3,9 @@ use super::ctx::Ctx;
 use super::reload::log_problems;
 use crate::application::render_screen;
 use crate::domain::profile::Profile;
-use crate::infrastructure::mouse_release::clear_stuck_left_button;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::profile_store;
-use crate::infrastructure::usb::{device_init, wait_for_device, Device};
+use crate::infrastructure::usb::{device_init, wait_for_device, DeckPort, Device};
 use crate::presentation::tui::AppState;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -37,29 +36,29 @@ pub fn load_profile_at(state: &Arc<Mutex<AppState>>, path: &std::path::Path) {
 }
 
 /// Open the deck, waiting for it if needed. None when shutdown comes first.
-pub fn open_device(shutdown: &AtomicBool) -> Option<(Device, DeviceState)> {
+pub fn open_device(port: &dyn DeckPort, shutdown: &AtomicBool) -> Option<(Device, DeviceState)> {
     // Stop first: a shutdown already requested must not probe the deck.
     if shutdown.load(Ordering::Relaxed) {
         return None;
     }
-    let state = DeviceState::load();
+    let state = port.load_state();
     let brightness = state.brightness;
-    let dev = match Device::open() {
+    let dev = match port.open() {
         Ok(dev) => {
             device_init(&dev, brightness);
             dev
         }
         Err(e) => {
             info!("waiting for device: {e}");
-            wait_for_device(shutdown, brightness)?
+            wait_for_device(port, shutdown, brightness)?
         }
     };
-    clear_stuck_left_button();
+    port.clear_stuck_button();
     Some((dev, state))
 }
 
 /// Drop the lost handle, wait for the deck, and redraw. None when shutdown comes first.
-pub fn reconnect(handle: Device, c: &Ctx) -> Option<Device> {
+pub fn reconnect(port: &dyn DeckPort, handle: Device, c: &Ctx) -> Option<Device> {
     // Release the stale handle before waiting for the device to come back.
     drop(handle);
     let brightness = c
@@ -67,11 +66,11 @@ pub fn reconnect(handle: Device, c: &Ctx) -> Option<Device> {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .brightness;
-    let new_handle = wait_for_device(&c.shutdown, brightness)?;
+    let new_handle = wait_for_device(port, &c.shutdown, brightness)?;
     // Re-render the current screen from the same page images the editor previews.
     render_screen(&c.nav, &new_handle, &c.app_state, &c.dev_state);
     info!("device reconnected");
-    clear_stuck_left_button();
+    port.clear_stuck_button();
     Some(new_handle)
 }
 
