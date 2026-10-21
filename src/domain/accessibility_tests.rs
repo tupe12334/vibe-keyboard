@@ -14,8 +14,14 @@ fn push_to_talk() -> Action {
     Action::PushToTalk { key: None }
 }
 
+fn hotkey() -> Action {
+    Action::Hotkey {
+        keys: "cmd+shift+4".into(),
+    }
+}
+
 #[test]
-fn warns_only_when_untrusted_and_push_to_talk_is_used() {
+fn warns_only_when_untrusted_and_keys_need_accessibility() {
     assert_eq!(
         push_to_talk_warning(false, true),
         Some(PUSH_TO_TALK_WARNING)
@@ -26,12 +32,21 @@ fn warns_only_when_untrusted_and_push_to_talk_is_used() {
 }
 
 #[test]
-fn default_profile_does_not_use_push_to_talk() {
-    assert!(!uses_push_to_talk(&Profile::default()));
+fn no_keys_do_not_need_accessibility() {
+    assert!(!needs_accessibility(&Profile::default()));
 }
 
 #[test]
-fn tap_and_hold_both_count_as_push_to_talk() {
+fn non_keystroke_keys_do_not_need_accessibility() {
+    let key = KeyConfig {
+        action: Action::GoToPage { page: 0 },
+        ..KeyConfig::default()
+    };
+    assert!(!needs_accessibility(&profile_with(key)));
+}
+
+#[test]
+fn push_to_talk_tap_and_hold_need_accessibility() {
     let tap = KeyConfig {
         action: push_to_talk(),
         ..KeyConfig::default()
@@ -40,15 +55,43 @@ fn tap_and_hold_both_count_as_push_to_talk() {
         hold: Some(push_to_talk()),
         ..KeyConfig::default()
     };
-    assert!(uses_push_to_talk(&profile_with(tap)));
-    assert!(uses_push_to_talk(&profile_with(hold)));
+    assert!(needs_accessibility(&profile_with(tap)));
+    assert!(needs_accessibility(&profile_with(hold)));
 }
 
 #[test]
-fn other_actions_do_not_count() {
-    let key = KeyConfig {
-        action: Action::GoToPage { page: 0 },
+fn key_combo_tap_and_hold_need_accessibility() {
+    let tap = KeyConfig {
+        action: hotkey(),
         ..KeyConfig::default()
     };
-    assert!(!uses_push_to_talk(&profile_with(key)));
+    let hold = KeyConfig {
+        hold: Some(hotkey()),
+        ..KeyConfig::default()
+    };
+    assert!(needs_accessibility(&profile_with(tap)));
+    assert!(needs_accessibility(&profile_with(hold)));
+}
+
+#[test]
+fn hotkey_logs_only_without_the_grant() {
+    assert_eq!(hotkey_log(false), Some(HOTKEY_WARNING));
+    assert_eq!(hotkey_log(true), None);
+}
+
+#[test]
+fn hotkey_only_profile_shows_the_tray_item_without_the_grant() {
+    let key = KeyConfig {
+        action: hotkey(),
+        ..KeyConfig::default()
+    };
+    let profile = profile_with(key);
+    assert_eq!(
+        push_to_talk_warning(false, needs_accessibility(&profile)),
+        Some(PUSH_TO_TALK_WARNING)
+    );
+    assert_eq!(
+        push_to_talk_warning(true, needs_accessibility(&profile)),
+        None
+    );
 }
