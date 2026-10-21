@@ -77,11 +77,12 @@ mod tests {
         let first = acquire(&path).expect("first acquire succeeds");
         assert!(matches!(acquire(&path), Err(AcquireError::Held)));
 
-        drop(first);
-        assert!(
-            acquire(&path).is_ok(),
-            "lock is free after the holder drops it"
-        );
+        drop(first); // Fork/exec race: a concurrent fork holds our fd until exec, so retry.
+        let second = (0..100).find_map(|_| {
+            std::thread::sleep(std::time::Duration::from_millis(10));
+            acquire(&path).ok()
+        });
+        assert!(second.is_some(), "lock is free after the holder drops it");
 
         let _ = std::fs::remove_dir_all(&dir);
     }

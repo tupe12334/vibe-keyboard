@@ -109,7 +109,7 @@ Logs are written to `~/.config/vibe-keyboard/app.log`.
 
 `apps/desktop` is the app that `packaging/macos/build-app.sh` installs. It holds
 the device loop, a menu bar tray icon, and the key editor window. Closing the
-window hides it. Quit from the tray.
+window hides it. Quit from the tray. Set `VK_OPEN_EDITOR=1` to show the editor at launch.
 
 Needs Node 22+ and `pnpm`.
 

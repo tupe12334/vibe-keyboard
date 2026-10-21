@@ -17,7 +17,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy, rustfmt, llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
 
@@ -59,6 +59,14 @@ jobs:
 
       - name: Test
         run: cargo test --workspace --locked
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      - name: Coverage gate
+        run: scripts/coverage.sh
 
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
