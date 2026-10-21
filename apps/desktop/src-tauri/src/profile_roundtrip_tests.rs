@@ -5,11 +5,10 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::command_harness::{env_lock, mock_app, request, seed};
-use serde_json::json;
-use tauri::test::get_ipc_response;
 use vibe_keyboard::domain::profile::{Action, Profile, Widget};
 use vibe_keyboard::infrastructure::profile_store;
+
+mod desktop_load_save;
 
 const FIXTURE: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -71,30 +70,4 @@ fn the_real_layout_survives_profile_store_save_and_read() {
     let back = profile_store::read(&path).expect("read").expect("present");
     assert_key_fields(&back);
     assert_eq!(back, original, "the layout changed in a save and read");
-}
-
-#[test]
-fn the_real_layout_survives_the_desktop_load_and_save_path() {
-    let _env = env_lock();
-    let path = seed("real-layout");
-    let original = load_fixture();
-    profile_store::save(&path, &original).expect("place the real layout");
-    let (_app, webview) = mock_app();
-
-    let loaded: Profile = get_ipc_response(&webview, request("get_profile", json!({})))
-        .expect("load")
-        .deserialize()
-        .expect("parse layout");
-    get_ipc_response(
-        &webview,
-        request("save_profile", json!({ "profile": loaded, "force": false })),
-    )
-    .expect("save accepted");
-
-    let on_disk = profile_store::read(&path).expect("read").expect("present");
-    assert_key_fields(&on_disk);
-    assert_eq!(
-        on_disk, original,
-        "the layout changed in the desktop save path"
-    );
 }
