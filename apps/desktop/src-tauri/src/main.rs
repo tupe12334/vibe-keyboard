@@ -45,7 +45,7 @@ mod status;
 mod supervise;
 mod thread;
 mod tray;
-
+mod tray_log;
 use std::sync::{Arc, Mutex};
 
 use tauri::{Manager, RunEvent, WindowEvent};
