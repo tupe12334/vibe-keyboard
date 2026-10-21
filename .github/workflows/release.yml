@@ -61,6 +61,14 @@ jobs:
         working-directory: apps/desktop
         run: pnpm install --frozen-lockfile
 
+      # The workspace's desktop crate embeds apps/desktop/dist at compile time.
+      - name: Build frontend for tests
+        working-directory: apps/desktop
+        run: pnpm build
+
+      - name: Test
+        run: cargo test --workspace --locked
+
       # Empty tagName builds only. Set it on tag pushes so the release is created.
       - name: Build universal app and DMG
         id: tauri
@@ -94,18 +102,49 @@ jobs:
           ditto -c -k --keepParent "${APP_DIR}/Vibe Keyboard.app" "${ZIP}"
           echo "zip=${ZIP}" >> "$GITHUB_OUTPUT"
 
-      - name: Attach app zip to release
+      # Mount the DMG read-only and check the app inside it before anything is published.
+      - name: Verify DMG and write checksums
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ZIP: ${{ steps.zip.outputs.zip }}
+        run: |
+          set -euo pipefail
+          DMG=$(ls target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+          MNT=$(mktemp -d)
+          cleanup() { hdiutil detach "${MNT}" -quiet || true; rmdir "${MNT}" || true; }
+          trap cleanup EXIT
+          hdiutil attach -nobrowse -readonly -mountpoint "${MNT}" "${DMG}"
+          APP="${MNT}/Vibe Keyboard.app"
+          test -d "${APP}" || { echo "error: Vibe Keyboard.app missing from DMG" >&2; exit 1; }
+          PLIST="${APP}/Contents/Info.plist"
+          SHORT=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "${PLIST}")
+          if [ "${SHORT}" != "${VERSION}" ]; then
+            echo "error: DMG app version ${SHORT} differs from ${VERSION}" >&2
+            exit 1
+          fi
+          /usr/libexec/PlistBuddy -c "Print :NSAppleEventsUsageDescription" "${PLIST}" >/dev/null \
+            || { echo "error: NSAppleEventsUsageDescription missing from Info.plist" >&2; exit 1; }
+          hdiutil detach "${MNT}"
+          trap - EXIT
+          rmdir "${MNT}"
+          # File names only, so the sums verify from the download directory.
+          (cd "$(dirname "${DMG}")" && shasum -a 256 "$(basename "${DMG}")") > SHA256SUMS.txt
+          shasum -a 256 "${ZIP}" >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Attach app zip and checksums to release
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           ZIP: ${{ steps.zip.outputs.zip }}
-        run: gh release upload "${TAG}" "${ZIP}" --clobber
+        run: gh release upload "${TAG}" "${ZIP}" SHA256SUMS.txt --clobber
 
       - uses: actions/upload-artifact@v4
         with:
           name: vibe-keyboard-macos-universal
           path: |
             ${{ steps.zip.outputs.zip }}
+            SHA256SUMS.txt
             target/universal-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
