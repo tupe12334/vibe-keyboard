@@ -65,6 +65,22 @@ jobs:
           /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
           osascript -e 'id of application id "com.googlecode.iterm2"'
 
+      # Probe for the FULL SCREEN UI test. The TCC.db inserts edit only this ephemeral CI VM's
+      # user database, never a developer Mac. Non-blocking: the result is printed for triage.
+      - name: Probe iTerm2 Apple events
+        continue-on-error: true
+        run: |
+          defaults write com.googlecode.iterm2 SUEnableAutomaticChecks -bool NO
+          defaults write com.googlecode.iterm2 PromptOnQuit -bool NO
+          defaults write com.googlecode.iterm2 NoSyncOnboardingWindowHasBeenShown -bool YES
+          DB="$HOME/Library/Application Support/com.apple.TCC/TCC.db"
+          for client in /bin/bash /usr/bin/osascript; do
+            for target in com.googlecode.iterm2 com.apple.systemevents; do
+              sqlite3 "$DB" "INSERT OR REPLACE INTO access (service,client,client_type,auth_value,auth_reason,auth_version,indirect_object_identifier_type,indirect_object_identifier,flags) VALUES ('kTCCServiceAppleEvents','$client',1,2,4,1,0,'$target',0);" || echo "TCC insert failed: $client -> $target"
+            done
+          done
+          perl -e 'alarm shift; exec @ARGV' 30 osascript -e 'tell application id "com.googlecode.iterm2" to get name' || echo "probe exit: $?"
+
       # VK_UI_TEST opens real iTerm2 windows for the FULL SCREEN test. Local runs skip it.
       - name: Test
         env:
