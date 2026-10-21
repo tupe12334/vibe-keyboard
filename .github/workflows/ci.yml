@@ -55,7 +55,12 @@ jobs:
         run: |
           brew install --cask iterm2
           /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
-          osascript -e 'id of application "iTerm2"'
+          # Diagnostics only: never fail the step.
+          osascript -e 'id of application "iTerm"' || true
+          osascript -e 'name of application id "com.googlecode.iterm2"' || true
+          osascript -e 'id of application "iTerm2"' || true
+          mdfind "kMDItemCFBundleIdentifier == 'com.googlecode.iterm2'" || true
+          ls -la /Applications | grep -i iterm || true
 
       - name: Test
         run: cargo test --workspace --locked
