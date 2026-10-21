@@ -7,13 +7,14 @@ use std::time::Duration;
 mod focus;
 mod guard;
 mod release;
+mod release_reason;
 mod repeat;
 mod start;
 #[cfg(test)]
 mod support;
 
 pub use guard::PttGuard;
-pub use release::Release;
+pub use release_reason::Release;
 pub use repeat::{deadline, next_index, REPEAT_EVERY};
 
 /// A hold lifts its key when the app has not touched the guard for this long.
