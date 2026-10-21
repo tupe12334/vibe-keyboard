@@ -1,0 +1,19 @@
+name: Shellcheck
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run shellcheck
+        run: shellcheck -x assets/icons/render.sh packaging/macos/build-app.sh packaging/macos/uninstall.sh .cargo-husky/hooks/pre-commit .cargo-husky/hooks/pre-push

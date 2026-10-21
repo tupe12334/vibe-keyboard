@@ -30,8 +30,10 @@ fn maps_only_iterm_and_terminal_bundles() {
 #[test]
 fn other_apps_have_no_tab_script() {
     assert!(selected_tty_script(TerminalApp::Other).is_none());
-    assert!(selected_tty_script(TerminalApp::ITerm).is_some_and(|s| s.contains("iTerm2")));
-    assert!(selected_tty_script(TerminalApp::Terminal).is_some_and(|s| s.contains("Terminal")));
+    assert!(selected_tty_script(TerminalApp::ITerm)
+        .is_some_and(|s| s.contains("com.googlecode.iterm2")));
+    assert!(selected_tty_script(TerminalApp::Terminal)
+        .is_some_and(|s| s.contains("com.apple.Terminal")));
 }
 
 #[test]

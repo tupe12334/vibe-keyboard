@@ -31,7 +31,7 @@ fn every_applescript_compiles_with_osacompile() {
             "CI has no /Applications/iTerm.app, so iTerm2 scripts would be skipped"
         );
     }
-    all.retain(|(_, text)| iterm_installed() || !text.contains("iTerm2"));
+    all.retain(|(_, text)| iterm_installed() || !text.contains("com.googlecode.iterm2"));
     let mut failures = Vec::new();
     for (index, (label, text)) in all.iter().enumerate() {
         let out = dir.join(format!("script-{index}.scpt"));

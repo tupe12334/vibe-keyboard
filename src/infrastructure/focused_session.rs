@@ -22,12 +22,12 @@ pub fn terminal_for_bundle(bundle: &str) -> Option<TerminalApp> {
 /// `AppleScript` that prints the device of the app's selected tab, e.g. `/dev/ttys003`.
 pub const fn selected_tty_script(app: TerminalApp) -> Option<&'static str> {
     match app {
-        TerminalApp::ITerm => {
-            Some(r#"tell application "iTerm2" to tty of current session of current window"#)
-        }
-        TerminalApp::Terminal => {
-            Some(r#"tell application "Terminal" to tty of selected tab of front window"#)
-        }
+        TerminalApp::ITerm => Some(
+            r#"tell application id "com.googlecode.iterm2" to tty of current session of current window"#,
+        ),
+        TerminalApp::Terminal => Some(
+            r#"tell application id "com.apple.Terminal" to tty of selected tab of front window"#,
+        ),
         TerminalApp::Other => None,
     }
 }

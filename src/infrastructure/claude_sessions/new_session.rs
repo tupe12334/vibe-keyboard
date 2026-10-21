@@ -4,14 +4,14 @@ use crate::domain::actions::NewSessionTerminal;
 
 /// `AppleScript` that opens a new window running `claude` in the home folder. iTerm2 types the
 /// command into the new window's shell, so the user's own PATH and profile apply.
-const ITERM_NEW_SESSION: &str = r#"tell application "iTerm2"
+const ITERM_NEW_SESSION: &str = r#"tell application id "com.googlecode.iterm2"
   activate
   create window with default profile
   tell current session of current window to write text "claude"
 end tell"#;
 
 /// `AppleScript` for Terminal.app. `do script` opens a new window and runs `claude` in it.
-const TERMINAL_NEW_SESSION: &str = r#"tell application "Terminal"
+const TERMINAL_NEW_SESSION: &str = r#"tell application id "com.apple.Terminal"
   activate
   do script "claude"
 end tell"#;
@@ -21,7 +21,8 @@ end tell"#;
 const ITERM_FULL_SCREEN: &str = r#"delay 0.5
 tell application "System Events"
   tell process "iTerm2"
-    set value of attribute "AXFullScreen" of window 1 to true
+    set w to value of attribute "AXFocusedWindow"
+    set value of attribute "AXFullScreen" of w to true
   end tell
 end tell"#;
 
@@ -29,7 +30,8 @@ end tell"#;
 const TERMINAL_FULL_SCREEN: &str = r#"delay 0.5
 tell application "System Events"
   tell process "Terminal"
-    set value of attribute "AXFullScreen" of window 1 to true
+    set w to value of attribute "AXFocusedWindow"
+    set value of attribute "AXFullScreen" of w to true
   end tell
 end tell"#;
 
@@ -55,11 +57,11 @@ mod tests {
     #[test]
     fn new_session_script_runs_claude_in_the_chosen_app() {
         let iterm = new_session_script(NewSessionTerminal::ITerm, false);
-        assert!(iterm.contains(r#"tell application "iTerm2""#));
+        assert!(iterm.contains(r#"tell application id "com.googlecode.iterm2""#));
         assert!(iterm.contains(r#"write text "claude""#));
         assert!(!iterm.contains("Terminal"));
         let terminal = new_session_script(NewSessionTerminal::Terminal, false);
-        assert!(terminal.contains(r#"tell application "Terminal""#));
+        assert!(terminal.contains(r#"tell application id "com.apple.Terminal""#));
         assert!(terminal.contains(r#"do script "claude""#));
         assert!(!terminal.contains("iTerm2"));
     }
@@ -74,8 +76,12 @@ mod tests {
             "window before full screen"
         );
         assert!(iterm.contains(r#"tell process "iTerm2""#));
+        assert!(iterm.contains(r#"set w to value of attribute "AXFocusedWindow""#));
+        assert!(!iterm.contains("window 1"));
         let terminal = new_session_script(NewSessionTerminal::Terminal, true);
         assert!(terminal.contains(r#"tell process "Terminal""#));
+        assert!(terminal.contains(r#"set w to value of attribute "AXFocusedWindow""#));
+        assert!(!terminal.contains("window 1"));
         assert!(!terminal.contains("iTerm2"));
     }
 
