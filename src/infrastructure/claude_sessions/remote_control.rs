@@ -3,8 +3,6 @@
 //! Claude Code writes `bridgeSessionId` when the Remote Control bridge connects, and writes `null`
 //! when it closes. The file can hold bytes after the JSON object, so only the first value is read.
 
-use std::path::Path;
-
 use crate::domain::actions::ClaudeSession;
 
 /// True when the first JSON value in `text` has a non-empty `bridgeSessionId` string.
@@ -18,12 +16,13 @@ pub fn remote_control_on(text: &str) -> bool {
         .is_some_and(|id| !id.is_empty()))
 }
 
-/// Sets `remote_control` on each session from its pid's file under `home`. Unreadable is off.
-pub fn mark_remote_control(mut sessions: Vec<ClaudeSession>, home: &str) -> Vec<ClaudeSession> {
-    let dir = Path::new(home).join(".claude/sessions");
+/// Sets `remote_control` on each session. `read` returns the session file text for a pid, or None.
+pub fn mark_remote_control(
+    mut sessions: Vec<ClaudeSession>,
+    read: impl Fn(u32) -> Option<String>,
+) -> Vec<ClaudeSession> {
     for session in &mut sessions {
-        session.remote_control = std::fs::read_to_string(dir.join(format!("{}.json", session.pid)))
-            .is_ok_and(|text| remote_control_on(&text));
+        session.remote_control = read(session.pid).is_some_and(|text| remote_control_on(&text));
     }
     sessions
 }
@@ -31,6 +30,7 @@ pub fn mark_remote_control(mut sessions: Vec<ClaudeSession>, home: &str) -> Vec<
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::actions::{SessionStatus, TerminalApp};
 
     #[test]
     fn bridge_id_means_remote_control_is_on() {
@@ -54,6 +54,28 @@ mod tests {
         assert!(remote_control_on(text));
         let off = r#"{"pid":55235,"status":"busy"}01,"waitingFor":"x"}"#;
         assert!(!remote_control_on(off));
+    }
+
+    #[test]
+    fn each_session_takes_its_own_file() {
+        let session = |pid| ClaudeSession {
+            pid,
+            app: TerminalApp::Other,
+            tty: "ttys001".into(),
+            label: "s".into(),
+            status: SessionStatus::Active,
+            age: None,
+            focused: false,
+            remote_control: false,
+        };
+        let read = |pid: u32| match pid {
+            1 => Some(r#"{"bridgeSessionId":"session_a"}"#.to_string()),
+            2 => Some(r#"{"bridgeSessionId":null}"#.to_string()),
+            _ => None,
+        };
+        let marked = mark_remote_control(vec![session(1), session(2), session(3)], read);
+        let flags: Vec<bool> = marked.iter().map(|s| s.remote_control).collect();
+        assert_eq!(flags, [true, false, false]);
     }
 
     #[test]

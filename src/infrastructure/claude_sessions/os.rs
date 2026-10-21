@@ -2,6 +2,7 @@
 //! logic that decides what to do with the output lives in `claude_sessions.rs`.
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::time::Duration;
 
 use super::{
@@ -87,8 +88,11 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
         .into_iter()
         .map(|(pid, tty)| (pid, tty, cwds.get(&pid).cloned()))
         .collect();
+    let dir = Path::new(&home).join(".claude/sessions");
     let sessions = build_sessions(entries, &tab_titles, &owners, &ages, &home, |cwd| {
         summary_for(cwd, &home)
     });
-    mark_remote_control(sessions, &home)
+    mark_remote_control(sessions, |pid| {
+        std::fs::read_to_string(dir.join(format!("{pid}.json"))).ok()
+    })
 }
