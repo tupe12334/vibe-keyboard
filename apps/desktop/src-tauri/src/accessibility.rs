@@ -5,7 +5,7 @@ use tauri::menu::MenuItem;
 use tauri::{AppHandle, Manager, Wry};
 use tracing::{error, warn};
 use vibe_keyboard::domain::accessibility::{
-    push_to_talk_warning, uses_push_to_talk, PUSH_TO_TALK_WARNING,
+    needs_accessibility, push_to_talk_warning, PUSH_TO_TALK_WARNING,
 };
 use vibe_keyboard::infrastructure::keyboard::accessibility_trusted;
 
@@ -23,7 +23,7 @@ impl App {
     /// Check the layout on the deck. Shows the warning in the editor's status and the tray,
     /// or clears it. The OS and the layout are read here; the decision is in the core crate.
     pub(crate) fn check_accessibility(&self, app: &AppHandle) {
-        let uses = uses_push_to_talk(
+        let uses = needs_accessibility(
             &self
                 .state
                 .lock()
