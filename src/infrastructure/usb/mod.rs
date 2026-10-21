@@ -23,7 +23,8 @@ pub const CMD_PACKET: usize = PACKET + 1;
 
 /// Open HID handle to the Stream Dock vendor interface.
 pub struct Device {
-    hid: HidDevice,
+    /// `None` only for `detached`, a handle with no hardware behind it.
+    hid: Option<HidDevice>,
     /// Set on the first failed write or read. Writers swallow errors, so the loop checks this.
     failed: Cell<bool>,
 }
@@ -47,14 +48,26 @@ impl Device {
             .open_device(&api)
             .map_err(|e| format!("Failed to open HID device: {e}"))?;
         Ok(Self {
-            hid,
+            hid: Some(hid),
             failed: Cell::new(false),
         })
     }
 
+    /// A handle with no hardware: writes succeed and drop, reads time out. For tests.
+    #[cfg(test)]
+    pub const fn detached() -> Self {
+        Self {
+            hid: None,
+            failed: Cell::new(false),
+        }
+    }
+
     /// Write one output report. `packet[0]` must be `0x00` (no report ID).
     pub fn write(&self, packet: &[u8]) -> HidResult<usize> {
-        let res = self.hid.write(packet);
+        let Some(hid) = &self.hid else {
+            return Ok(packet.len());
+        };
+        let res = hid.write(packet);
         if res.is_err() {
             self.failed.set(true);
         }
@@ -63,7 +76,10 @@ impl Device {
 
     /// Read one input report. Returns `Ok(0)` on timeout.
     pub fn read_timeout(&self, buf: &mut [u8], timeout_ms: i32) -> HidResult<usize> {
-        let res = self.hid.read_timeout(buf, timeout_ms);
+        let Some(hid) = &self.hid else {
+            return Ok(0);
+        };
+        let res = hid.read_timeout(buf, timeout_ms);
         if res.is_err() {
             self.failed.set(true);
         }
