@@ -68,7 +68,7 @@ List screens (projects, issues) are paginated at 10 items per page.
 
 ### Download
 
-Prebuilt macOS installers (DMG and app zip) are on the [Releases page](https://github.com/tupe12334/vibe-keyboard/releases). The builds are unsigned: the first time, right-click the app and choose **Open**. Push-to-talk also needs the Accessibility step below.
+Prebuilt macOS installers (DMG and app zip) are on the [Releases page](https://github.com/tupe12334/vibe-keyboard/releases). The builds are unsigned: the first time, right-click the app and choose **Open**. Push-to-talk also needs the Accessibility step below. After each app update, macOS can drop the Accessibility grant (unsigned builds get a new signature), so push-to-talk stops; re-enable Vibe Keyboard in System Settings > Privacy & Security > Accessibility, then confirm `app.log` no longer shows `push to talk needs Accessibility` ([steps](#hold-a-key)).
 
 ### Install
 
