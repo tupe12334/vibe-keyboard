@@ -41,11 +41,9 @@ pub fn specta_builder() -> Builder<Wry> {
         ])
 }
 
-/// Write the TypeScript bindings only when their content changed. The dev watcher restarts
-/// the app on every write to a watched file, so an unchanged write would loop forever.
-#[cfg(debug_assertions)]
-pub fn export_bindings(builder: &Builder<Wry>) {
-    let target = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../src/bindings.ts"));
+/// Render the TypeScript bindings as a string, with the same exporter config as the writer.
+#[cfg(any(debug_assertions, test))]
+pub fn render_bindings(builder: &Builder<Wry>) -> Vec<u8> {
     let staged =
         std::env::temp_dir().join(format!("vibe-keyboard-bindings-{}.ts", std::process::id()));
     builder
@@ -53,7 +51,20 @@ pub fn export_bindings(builder: &Builder<Wry>) {
         .expect("failed to export TypeScript bindings");
     let generated = std::fs::read(&staged).expect("failed to read generated bindings");
     let _ = std::fs::remove_file(&staged);
+    generated
+}
+
+/// Write the TypeScript bindings only when their content changed. The dev watcher restarts
+/// the app on every write to a watched file, so an unchanged write would loop forever.
+#[cfg(debug_assertions)]
+pub fn export_bindings(builder: &Builder<Wry>) {
+    let target = Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../src/bindings.ts"));
+    let generated = render_bindings(builder);
     if std::fs::read(target).ok().as_deref() != Some(generated.as_slice()) {
         std::fs::write(target, &generated).expect("failed to write TypeScript bindings");
     }
 }
+
+#[cfg(test)]
+#[path = "bindings_tests.rs"]
+mod tests;
