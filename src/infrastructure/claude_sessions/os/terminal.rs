@@ -7,7 +7,8 @@ use crate::infrastructure::claude_sessions::{
     send_text_scripts,
 };
 use crate::infrastructure::frontmost::frontmost_bundle_id;
-use crate::infrastructure::process::run;
+use crate::infrastructure::process::Logging::WarnCodeOnly;
+use crate::infrastructure::process::{run, run_with};
 use std::time::{Duration, Instant};
 
 /// How long to wait for a terminal to become frontmost after `open -b`.
@@ -66,9 +67,8 @@ fn ensure_frontmost(bundle: &str) -> bool {
 }
 
 /// Type `text` and Enter into the session's tab. Tries iTerm2, then Terminal.app. When `pid` was
-/// restarted, the `claude` now on `tty` gets the prompt. Skips when no `claude` runs on `tty`. Logs
-/// when no app confirms the send. Returns true only when a tab confirmed it. Blocks until done, so
-/// call it from a thread.
+/// restarted, the `claude` now on `tty` gets the prompt. Skips when no `claude` runs on `tty`. True
+/// only when a tab confirmed the send. Blocks until done, so call it from a thread.
 pub fn send_prompt(pid: u32, tty: &str, text: &str) -> bool {
     let Some(scripts) = send_text_scripts(tty, text) else {
         return false;
@@ -83,7 +83,8 @@ pub fn send_prompt(pid: u32, tty: &str, text: &str) -> bool {
         tracing::info!("claude sessions: pid {pid} restarted as {live} on {tty}");
     }
     let sent = scripts.iter().any(|script| {
-        run("osascript", &["-e", script], FOCUS_TIMEOUT).is_some_and(|out| out.trim() == "found")
+        let out = run_with("osascript", &["-e", script], FOCUS_TIMEOUT, WarnCodeOnly);
+        out.is_some_and(|out| out.trim() == "found")
     });
     if !sent {
         tracing::warn!(
