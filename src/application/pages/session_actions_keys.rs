@@ -57,19 +57,6 @@ pub fn more_or_exit_key(
     (label_image("MORE", inset), action)
 }
 
-/// Label on the BLINK key (10).
-pub const BLINK_LABEL: &str = "BLINK";
-
-/// The BLINK key (10): focuses the session, then highlights its pane in iTerm2. Focus works for every app.
-pub fn blink_key(inset: &KeyInset) -> (RgbImage, ButtonAction) {
-    let action = ButtonAction {
-        name: "Blink".into(),
-        title: "Blink".into(),
-        description: "Focus this session and show a fireworks highlight".into(),
-    };
-    (label_image(BLINK_LABEL, inset), action)
-}
-
 /// The Recap key (14): its tile and its action. Muted for apps that take no typed text.
 pub fn recap_key(typed: bool, inset: &KeyInset) -> (RgbImage, ButtonAction) {
     let tile = if typed {

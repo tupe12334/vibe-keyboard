@@ -79,9 +79,9 @@ fn muted_apps_never_offer_or_send_exit() {
 #[test]
 fn exit_is_on_the_last_action_page_only() {
     assert!(exit_on_page(0, 0));
-    assert!(exit_on_page(0, 9));
-    assert!(!exit_on_page(0, 10));
-    assert!(exit_on_page(1, 10));
+    assert!(exit_on_page(0, 8));
+    assert!(!exit_on_page(0, 9));
+    assert!(exit_on_page(1, 9));
 }
 
 #[test]
