@@ -1,18 +1,24 @@
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::builtin::run_builtin;
 use crate::application::render_screen;
+use crate::domain::accessibility::hotkey_log;
 use crate::domain::hotkey::{parse_hotkey, push_to_talk_key};
 use crate::domain::navigation::NavigationStack;
 use crate::domain::profile::{is_bundle_id, Action};
 use crate::infrastructure::keyboard;
+use crate::infrastructure::keyboard::accessibility_trusted;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
+
+/// Set after the first key combo logs that it lacks the grant, so the line prints once.
+static HOTKEY_LOGGED: AtomicBool = AtomicBool::new(false);
 
 /// Run the action bound to a main page key.
 pub fn run_action(
@@ -43,6 +49,11 @@ pub fn run_action(
         Action::Hotkey { keys } => match parse_hotkey(keys) {
             Ok(hotkey) => {
                 info!("profile: hotkey {keys}");
+                if let Some(line) = hotkey_log(accessibility_trusted()) {
+                    if !HOTKEY_LOGGED.swap(true, Ordering::SeqCst) {
+                        warn!("{line}");
+                    }
+                }
                 let script = hotkey.applescript();
                 spawn_detached("osascript", &["-e", script.as_str()]);
             }

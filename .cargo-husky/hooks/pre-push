@@ -14,15 +14,36 @@ if [ "${VK_SKIP_DISK_GUARD:-0}" != "1" ]; then
   fi
 fi
 
+# Tool check: find every missing tool before the slow steps run, then fail once.
+VK_MISSING=""
+if ! command -v cargo >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo: install Rust with rustup from https://rustup.rs
+"
+fi
 if ! command -v linecheck >/dev/null 2>&1; then
-  echo "linecheck is not installed. Install it with: cargo install linecheck --locked" >&2
+  VK_MISSING="${VK_MISSING}  linecheck: cargo install linecheck --version 1.2.1 --locked
+"
+fi
+if ! command -v cargo-machete >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo-machete: cargo install cargo-machete --version 0.9.1 --locked
+"
+fi
+if ! cargo llvm-cov --version >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo-llvm-cov: cargo install cargo-llvm-cov --version 0.8.7 --locked
+"
+fi
+if [ -n "$VK_MISSING" ]; then
+  echo "pre-push: required tools are missing. Install each one, then push again:" >&2
+  printf '%s' "$VK_MISSING" >&2
   exit 1
 fi
+
 linecheck .
 
 cargo test
+
 cargo-machete
 cargo clippy --workspace --all-targets --locked -- -D warnings
 
-# Enforce 100% line coverage (same script as CI). Needs cargo-llvm-cov: cargo install cargo-llvm-cov
+# Enforce 100% line coverage (same script as CI).
 scripts/coverage.sh
