@@ -10,12 +10,17 @@ use crate::infrastructure::process::run;
 /// Focus the session on `tty`, then toggle full screen on its window. Runs the steps in order.
 /// Blocks; call it from a thread.
 pub fn full_screen_session(tty: &str, app: TerminalApp) {
+    let mut focused = false;
     for step in full_screen_steps(app) {
         match step {
             FullScreenStep::Focus => {
-                focus_session(tty);
+                focused = focus_session(tty);
             }
             FullScreenStep::Toggle(script) => {
+                if !focused {
+                    tracing::warn!("claude sessions: full screen skipped, {tty} not focused");
+                    continue;
+                }
                 run("osascript", &["-e", &script], FOCUS_TIMEOUT);
             }
         }
