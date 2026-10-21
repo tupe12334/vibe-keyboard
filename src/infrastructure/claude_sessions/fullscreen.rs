@@ -14,7 +14,7 @@ pub enum FullScreenStep {
 /// Toggles full screen on iTerm2's front window. Fixed text, no user input.
 const ITERM_TOGGLE: &str = r#"tell application "System Events"
   tell process "iTerm2"
-    set w to value of attribute "AXFocusedWindow"
+    set w to window 1
     set value of attribute "AXFullScreen" of w to (not (value of attribute "AXFullScreen" of w))
   end tell
 end tell"#;
