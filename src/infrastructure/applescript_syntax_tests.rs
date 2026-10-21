@@ -1,10 +1,17 @@
 //! Compiles every `AppleScript` the app builds, with `osacompile`. Syntax only: `osacompile` never
 //! runs a script, so no terminal opens and no key is sent.
 
+use std::path::Path;
 use std::process::Command;
 
 #[path = "applescript_syntax_tests/scripts.rs"]
 mod scripts;
+
+/// iTerm2 scripts compile only against its scripting dictionary, which CI runners lack. They are
+/// checked only where iTerm2 is installed.
+fn iterm_installed() -> bool {
+    Path::new("/Applications/iTerm.app").exists()
+}
 
 #[test]
 fn every_applescript_compiles_with_osacompile() {
@@ -12,12 +19,13 @@ fn every_applescript_compiles_with_osacompile() {
     if let Err(err) = std::fs::create_dir_all(&dir) {
         panic!("cannot create {}: {err}", dir.display());
     }
-    let all = scripts::scripts();
+    let mut all = scripts::scripts();
     assert_eq!(
         all.len(),
         scripts::SCRIPT_COUNT,
         "a builder returned no script"
     );
+    all.retain(|(_, text)| iterm_installed() || !text.contains("iTerm2"));
     let mut failures = Vec::new();
     for (index, (label, text)) in all.iter().enumerate() {
         let out = dir.join(format!("script-{index}.scpt"));
