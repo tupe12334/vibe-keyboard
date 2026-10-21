@@ -45,3 +45,16 @@ fn truncation_counts_chars_not_bytes() {
     let line = msg.rsplit(": ").next().unwrap_or_default();
     assert_eq!(line.chars().count(), 200);
 }
+
+#[test]
+fn code_only_drops_stderr() {
+    use super::{exit_message, Logging};
+    assert_eq!(
+        exit_message("osascript", Some(3), "echoed SECRET", Logging::WarnCodeOnly),
+        "osascript exited with code 3"
+    );
+    assert_eq!(
+        exit_message("osascript", Some(3), "boom", Logging::Warn),
+        "osascript exited with code 3: boom"
+    );
+}
