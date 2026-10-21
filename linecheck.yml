@@ -1,13 +1,19 @@
 rules:
   - pattern: "**/*.rs"
+    warn: 90
+    warn_message: "Near the 100-line cap: plan a split."
     error: 100
     error_message: "Over 100 lines: split this file. Caps only go down."
 
   # Desktop UI: 100 lines per file. Generated bindings.ts is excluded below.
   - pattern: "apps/desktop/src/**/*.ts"
+    warn: 90
+    warn_message: "Near the 100-line cap: plan a split."
     error: 100
     error_message: "Over 100 lines: split this file. Caps only go down."
   - pattern: "apps/desktop/src/**/*.tsx"
+    warn: 90
+    warn_message: "Near the 100-line cap: plan a split."
     error: 100
     error_message: "Over 100 lines: split this file. Caps only go down."
 
