@@ -58,37 +58,12 @@ jobs:
           fi
           echo "version=${CONF}" >> "$GITHUB_OUTPUT"
 
-      # Reads rust-toolchain.toml: installs the pinned toolchain with its components and targets.
-      - name: Install toolchain from rust-toolchain.toml
-        run: rustup show
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: apps/desktop/package.json
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          cache-dependency-path: apps/desktop/pnpm-lock.yaml
-
-      - name: Install desktop dependencies
-        working-directory: apps/desktop
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
 
       # The workspace's desktop crate embeds apps/desktop/dist at compile time.
       - name: Build frontend for tests
         working-directory: apps/desktop
         run: pnpm build
-
-      # Compiles the iTerm2 AppleScripts too, so the runner needs the app bundle.
-      - name: Install iTerm2
-        run: |
-          brew install --cask iterm2
-          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
-          osascript -e 'id of application id "com.googlecode.iterm2"'
 
       - name: Test
         run: cargo test --workspace --locked
