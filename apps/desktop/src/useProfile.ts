@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { commands, type DisplaySettings_Serialize as DisplaySettings } from "./bindings";
 import type { KeyConfig, Page, Profile } from "./types";
+import { startupFailure, withStartupTimeout } from "./startupCall";
 import { useSaveShortcut } from "./useSaveShortcut";
 
 /** The saved layout, the editor draft, the page shown, and the messages above the grid. */
@@ -19,9 +20,15 @@ export function useProfile() {
   dirtyRef.current = dirty;
 
   const load = useCallback(async () => {
-    const result = await commands.getProfile();
+    let result: Awaited<ReturnType<typeof commands.getProfile>>;
+    try {
+      result = await withStartupTimeout(commands.getProfile());
+    } catch (cause) {
+      setError(startupFailure("getProfile", cause));
+      return;
+    }
     if (result.status === "error") {
-      setError(result.error);
+      setError(startupFailure("getProfile", result.error));
       return;
     }
     setSaved(result.data);
