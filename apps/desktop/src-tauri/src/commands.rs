@@ -5,9 +5,11 @@ use specta::Type;
 use std::sync::atomic::Ordering;
 use tauri::State;
 use vibe_keyboard::domain::profile::Profile;
+use vibe_keyboard::domain::profile_rules;
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
+use crate::editor_log;
 use crate::profile_io::{load_layout, save_layout, SaveError};
 
 #[derive(Serialize, Type)]
@@ -31,12 +33,26 @@ pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
 #[tauri::command]
 #[specta::specta]
 pub fn save_profile(profile: Profile, force: bool, app: State<'_, App>) -> Result<(), SaveError> {
-    save_layout(
-        &app.loaded_version,
-        &profile_store::profile_path(),
-        &profile,
-        force,
-    )
+    let path = profile_store::profile_path();
+    let result = save_layout(&app.loaded_version, &path, &profile, force);
+    match &result {
+        Ok(()) => tracing::info!(
+            "{}",
+            editor_log::saved_line(&profile, &path.display().to_string())
+        ),
+        Err(err) => {
+            let line = match err {
+                // Problem text can carry action payloads, so only the count is logged.
+                SaveError::Refused { .. } => match profile_rules::save_problems(&profile).len() {
+                    0 => editor_log::save_failed_line("write error, details not logged"),
+                    count => editor_log::save_refused_line(count),
+                },
+                SaveError::Conflict => editor_log::save_failed_line("file changed on disk"),
+            };
+            tracing::warn!("{}", line);
+        }
+    }
+    result
 }
 
 #[tauri::command]

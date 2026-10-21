@@ -2,7 +2,6 @@
     all(not(debug_assertions), target_os = "windows"),
     windows_subsystem = "windows"
 )]
-
 mod accessibility;
 mod app;
 mod app_commands;
@@ -16,6 +15,7 @@ mod display_commands;
 #[cfg(test)]
 mod display_tests;
 mod editor_launch;
+mod editor_log;
 #[cfg(test)]
 mod editor_preserve_hold_tests;
 #[cfg(test)]
