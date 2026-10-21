@@ -25,6 +25,12 @@ fn every_applescript_compiles_with_osacompile() {
         scripts::SCRIPT_COUNT,
         "a builder returned no script"
     );
+    if std::env::var_os("CI").is_some() {
+        assert!(
+            iterm_installed(),
+            "CI has no /Applications/iTerm.app, so iTerm2 scripts would be skipped"
+        );
+    }
     all.retain(|(_, text)| iterm_installed() || !text.contains("com.googlecode.iterm2"));
     let mut failures = Vec::new();
     for (index, (label, text)) in all.iter().enumerate() {

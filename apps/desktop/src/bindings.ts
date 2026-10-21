@@ -143,13 +143,13 @@ export type BarStyle_Serialize = {
 	label_color?: string | null,
 };
 
-/**  Device came up. Sent by the controller. */
 /**  The `[claude_sessions]` table of `profile.toml`. */
 export type ClaudeSessionsConfig = {
 	/**  Open each new Claude session window in macOS full screen. */
 	new_session_fullscreen?: boolean,
 };
 
+/**  Device came up. Sent by the controller. */
 export type DeviceConnected = Record<string, never>;
 
 /**  Device went away, or the controller stopped. */
