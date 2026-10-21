@@ -15,3 +15,7 @@ pub mod profile_store;
 pub mod running_apps;
 pub mod system_metrics;
 pub mod usb;
+
+#[cfg(all(test, target_os = "macos"))]
+#[path = "applescript_syntax_tests.rs"]
+mod applescript_syntax_tests;

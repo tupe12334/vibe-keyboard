@@ -25,6 +25,10 @@ pub use focus_check::{
 pub use fullscreen::{full_screen_steps, FullScreenStep};
 pub use highlight::highlight_target;
 pub use new_session::new_session_script;
+#[cfg(test)]
+pub(crate) use os::tab_scripts::{
+    ITERM_FRONT_TTY, ITERM_TITLES, TERMINAL_FRONT_TTY, TERMINAL_TITLES,
+};
 pub use os::{
     blink_session, focus_session, full_screen_session, iterm_moved_from, list_sessions,
     open_new_session, send_prompt,

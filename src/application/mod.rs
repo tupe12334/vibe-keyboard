@@ -1,4 +1,4 @@
-mod actions;
+pub(crate) mod actions;
 mod centy_actions;
 mod moadim_keys;
 mod pages;
