@@ -4,6 +4,8 @@ mod ctx;
 mod event;
 mod input;
 mod keys;
+mod lost;
+mod options;
 mod reload;
 mod run;
 mod setup;
@@ -11,6 +13,12 @@ mod side;
 mod stop;
 mod tick;
 
+#[cfg(test)]
+mod reconnect_fake;
+#[cfg(test)]
+mod reconnect_port;
+#[cfg(test)]
+mod reconnect_tests;
 #[cfg(test)]
 mod run_tests;
 
