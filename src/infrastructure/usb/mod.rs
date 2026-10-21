@@ -61,6 +61,12 @@ impl Device {
         }
     }
 
+    /// A handle with no hardware: writes succeed and drop, reads time out. For tests.
+    #[cfg(test)]
+    pub fn detached() -> Self {
+        Self::from_io(Box::new(io::DetachedIo))
+    }
+
     /// Write one output report. `packet[0]` must be `0x00` (no report ID).
     pub fn write(&self, packet: &[u8]) -> HidResult<usize> {
         let res = self.io.write(packet);

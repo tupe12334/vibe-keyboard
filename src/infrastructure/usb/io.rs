@@ -16,3 +16,18 @@ impl HidIo for HidDevice {
         Self::read_timeout(self, buf, timeout_ms)
     }
 }
+
+/// No hardware: writes drop, reads time out. Keeps tests off the real deck.
+#[cfg(test)]
+pub(crate) struct DetachedIo;
+
+#[cfg(test)]
+impl HidIo for DetachedIo {
+    fn write(&self, packet: &[u8]) -> HidResult<usize> {
+        Ok(packet.len())
+    }
+
+    fn read_timeout(&self, _buf: &mut [u8], _timeout_ms: i32) -> HidResult<usize> {
+        Ok(0)
+    }
+}
