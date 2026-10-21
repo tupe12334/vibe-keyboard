@@ -4,6 +4,9 @@ use vibe_keyboard::domain::profile::{format_color, parse_color, Action, ActionKi
 
 use super::action_form::action_fields;
 use super::RED;
+use hold_action::hold_action_fields;
+
+mod hold_action;
 
 impl super::Editor {
     pub(super) fn key_panel(&mut self, ui: &mut egui::Ui) {
@@ -61,29 +64,7 @@ impl super::Editor {
             ui.colored_label(RED, problem);
         }
 
-        // The hold action runs while the key is held past `[input] hold_ms`.
-        let held_kind = edited.hold.as_ref().map_or(ActionKind::None, Action::kind);
-        let mut hold_kind = held_kind;
-        egui::ComboBox::from_label("Hold action")
-            .selected_text(hold_kind.label())
-            .show_ui(ui, |ui| {
-                for option in ActionKind::ALL {
-                    ui.selectable_value(&mut hold_kind, option, option.label());
-                }
-            });
-        if hold_kind != held_kind {
-            edited.hold = (hold_kind != ActionKind::None).then(|| Action::default_of(hold_kind));
-        }
-        if let Some(hold) = edited.hold.as_mut() {
-            action_fields(ui, hold, page_count);
-        }
-        if let Some(problem) = edited
-            .hold
-            .as_ref()
-            .and_then(|hold| hold.problem(page_count))
-        {
-            ui.colored_label(RED, problem);
-        }
+        hold_action_fields(ui, &mut edited.hold, page_count);
 
         ui.separator();
         if ui.button("Clear key").clicked() {

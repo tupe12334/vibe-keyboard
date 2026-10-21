@@ -38,3 +38,12 @@ fn the_commands_refuse_an_external_edit_between_load_and_save() {
     let on_disk = profile_store::read(&path).expect("read").expect("present");
     assert_eq!(on_disk.pages[0].name, "External");
 }
+
+#[test]
+fn build_info_names_version_sha_and_date() {
+    let line = crate::commands::build_info();
+    assert_eq!(line, vibe_keyboard::build_info::startup_line());
+    assert!(line.starts_with(concat!("vibe-keyboard ", env!("CARGO_PKG_VERSION"), " (")));
+    assert!(line.contains(", built "));
+    assert!(line.ends_with(')'));
+}

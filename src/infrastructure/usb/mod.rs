@@ -1,13 +1,17 @@
 pub mod calibrate;
 mod commands;
 mod image;
+mod io;
+mod port;
 mod reconnect;
 
 pub use commands::{clear_all, device_init, keep_alive, read_event};
 pub use image::{send_button_image, send_side_image, DECK_IMAGE_SIZE};
-pub use reconnect::wait_for_device;
+pub(crate) use io::HidIo;
+pub(crate) use port::{DeckPort, Hardware};
+pub(crate) use reconnect::wait_for_device;
 
-use hidapi::{HidApi, HidDevice, HidResult};
+use hidapi::{HidApi, HidResult};
 use std::cell::Cell;
 
 pub const VID: u16 = 0x0300;
@@ -23,7 +27,7 @@ pub const CMD_PACKET: usize = PACKET + 1;
 
 /// Open HID handle to the Stream Dock vendor interface.
 pub struct Device {
-    hid: HidDevice,
+    io: Box<dyn HidIo>,
     /// Set on the first failed write or read. Writers swallow errors, so the loop checks this.
     failed: Cell<bool>,
 }
@@ -46,15 +50,26 @@ impl Device {
         let hid = info
             .open_device(&api)
             .map_err(|e| format!("Failed to open HID device: {e}"))?;
-        Ok(Self {
-            hid,
+        Ok(Self::from_io(Box::new(hid)))
+    }
+
+    /// A handle over any `HidIo`. The real deck comes from `open`; tests pass a fake.
+    pub(crate) fn from_io(io: Box<dyn HidIo>) -> Self {
+        Self {
+            io,
             failed: Cell::new(false),
-        })
+        }
+    }
+
+    /// A handle with no hardware: writes succeed and drop, reads time out. For tests.
+    #[cfg(test)]
+    pub fn detached() -> Self {
+        Self::from_io(Box::new(io::DetachedIo))
     }
 
     /// Write one output report. `packet[0]` must be `0x00` (no report ID).
     pub fn write(&self, packet: &[u8]) -> HidResult<usize> {
-        let res = self.hid.write(packet);
+        let res = self.io.write(packet);
         if res.is_err() {
             self.failed.set(true);
         }
@@ -63,7 +78,7 @@ impl Device {
 
     /// Read one input report. Returns `Ok(0)` on timeout.
     pub fn read_timeout(&self, buf: &mut [u8], timeout_ms: i32) -> HidResult<usize> {
-        let res = self.hid.read_timeout(buf, timeout_ms);
+        let res = self.io.read_timeout(buf, timeout_ms);
         if res.is_err() {
             self.failed.set(true);
         }

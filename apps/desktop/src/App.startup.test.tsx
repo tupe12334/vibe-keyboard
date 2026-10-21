@@ -33,6 +33,7 @@ describe("App startup load", () => {
     vi.mocked(commands.deviceStatus).mockResolvedValue({ connected: false, running: false, error: null } as never);
     vi.mocked(commands.keyPreview).mockResolvedValue({ status: "ok", data: "" } as never);
     vi.mocked(commands.displayDefaults).mockResolvedValue({} as never);
+    vi.mocked(commands.buildInfo).mockResolvedValue("test build");
   });
 
   afterEach(() => {

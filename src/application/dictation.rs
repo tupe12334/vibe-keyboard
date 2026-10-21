@@ -31,8 +31,9 @@ pub(super) fn start_hold(
         match push_to_talk_key(binding.as_deref()) {
             Ok(hotkey) => {
                 info!("profile: push-to-talk hold start");
-                let generation = keyboard::hold_begin(key);
-                keyboard::push_to_talk_start(generation, key, &hotkey, None);
+                let fx = actions::effects::current();
+                let generation = (fx.hold_begin)(key);
+                (fx.push_to_talk_start)(generation, key, &hotkey, None);
             }
             Err(e) => tracing::error!("profile: bad push-to-talk key: {e}"),
         }
@@ -44,7 +45,7 @@ pub(super) fn start_hold(
 /// A hold ended. Only push-to-talk has work to do: key up.
 pub(super) fn end_hold(key: u8, hold: &crate::domain::profile::Action) {
     if matches!(hold, crate::domain::profile::Action::PushToTalk { .. }) {
-        keyboard::hold_end(key);
+        (actions::effects::current().hold_end)(key);
     }
 }
 

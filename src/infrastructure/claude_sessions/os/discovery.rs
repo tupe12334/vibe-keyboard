@@ -13,7 +13,7 @@ use crate::infrastructure::claude_sessions::{
     build_sessions, claude_processes, cwds_from_lsof, drop_routines, is_valid_tty,
     mark_remote_control, parse_tab_titles, tab_owners,
 };
-use crate::infrastructure::process::run;
+use crate::infrastructure::process::probe;
 
 /// Budgets for one discovery pass (at most about 0.9 s): ps, one lsof, then two terminal apps.
 const LSOF_TIMEOUT: Duration = Duration::from_millis(250);
@@ -24,7 +24,7 @@ const TITLE_TIMEOUT: Duration = Duration::from_millis(1500);
 
 /// Every `claude` process on a terminal, with its title, status and working directory.
 pub fn list_sessions() -> Vec<ClaudeSession> {
-    let Some(ps) = run("ps", &["-Ao", "pid=,tty=,comm="], PS_TIMEOUT) else {
+    let Some(ps) = probe("ps", &["-Ao", "pid=,tty=,comm="], PS_TIMEOUT) else {
         return Vec::new();
     };
     let procs = claude_processes(&ps);
@@ -36,7 +36,7 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
         .map(|(pid, _)| pid.to_string())
         .collect::<Vec<_>>()
         .join(",");
-    let cwds = run(
+    let cwds = probe(
         "lsof",
         &["-a", "-d", "cwd", "-Fpn", "-p", &pids],
         LSOF_TIMEOUT,
@@ -44,14 +44,14 @@ pub fn list_sessions() -> Vec<ClaudeSession> {
     .map(|out| cwds_from_lsof(&out))
     .unwrap_or_default();
     // Moadim routines are not user sessions. They stay on the Routines page. No tmux means no panes.
-    let tmux = run("tmux", TMUX_PANES, TMUX_TIMEOUT).unwrap_or_default();
+    let tmux = probe("tmux", TMUX_PANES, TMUX_TIMEOUT).unwrap_or_default();
     let procs = drop_routines(procs, &cwds, &tmux);
     if procs.is_empty() {
         return Vec::new();
     }
 
-    let iterm = std::thread::spawn(|| run("osascript", &["-e", ITERM_TITLES], TITLE_TIMEOUT));
-    let terminal_titles = run("osascript", &["-e", TERMINAL_TITLES], TITLE_TIMEOUT)
+    let iterm = std::thread::spawn(|| probe("osascript", &["-e", ITERM_TITLES], TITLE_TIMEOUT));
+    let terminal_titles = probe("osascript", &["-e", TERMINAL_TITLES], TITLE_TIMEOUT)
         .map(|out| parse_tab_titles(&out))
         .unwrap_or_default();
     let iterm_titles = iterm
