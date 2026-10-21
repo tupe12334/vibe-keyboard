@@ -2,11 +2,18 @@ name: Release
 
 # Tag push builds the macOS installers and publishes them to a GitHub Release.
 # Manual run builds the same artifacts only, with no release.
+# Manual dry run (dry_run=true, default) runs every check and build, but never
+# uploads, creates a release, or tags. The DMG is kept as a workflow artifact.
 on:
   push:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run every check and build, publish nothing"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -22,7 +29,7 @@ jobs:
         id: version
         env:
           REF_NAME: ${{ github.ref_name }}
-          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+          IS_TAG: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
         run: |
           CONF=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
           CARGO=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
@@ -41,9 +48,9 @@ jobs:
           fi
           echo "version=${CONF}" >> "$GITHUB_OUTPUT"
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      # Reads rust-toolchain.toml: installs the pinned toolchain with its components and targets.
+      - name: Install toolchain from rust-toolchain.toml
+        run: rustup show
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,7 +60,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
 
@@ -65,6 +72,13 @@ jobs:
       - name: Build frontend for tests
         working-directory: apps/desktop
         run: pnpm build
+
+      # Compiles the iTerm2 AppleScripts too, so the runner needs the app bundle.
+      - name: Install iTerm2
+        run: |
+          brew install --cask iterm2
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
+          osascript -e 'id of application id "com.googlecode.iterm2"'
 
       - name: Test
         run: cargo test --workspace --locked
@@ -78,7 +92,7 @@ jobs:
         with:
           projectPath: apps/desktop
           args: --target universal-apple-darwin
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          tagName: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: "Vibe Keyboard v__VERSION__"
           releaseBody: |
             Download the DMG below, drag **Vibe Keyboard** to Applications.
@@ -133,7 +147,7 @@ jobs:
           cat SHA256SUMS.txt
 
       - name: Attach app zip and checksums to release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && (github.event_name != 'workflow_dispatch' || !inputs.dry_run)
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
