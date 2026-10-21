@@ -15,6 +15,7 @@ mod commands;
 mod display_commands;
 #[cfg(test)]
 mod display_tests;
+mod editor_log;
 #[cfg(test)]
 mod editor_preserve_hold_tests;
 #[cfg(test)]

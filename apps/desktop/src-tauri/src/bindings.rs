@@ -5,7 +5,7 @@ use tauri::Wry;
 use tauri_specta::{collect_commands, collect_events, Builder};
 
 use crate::{
-    app_commands, commands, display_commands, events, key_commands, layout_commands,
+    app_commands, commands, display_commands, editor_log, events, key_commands, layout_commands,
     prompt_commands, quit, side_commands,
 };
 
@@ -28,6 +28,7 @@ pub fn specta_builder() -> Builder<Wry> {
             prompt_commands::delete_prompt,
             app_commands::list_running_apps,
             app_commands::check_bundle_id,
+            editor_log::log_webview_error,
             display_commands::display_defaults,
             quit::confirm_quit,
             quit::acknowledge_quit,

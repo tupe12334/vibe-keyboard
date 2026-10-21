@@ -8,6 +8,7 @@ use vibe_keyboard::domain::profile::Profile;
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
+use crate::editor_log;
 use crate::profile_io::{load_layout, save_layout, SaveError};
 
 #[derive(Serialize, Type)]
@@ -31,12 +32,16 @@ pub fn get_profile(app: State<'_, App>) -> Result<Profile, String> {
 #[tauri::command]
 #[specta::specta]
 pub fn save_profile(profile: Profile, force: bool, app: State<'_, App>) -> Result<(), SaveError> {
-    save_layout(
-        &app.loaded_version,
-        &profile_store::profile_path(),
-        &profile,
-        force,
-    )
+    let path = profile_store::profile_path();
+    let result = save_layout(&app.loaded_version, &path, &profile, force);
+    match &result {
+        Ok(()) => tracing::info!(
+            "{}",
+            editor_log::saved_line(&profile, &path.display().to_string())
+        ),
+        Err(err) => tracing::warn!("{}", editor_log::save_failed_line(&format!("{err:?}"))),
+    }
+    result
 }
 
 #[tauri::command]

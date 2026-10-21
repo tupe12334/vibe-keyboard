@@ -44,6 +44,8 @@ export const commands = {
 	listRunningApps: () => __TAURI_INVOKE<RunningApp[]>("list_running_apps"),
 	/**  Whether `text` is a bundle id, by the core rule the layout uses for `open_app`. */
 	checkBundleId: (text: string) => __TAURI_INVOKE<boolean>("check_bundle_id", { text }),
+	/**  Logs an error the editor webview caught. Fire-and-forget from the frontend. */
+	logWebviewError: (kind: string, message: string) => __TAURI_INVOKE<void>("log_webview_error", { kind, message }),
 	/**  The built-in insets. The layout file omits a value that equals its default. */
 	displayDefaults: () => __TAURI_INVOKE<DisplayDefaults>("display_defaults"),
 	/**  The editor allows the quit: nothing unsaved, or Save or Discard was chosen. */
