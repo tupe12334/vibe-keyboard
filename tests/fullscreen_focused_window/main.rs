@@ -2,12 +2,11 @@
 //! windows, so it runs only when `VK_UI_TEST=1` (CI sets it). Needs Accessibility for System Events.
 #![cfg(target_os = "macos")]
 
+mod ax;
 mod iterm;
 
-use iterm::{
-    app_toggle_script, ax_windows, focused_title, fullscreen_of, open_windows, osa,
-    wait_fullscreen, CloseWindows, FIRST, SECOND,
-};
+use ax::{ax_windows, focused_title, fullscreen_of, wait_fullscreen};
+use iterm::{app_toggle_script, open_windows, osa, CloseWindows, FIRST, SECOND};
 
 #[test]
 fn full_screen_toggles_only_the_focused_iterm_window() {

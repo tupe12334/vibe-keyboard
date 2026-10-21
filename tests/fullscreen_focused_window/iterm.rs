@@ -1,14 +1,11 @@
-//! Drives real iTerm2 windows and reads their Accessibility state through osascript.
+//! Opens the two test windows in iTerm2, runs the app's own FULL SCREEN toggle, and closes them.
 use std::process::Command;
-use std::thread::sleep;
-use std::time::{Duration, Instant};
 
 use vibe_keyboard::domain::actions::TerminalApp;
 use vibe_keyboard::infrastructure::claude_sessions::{full_screen_steps, FullScreenStep};
 
 pub const FIRST: &str = "vk-ui-first";
 pub const SECOND: &str = "vk-ui-second";
-const WAIT: Duration = Duration::from_secs(15);
 
 /// Runs `script` with osascript and returns its trimmed stdout. Panics with stderr on failure.
 pub fn osa(script: &str) -> String {
@@ -36,65 +33,28 @@ pub fn app_toggle_script() -> String {
 /// Opens two iTerm2 windows, then raises and focuses the second one.
 pub fn open_windows() {
     osa(&format!(
-        "tell application \"iTerm2\"\n\
-         activate\n\
-         set a to (create window with default profile)\n\
-         tell current session of a to set name to \"{FIRST}\"\n\
-         set b to (create window with default profile)\n\
-         tell current session of b to set name to \"{SECOND}\"\n\
-         select b\n\
-         end tell"
+        r#"tell application "iTerm2"
+activate
+set a to (create window with default profile)
+tell current session of a to set name to "{FIRST}"
+set b to (create window with default profile)
+tell current session of b to set name to "{SECOND}"
+select b
+end tell"#
     ));
 }
 
-/// One line per iTerm2 AX window: `title=true|false` (full-screen state), in AX order.
-pub fn ax_windows() -> String {
-    osa("tell application \"System Events\" to tell process \"iTerm2\"\n\
-         set out to \"\"\n\
-         repeat with w in windows\n\
-         set out to out & (value of attribute \"AXTitle\" of w as text) & \"=\" & (value of attribute \"AXFullScreen\" of w as text) & linefeed\n\
-         end repeat\n\
-         return out\n\
-         end tell")
-}
-
-/// The AX title of the focused iTerm2 window.
-pub fn focused_title() -> String {
-    osa(
-        "tell application \"System Events\" to tell process \"iTerm2\" to \
-         return value of attribute \"AXTitle\" of (value of attribute \"AXFocusedWindow\")",
-    )
-}
-
-/// Full-screen state of the window whose title contains `title`. None when no window matches.
-pub fn fullscreen_of(lines: &str, title: &str) -> Option<bool> {
-    lines
-        .lines()
-        .find(|line| line.contains(title))
-        .map(|line| line.ends_with("=true"))
-}
-
-/// Polls the AX windows until `title` reaches `want`, or gives up after `WAIT`. Returns the last read.
-pub fn wait_fullscreen(title: &str, want: bool) -> String {
-    let start = Instant::now();
-    loop {
-        let lines = ax_windows();
-        if fullscreen_of(&lines, title) == Some(want) || start.elapsed() > WAIT {
-            return lines;
-        }
-        sleep(Duration::from_millis(500));
-    }
-}
-
-/// Closes the test windows when dropped, pass or fail.
+/// Closes the test windows when dropped. Never panics: a panic during unwinding aborts the test.
 pub struct CloseWindows;
 
 impl Drop for CloseWindows {
     fn drop(&mut self) {
-        let _ = osa("tell application \"iTerm2\"\n\
-             repeat with w in (windows as list)\n\
-             if (name of current session of w) contains \"vk-ui-\" then close w\n\
-             end repeat\n\
-             end tell");
+        let script = r#"tell application "iTerm2"
+repeat with w in (windows as list)
+set n to name of current session of w
+if n contains "vk-ui-" then close w
+end repeat
+end tell"#;
+        let _ = Command::new("osascript").arg("-e").arg(script).output();
     }
 }
