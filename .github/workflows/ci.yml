@@ -65,7 +65,10 @@ jobs:
           /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
           osascript -e 'id of application id "com.googlecode.iterm2"'
 
+      # VK_UI_TEST opens real iTerm2 windows for the FULL SCREEN test. Local runs skip it.
       - name: Test
+        env:
+          VK_UI_TEST: "1"
         run: cargo test --workspace --locked
 
       - name: Install cargo-llvm-cov
@@ -74,6 +77,8 @@ jobs:
           tool: cargo-llvm-cov@0.8.7
 
       - name: Coverage gate
+        env:
+          VK_UI_TEST: "1"
         run: scripts/coverage.sh
 
       - name: Install cargo-machete
