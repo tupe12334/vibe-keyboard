@@ -1,6 +1,19 @@
 #!/bin/sh
 set -e
 
+# Disk guard: the build below needs about 6 GiB. Stop early instead of running out mid-build.
+if [ "${VK_SKIP_DISK_GUARD:-0}" != "1" ]; then
+  VK_MIN_FREE_KIB="${VK_MIN_FREE_KIB:-6291456}"
+  VK_CHECK_DIR="${CARGO_TARGET_DIR:-$(git rev-parse --show-toplevel)/target}"
+  while [ ! -d "$VK_CHECK_DIR" ]; do VK_CHECK_DIR=$(dirname "$VK_CHECK_DIR"); done
+  VK_FREE_KIB=$(df -Pk "$VK_CHECK_DIR" | awk 'NR==2 {print $4}')
+  VK_MOUNT=$(df -Pk "$VK_CHECK_DIR" | awk 'NR==2 {print $6}')
+  if [ "$VK_FREE_KIB" -lt "$VK_MIN_FREE_KIB" ]; then
+    echo "pre-push: only $((VK_FREE_KIB / 1048576)) GiB free on $VK_MOUNT; need 6 GiB for the build. Free disk space, then push again. Override: VK_SKIP_DISK_GUARD=1." >&2
+    exit 1
+  fi
+fi
+
 if ! command -v linecheck >/dev/null 2>&1; then
   echo "linecheck is not installed. Install it with: cargo install linecheck --locked" >&2
   exit 1
