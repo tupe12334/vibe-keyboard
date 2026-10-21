@@ -41,9 +41,9 @@ jobs:
           fi
           echo "version=${CONF}" >> "$GITHUB_OUTPUT"
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      # Reads rust-toolchain.toml: installs the pinned toolchain with its components and targets.
+      - name: Install toolchain from rust-toolchain.toml
+        run: rustup show
 
       - uses: Swatinem/rust-cache@v2
 
@@ -53,7 +53,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
 
