@@ -4,6 +4,7 @@ mod moadim_keys;
 mod pages;
 pub mod prompt_return;
 mod session_actions;
+mod session_window;
 mod voice;
 
 pub use pages::{refresh_side_widgets, render_screen};

@@ -4,6 +4,7 @@
 
 mod applescript;
 mod focus_check;
+mod fullscreen;
 mod highlight;
 mod new_session;
 mod os;
@@ -21,10 +22,12 @@ pub use focus_check::{
     focused_bundle, is_frontmost, is_selected, scan_result, session_moved, Scan, ITERM_BUNDLE,
     TERMINAL_BUNDLE,
 };
+pub use fullscreen::{full_screen_steps, FullScreenStep};
 pub use highlight::highlight_target;
 pub use new_session::new_session_script;
 pub use os::{
-    blink_session, focus_session, iterm_moved_from, list_sessions, open_new_session, send_prompt,
+    blink_session, focus_session, full_screen_session, iterm_moved_from, list_sessions,
+    open_new_session, send_prompt,
 };
 pub use process_list::{claude_processes, cwds_from_lsof};
 pub use remote_control::{mark_remote_control, remote_control_on};

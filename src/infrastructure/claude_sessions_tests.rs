@@ -32,3 +32,6 @@ mod highlight;
 
 #[path = "claude_sessions_tests/owners.rs"]
 mod owners;
+
+#[path = "claude_sessions_tests/fullscreen.rs"]
+mod fullscreen;

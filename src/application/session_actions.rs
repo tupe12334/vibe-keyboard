@@ -4,7 +4,7 @@ use tracing::info;
 
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::infrastructure::claude_sessions::{
-    blink_session, focus_session, new_session_script, open_new_session, send_prompt,
+    focus_session, new_session_script, open_new_session, send_prompt,
 };
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
@@ -13,6 +13,7 @@ use super::input_modes::{self, NumberEdit};
 use super::key_action::Action;
 use super::lock;
 use super::pages::{open_confirm_exit, open_session_actions, show_focus_only};
+use super::session_window;
 use super::{prompt_return, render_screen, DeviceState};
 
 /// Claude session keys, sorting, paging and number entry.
@@ -44,11 +45,8 @@ pub(super) fn session_action(
             open_confirm_exit(nav, session);
             render_screen(nav, handle, state, dev_state);
         }
-        Action::BlinkSession { session } => {
-            info!("claude sessions: blink {}", session.tty);
-            // Off the device loop: the focus waits on osascript, and the write may block on the tty.
-            std::thread::spawn(move || blink_session(&session.tty, session.app));
-        }
+        Action::BlinkSession { session } => session_window::blink(session),
+        Action::FullScreenSession { session } => session_window::full_screen(session),
         Action::SendPrompt { pid, tty, text } => {
             info!("claude sessions: send prompt to {tty}");
             // Off the device loop: osascript can take a while. Leaves the page once it is sent.

@@ -49,6 +49,9 @@ pub(in crate::application) enum Action {
     BlinkSession {
         session: crate::domain::actions::ClaudeSession,
     },
+    FullScreenSession {
+        session: crate::domain::actions::ClaudeSession,
+    },
     SendPrompt {
         pid: u32,
         tty: String,

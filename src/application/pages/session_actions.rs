@@ -5,6 +5,8 @@ pub const RECAP_TEXT: &str = "/recap";
 mod keys;
 #[path = "session_actions_render.rs"]
 mod render;
+#[path = "session_actions_window_keys.rs"]
+mod window_keys;
 
 pub use keys::open_session_actions;
 pub use render::render_session_actions;

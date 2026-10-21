@@ -4,7 +4,7 @@ use super::Action;
 use crate::application::pages::{confirm_action, exit_action, RECAP_TEXT};
 use crate::application::{lock, prompt_return};
 use crate::domain::actions::NewSessionTerminal;
-use crate::domain::navigation::{exit_on_page, prompt_index, Screen, BLINK_KEY};
+use crate::domain::navigation::{exit_on_page, prompt_index, Screen, BLINK_KEY, FULL_SCREEN_KEY};
 use crate::presentation::tui;
 
 /// Keys on the Claude session screens: the list, the action page and the new-session choice.
@@ -35,6 +35,9 @@ pub(super) fn action(key: u8, screen: &Screen, state: &Arc<Mutex<tui::AppState>>
             };
             match (key, text) {
                 (BLINK_KEY, _) => Action::BlinkSession {
+                    session: session.clone(),
+                },
+                (FULL_SCREEN_KEY, _) => Action::FullScreenSession {
                     session: session.clone(),
                 },
                 (15, _) if exit_on_page(*page, prompts.len()) => exit_action(session),

@@ -8,8 +8,11 @@ pub(super) const fn moadim_len(list: &MoadimList) -> usize {
     }
 }
 
-/// Prompt keys on a session action page: keys 1 to 9. Nine prompts fit on one page.
-pub const PROMPTS_PER_PAGE: usize = 9;
+/// Prompt keys on a session action page: keys 1 to 8. Eight prompts fit on one page.
+pub const PROMPTS_PER_PAGE: usize = 8;
+
+/// Key 9 on every session action page: FULL SCREEN, which focuses the session and toggles its window.
+pub const FULL_SCREEN_KEY: u8 = 9;
 
 /// Key 10 on every session action page: BLINK, which flashes the session's pane.
 pub const BLINK_KEY: u8 = 10;
