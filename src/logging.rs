@@ -43,8 +43,14 @@ impl<S: tracing::Subscriber> Layer<S> for TuiLogLayer {
     }
 }
 
-fn log_dir() -> std::path::PathBuf {
+/// `~/.config/vibe-keyboard`. Holds `app.log`.
+pub fn log_dir() -> std::path::PathBuf {
     crate::infrastructure::persistence::config_dir().join("vibe-keyboard")
+}
+
+/// `~/.config/vibe-keyboard/app.log`, the file the tray's "Show log" opens.
+pub fn log_file() -> std::path::PathBuf {
+    log_dir().join("app.log")
 }
 
 /// Initialize the global tracing subscriber with a file appender and TUI layer.
@@ -57,7 +63,7 @@ pub fn init(state: Arc<Mutex<AppState>>) -> tracing_appender::non_blocking::Work
     let dir = log_dir();
     let _ = std::fs::create_dir_all(&dir);
     // Fall back to stderr when the log file cannot be created, instead of panicking.
-    let sink: Box<dyn std::io::Write + Send> = match std::fs::File::create(dir.join("app.log")) {
+    let sink: Box<dyn std::io::Write + Send> = match std::fs::File::create(log_file()) {
         Ok(file) => Box::new(file),
         Err(e) => {
             eprintln!("cannot create app.log ({e}); logging to stderr");

@@ -33,6 +33,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         app,
         &[
             &open,
+            &crate::tray_log::menu_item(app)?,
             &pause,
             &PredefinedMenuItem::separator(app)?,
             &autostart,
@@ -53,6 +54,7 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
         .menu(&menu)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => show_editor(app),
+            id if crate::tray_log::is_show_log(id) => crate::tray_log::show_log(),
             "pause" => toggle_controller(app),
             "autostart" => crate::login_item::toggle_autostart(app),
             crate::accessibility::MENU_ID => crate::accessibility::open_settings(),
