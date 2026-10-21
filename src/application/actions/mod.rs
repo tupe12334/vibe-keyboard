@@ -1,10 +1,10 @@
 mod browser;
 mod builtin;
 mod centy;
-mod claude;
+pub(crate) mod claude;
 mod log_file;
 mod profile;
-mod terminal;
+pub(crate) mod terminal;
 mod vscode_config;
 
 pub use browser::open_in_chrome;

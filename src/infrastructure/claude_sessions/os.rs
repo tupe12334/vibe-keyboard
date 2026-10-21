@@ -15,7 +15,7 @@ use crate::infrastructure::process::run;
 mod front_tty;
 mod fullscreen;
 mod summary;
-mod tab_scripts;
+pub(super) mod tab_scripts;
 mod terminal;
 mod tty_age;
 pub use front_tty::{blink_session, iterm_moved_from};
