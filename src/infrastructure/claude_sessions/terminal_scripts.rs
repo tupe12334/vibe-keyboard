@@ -10,8 +10,8 @@ pub fn send_text_scripts(tty: &str, text: &str) -> Option<[String; 2]> {
     let device = format!("/dev/{tty}");
     let text = applescript_string(text)?;
     let iterm = format!(
-        r#"if application "iTerm2" is running then
-  tell application "iTerm2"
+        r#"if application id "com.googlecode.iterm2" is running then
+  tell application id "com.googlecode.iterm2"
     repeat with w in windows
       repeat with t in tabs of w
         repeat with s in sessions of t
@@ -27,8 +27,8 @@ end if
 return "missing""#
     );
     let terminal = format!(
-        r#"if application "Terminal" is running then
-  tell application "Terminal"
+        r#"if application id "com.apple.Terminal" is running then
+  tell application id "com.apple.Terminal"
     repeat with w in windows
       repeat with t in tabs of w
         if tty of t is "{device}" then
@@ -54,8 +54,8 @@ pub fn focus_scripts(tty: &str) -> Option<[String; 2]> {
     }
     let device = format!("/dev/{tty}");
     let iterm = format!(
-        r#"if application "iTerm2" is running then
-  tell application "iTerm2"
+        r#"if application id "com.googlecode.iterm2" is running then
+  tell application id "com.googlecode.iterm2"
     repeat with w in windows
       repeat with t in tabs of w
         repeat with s in sessions of t
@@ -75,8 +75,8 @@ end if
 return "missing""#
     );
     let terminal = format!(
-        r#"if application "Terminal" is running then
-  tell application "Terminal"
+        r#"if application id "com.apple.Terminal" is running then
+  tell application id "com.apple.Terminal"
     repeat with w in windows
       repeat with t in tabs of w
         if tty of t is "{device}" then
