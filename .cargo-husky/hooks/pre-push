@@ -15,14 +15,19 @@ if [ "${VK_SKIP_DISK_GUARD:-0}" != "1" ]; then
 fi
 
 if ! command -v linecheck >/dev/null 2>&1; then
-  echo "linecheck is not installed. Install it with: cargo install linecheck --locked" >&2
+  echo "linecheck is not installed. Install it with: cargo install linecheck --version 1.2.1 --locked" >&2
   exit 1
 fi
 linecheck .
 
 cargo test
+
+if ! command -v cargo-machete >/dev/null 2>&1; then
+  echo "cargo-machete is not installed. Install it with: cargo install cargo-machete --version 0.9.1 --locked" >&2
+  exit 1
+fi
 cargo-machete
 cargo clippy --workspace --all-targets --locked -- -D warnings
 
-# Enforce 100% line coverage (same script as CI). Needs cargo-llvm-cov: cargo install cargo-llvm-cov
+# Enforce 100% line coverage (same script as CI). Needs cargo-llvm-cov: cargo install cargo-llvm-cov --version 0.8.7 --locked
 scripts/coverage.sh
