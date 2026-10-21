@@ -1,35 +1,29 @@
 //! Controller run: set up the deck, then drive the device loop until it stops.
 use super::ctx::{Ctx, Flow};
 use super::event::ControllerEvent;
-use super::setup::{open_device, reconnect};
+use super::lost::recover;
+use super::setup::open_device;
 use super::stop::stop_if_none;
 use super::tick;
 use crate::application::{release_all_holds, render_screen};
 use crate::domain::{navigation::NavigationStack, ptt::Release};
 use crate::infrastructure::profile_store;
-use crate::infrastructure::usb::clear_all;
+use crate::infrastructure::usb::{clear_all, DeckPort, Hardware};
 use crate::presentation;
-use crate::presentation::tui::AppState;
-use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
-use tracing::{info, warn};
+use tracing::info;
 
-/// Called on the controller thread for each event.
-pub type EventSink = Box<dyn Fn(ControllerEvent) + Send>;
+pub use super::options::{EventSink, RunOptions};
 
-pub struct RunOptions {
-    /// Skip the ratatui TUI. No terminal is needed.
-    pub headless: bool,
-    /// Set this to stop the loop. Signal handlers set it too.
-    pub shutdown: Arc<AtomicBool>,
-    /// UI state. Call `load_profile` on it only after `claim()` succeeds.
-    pub state: Arc<Mutex<AppState>>,
-    pub on_event: EventSink,
-}
+type RunResult = Result<(), Box<dyn std::error::Error>>;
 
 /// Run the device loop. Call only while holding the `claim()` lock.
-pub fn run(opts: RunOptions) -> Result<(), Box<dyn std::error::Error>> {
+pub fn run(opts: RunOptions) -> RunResult {
+    run_with(opts, &Hardware)
+}
+
+/// `run` on a given deck. Tests pass a fake `DeckPort`.
+pub(super) fn run_with(opts: RunOptions, port: &dyn DeckPort) -> RunResult {
     let RunOptions {
         headless,
         shutdown,
@@ -42,7 +36,8 @@ pub fn run(opts: RunOptions) -> Result<(), Box<dyn std::error::Error>> {
         .total_pages;
     // Snapshot before the device wait, so a profile edit made while unplugged reloads.
     let last_profile_mtime = profile_store::modified_at(&profile_store::profile_path());
-    let Some((mut handle, dev_state_val)) = stop_if_none(open_device(&shutdown), &*on_event) else {
+    let Some((mut handle, dev_state_val)) = stop_if_none(open_device(port, &shutdown), &*on_event)
+    else {
         return Ok(());
     };
     info!("device ready");
@@ -85,15 +80,10 @@ pub fn run(opts: RunOptions) -> Result<(), Box<dyn std::error::Error>> {
                 return Ok(());
             }
             Flow::Lost => {
-                warn!("device disconnected");
-                release_all_holds(&ctx.app_state, Release::Disconnected);
-                (ctx.events)(ControllerEvent::DeviceLost);
-                let Some(new_handle) = stop_if_none(reconnect(handle, &ctx), &*ctx.events) else {
+                let Some(new_handle) = recover(port, handle, &mut ctx) else {
                     return Ok(());
                 };
                 handle = new_handle;
-                (ctx.events)(ControllerEvent::DeviceRestored);
-                ctx.last_heartbeat = Instant::now();
             }
         }
     }

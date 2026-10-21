@@ -1,0 +1,36 @@
+name: Setup
+description: Rust toolchain, cache, pnpm, Node, desktop dependencies, and iTerm2 for the macOS jobs. Run after actions/checkout.
+
+runs:
+  using: composite
+  steps:
+    # Reads rust-toolchain.toml: installs the pinned toolchain with its components and targets.
+    - name: Install toolchain from rust-toolchain.toml
+      shell: bash
+      run: rustup show
+
+    - uses: Swatinem/rust-cache@v2
+
+    # Reads packageManager in apps/desktop/package.json.
+    - uses: pnpm/action-setup@v4
+      with:
+        package_json_file: apps/desktop/package.json
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+        cache-dependency-path: apps/desktop/pnpm-lock.yaml
+
+    - name: Install desktop dependencies
+      shell: bash
+      working-directory: apps/desktop
+      run: pnpm install --frozen-lockfile
+
+    # Compiles the iTerm2 AppleScripts too, so the runner needs the app bundle.
+    - name: Install iTerm2
+      shell: bash
+      run: |
+        brew install --cask iterm2
+        /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f /Applications/iTerm.app
+        osascript -e 'id of application id "com.googlecode.iterm2"'

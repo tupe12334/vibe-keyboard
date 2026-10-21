@@ -2,8 +2,11 @@ mod browser;
 mod builtin;
 mod centy;
 pub(crate) mod claude;
+pub(crate) mod effects;
 mod log_file;
 mod profile;
+#[cfg(test)]
+mod profile_kinds;
 pub(crate) mod terminal;
 mod vscode_config;
 

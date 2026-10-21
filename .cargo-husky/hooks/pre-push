@@ -1,6 +1,71 @@
 #!/bin/sh
 set -e
 
+# Tool check: find every missing tool before the slow steps run, then fail once.
+# Runs for every push, including docs-only pushes (fail closed on a machine without cargo).
+VK_MISSING=""
+if ! command -v cargo >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo: install Rust with rustup from https://rustup.rs
+"
+fi
+if ! command -v linecheck >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  linecheck: cargo install linecheck --version 1.2.1 --locked
+"
+fi
+if ! command -v cargo-machete >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo-machete: cargo install cargo-machete --version 0.9.1 --locked
+"
+fi
+if ! cargo llvm-cov --version >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo-llvm-cov: cargo install cargo-llvm-cov --version 0.8.7 --locked
+"
+fi
+if [ -n "$VK_MISSING" ]; then
+  echo "pre-push: required tools are missing. Install each one, then push again:" >&2
+  printf '%s' "$VK_MISSING" >&2
+  exit 1
+fi
+
+# Stdin: "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref.
+# Cargo steps are skipped only when the matcher exits 1 (no pushed path affects the Rust build).
+# Matcher exit: 0 = run cargo, 1 = skip, anything else = run cargo. Unknown range = run cargo.
+input=$(cat)
+verdict=run
+if [ -n "$input" ]; then
+  list=""
+  ok=1
+  while read -r _ lsha _ rsha; do
+    # Deleting a ref: nothing to judge, run the full gate.
+    case "$lsha" in *[!0]*) ;; *) ok=0; break ;; esac
+    case "$rsha" in
+      *[!0]*) base=$rsha ;;
+      # New branch: compare against where it forks from main.
+      *) base=$(git merge-base origin/main "$lsha" 2>/dev/null) || { ok=0; break; } ;;
+    esac
+    paths=$(git diff --name-only --no-renames "$base" "$lsha") || { ok=0; break; }
+    list="$list$paths
+"
+  done <<EOF
+$input
+EOF
+  if [ "$ok" -eq 1 ]; then
+    rc=0
+    printf '%s' "$list" | sh scripts/precommit-needs-cargo.sh --stdin || rc=$?
+    if [ "$rc" -eq 1 ]; then verdict=skip; fi
+  fi
+fi
+
+linecheck .
+
+if command -v shellcheck >/dev/null 2>&1; then
+  shellcheck -x .cargo-husky/hooks/pre-commit .cargo-husky/hooks/pre-push scripts/precommit-needs-cargo.sh scripts/test/precommit-skip.sh scripts/test/prepush-skip.sh
+fi
+
+if [ "$verdict" = skip ]; then
+  echo "pre-push: no pushed path affects the Rust build. Skipping cargo steps."
+  exit 0
+fi
+
 # Disk guard: the build below needs about 6 GiB. Stop early instead of running out mid-build.
 if [ "${VK_SKIP_DISK_GUARD:-0}" != "1" ]; then
   VK_MIN_FREE_KIB="${VK_MIN_FREE_KIB:-6291456}"
@@ -14,20 +79,10 @@ if [ "${VK_SKIP_DISK_GUARD:-0}" != "1" ]; then
   fi
 fi
 
-if ! command -v linecheck >/dev/null 2>&1; then
-  echo "linecheck is not installed. Install it with: cargo install linecheck --version 1.2.1 --locked" >&2
-  exit 1
-fi
-linecheck .
-
 cargo test
 
-if ! command -v cargo-machete >/dev/null 2>&1; then
-  echo "cargo-machete is not installed. Install it with: cargo install cargo-machete --version 0.9.1 --locked" >&2
-  exit 1
-fi
 cargo-machete
 cargo clippy --workspace --all-targets --locked -- -D warnings
 
-# Enforce 100% line coverage (same script as CI). Needs cargo-llvm-cov: cargo install cargo-llvm-cov --version 0.8.7 --locked
+# Enforce 100% line coverage (same script as CI).
 scripts/coverage.sh

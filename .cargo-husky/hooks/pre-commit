@@ -2,4 +2,12 @@
 set -e
 
 # Fast local gate only. clippy, tests, coverage and linecheck run in pre-push and CI.
-cargo fmt --check
+# Skip cargo when no staged path can change the Rust build (matcher: scripts/precommit-needs-cargo.sh).
+# Matcher exit: 0 = run cargo, 1 = skip, anything else (git failure) = run cargo.
+rc=0
+sh scripts/precommit-needs-cargo.sh || rc=$?
+if [ "$rc" -eq 1 ]; then
+  echo "pre-commit: no staged path affects the Rust build. Skipping cargo steps."
+else
+  cargo fmt --check
+fi

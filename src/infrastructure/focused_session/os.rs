@@ -6,7 +6,7 @@ use std::time::Duration;
 use super::{parse_selected_tty, selected_tty_script, set_focus, terminal_for_bundle};
 use crate::domain::actions::ClaudeSession;
 use crate::infrastructure::frontmost::frontmost_bundle_id;
-use crate::infrastructure::process::run;
+use crate::infrastructure::process::probe;
 
 /// Hard limit for the tab query. Terminal apps can be slow to answer.
 const TAB_TIMEOUT: Duration = Duration::from_millis(1500);
@@ -18,7 +18,7 @@ pub fn with_focus(mut sessions: Vec<ClaudeSession>) -> Vec<ClaudeSession> {
         .and_then(|bundle| terminal_for_bundle(&bundle))
         .filter(|app| sessions.iter().any(|session| session.app == *app))
         .and_then(|app| {
-            let out = run("osascript", &["-e", selected_tty_script(app)?], TAB_TIMEOUT)?;
+            let out = probe("osascript", &["-e", selected_tty_script(app)?], TAB_TIMEOUT)?;
             Some((app, parse_selected_tty(&out)?))
         });
     set_focus(

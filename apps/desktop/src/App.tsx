@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { commands, type EditorRules } from "./bindings";
+import { useState } from "react";
+import type { EditorRules } from "./bindings";
 import { Inspector } from "./Inspector";
 import type { InspectorTab } from "./InspectorTabs";
 import { KeyGrid } from "./KeyGrid";
@@ -11,6 +11,7 @@ import { useDeckEvents } from "./useDeckEvents";
 import { usePageActions } from "./usePageActions";
 import { usePreviews } from "./usePreviews";
 import { useProfile } from "./useProfile";
+import { useStartupCalls } from "./useStartupCalls";
 
 export function App() {
   const { draft, setDraft, page, setPage, dirty, error, setError, notice, conflict, load, onReload, save, updatePage, setKey, setHoldMs, setDisplay } =
@@ -22,19 +23,17 @@ export function App() {
   const [rules, setRules] = useState<EditorRules | null>(null);
   const [builtins, setBuiltins] = useState<string[]>([]);
 
-  useEffect(() => {
-    void load();
-    void commands.listBuiltins().then(setBuiltins);
-    void commands.editorRules().then(setRules);
-  }, [load]);
+  const { startupError, retry } = useStartupCalls(load, setBuiltins, setRules);
+
+  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
 
   if (!draft || !rules) {
-    return <div className="main">{error ? <div className="error">{error}</div> : "Loading…"}</div>;
+    const problem = startupError ?? error;
+    return <div className="main">{problem ? <div className="error">{problem} <button onClick={retry}>Retry</button></div> : "Loading…"}</div>;
   }
 
   const current: Page = draft.pages[page];
   const navKeys = new Set(rules?.nav_keys ?? []);
-  const { addPage, deletePage } = usePageActions({ draft, page, setDraft, setPage, setError, setSelected });
   // Picking a key shows its fields first.
   const pickKey = (key: number) => {
     setSelected(key);

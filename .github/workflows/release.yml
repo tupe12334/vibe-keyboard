@@ -2,11 +2,25 @@ name: Release
 
 # Tag push builds the macOS installers and publishes them to a GitHub Release.
 # Manual run builds the same artifacts only, with no release.
+# Manual dry run (dry_run=true, default) runs every check and build, but never
+# uploads, creates a release, or tags. The DMG is kept as a workflow artifact.
+# Weekly schedule and pull_request runs are always dry runs.
 on:
   push:
     tags:
       - "v*.*.*"
+  schedule:
+    - cron: '17 6 * * 1'
+  pull_request:
+    paths:
+      - ".github/workflows/release.yml"
+      - ".github/actions/**"
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run every check and build, publish nothing"
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -14,6 +28,9 @@ permissions:
 jobs:
   macos:
     runs-on: macos-latest
+    # Only a tag push publishes. Schedule, pull_request and dispatch with dry_run=true stay dry.
+    env:
+      DRY_RUN: ${{ github.event_name == 'schedule' || github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && inputs.dry_run) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -22,7 +39,7 @@ jobs:
         id: version
         env:
           REF_NAME: ${{ github.ref_name }}
-          IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+          IS_TAG: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
         run: |
           CONF=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
           CARGO=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
@@ -41,25 +58,7 @@ jobs:
           fi
           echo "version=${CONF}" >> "$GITHUB_OUTPUT"
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - uses: Swatinem/rust-cache@v2
-
-      - uses: pnpm/action-setup@v4
-        with:
-          package_json_file: apps/desktop/package.json
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: apps/desktop/pnpm-lock.yaml
-
-      - name: Install desktop dependencies
-        working-directory: apps/desktop
-        run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup
 
       # The workspace's desktop crate embeds apps/desktop/dist at compile time.
       - name: Build frontend for tests
@@ -78,7 +77,7 @@ jobs:
         with:
           projectPath: apps/desktop
           args: --target universal-apple-darwin
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          tagName: ${{ env.DRY_RUN == 'false' && startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: "Vibe Keyboard v__VERSION__"
           releaseBody: |
             Download the DMG below, drag **Vibe Keyboard** to Applications.
@@ -133,7 +132,7 @@ jobs:
           cat SHA256SUMS.txt
 
       - name: Attach app zip and checksums to release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.DRY_RUN == 'false' && startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}

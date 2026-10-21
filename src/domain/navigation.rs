@@ -64,6 +64,9 @@ mod out_and_actions;
 #[path = "navigation_tests/screen_id.rs"]
 mod screen_id;
 #[cfg(test)]
+#[path = "navigation_tests/session_action_pages.rs"]
+mod session_action_pages;
+#[cfg(test)]
 #[path = "navigation_tests/session_actions.rs"]
 mod session_actions;
 #[cfg(test)]

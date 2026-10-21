@@ -1,7 +1,27 @@
 //! The bundle must say why it sends Apple Events. Without `NSAppleEventsUsageDescription`,
 //! macOS can refuse `osascript` (-1743) with no prompt when launched from Finder or login.
+//! The editor webview must run under a Content Security Policy. A null CSP lets injected
+//! script call Tauri commands, so the policy must stay set and must never allow `eval`.
 
 use std::path::Path;
+
+#[test]
+fn editor_csp_is_set_and_forbids_eval() {
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let conf = std::fs::read_to_string(dir.join("tauri.conf.json")).unwrap();
+    let conf: serde_json::Value = serde_json::from_str(&conf).unwrap();
+    let csp = conf["app"]["security"]["csp"]
+        .as_str()
+        .expect("app.security.csp is set, not null");
+    assert!(
+        csp.contains("default-src 'self'"),
+        "csp lacks default-src 'self': {csp}"
+    );
+    assert!(
+        !csp.contains("unsafe-eval"),
+        "csp allows unsafe-eval: {csp}"
+    );
+}
 
 #[test]
 fn bundle_info_plist_declares_apple_events_usage() {
