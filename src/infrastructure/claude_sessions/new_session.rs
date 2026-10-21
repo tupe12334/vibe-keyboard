@@ -21,7 +21,8 @@ end tell"#;
 const ITERM_FULL_SCREEN: &str = r#"delay 0.5
 tell application "System Events"
   tell process "iTerm2"
-    set value of attribute "AXFullScreen" of window 1 to true
+    set w to value of attribute "AXFocusedWindow"
+    set value of attribute "AXFullScreen" of w to true
   end tell
 end tell"#;
 
@@ -29,7 +30,8 @@ end tell"#;
 const TERMINAL_FULL_SCREEN: &str = r#"delay 0.5
 tell application "System Events"
   tell process "Terminal"
-    set value of attribute "AXFullScreen" of window 1 to true
+    set w to value of attribute "AXFocusedWindow"
+    set value of attribute "AXFullScreen" of w to true
   end tell
 end tell"#;
 
@@ -74,8 +76,12 @@ mod tests {
             "window before full screen"
         );
         assert!(iterm.contains(r#"tell process "iTerm2""#));
+        assert!(iterm.contains(r#"set w to value of attribute "AXFocusedWindow""#));
+        assert!(!iterm.contains("window 1"));
         let terminal = new_session_script(NewSessionTerminal::Terminal, true);
         assert!(terminal.contains(r#"tell process "Terminal""#));
+        assert!(terminal.contains(r#"set w to value of attribute "AXFocusedWindow""#));
+        assert!(!terminal.contains("window 1"));
         assert!(!terminal.contains("iTerm2"));
     }
 

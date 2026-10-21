@@ -25,8 +25,9 @@ fn full_screen_focuses_before_it_toggles() {
 fn full_screen_toggles_the_iterm_front_window() {
     let script = toggle_script(TerminalApp::ITerm);
     assert!(script.contains(r#"tell process "iTerm2""#));
-    assert!(script.contains(r#"set value of attribute "AXFullScreen" of window 1"#));
-    assert!(script.contains("(not (value of attribute"));
+    assert!(script.contains(r#"set w to value of attribute "AXFocusedWindow""#));
+    assert!(script.contains(r#"set value of attribute "AXFullScreen" of w to (not (value of attribute "AXFullScreen" of w))"#));
+    assert!(!script.contains("window 1"));
 }
 
 #[test]
