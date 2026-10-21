@@ -26,14 +26,18 @@ jobs:
         run: |
           CONF=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)
           CARGO=$(sed -n 's/^version = "\(.*\)"/\1/p' apps/desktop/src-tauri/Cargo.toml | head -1)
-          echo "tauri.conf.json: ${CONF}  Cargo.toml: ${CARGO}"
+          ROOT=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          echo "root Cargo.toml: ${ROOT}  desktop Cargo.toml: ${CARGO}  tauri.conf.json: ${CONF}"
           if [ "${CONF}" != "${CARGO}" ]; then
             echo "error: tauri.conf.json (${CONF}) and Cargo.toml (${CARGO}) differ." >&2
             exit 1
           fi
-          if [ "${IS_TAG}" = "true" ] && [ "${REF_NAME#v}" != "${CONF}" ]; then
-            echo "error: tag ${REF_NAME} does not match app version ${CONF}." >&2
-            exit 1
+          if [ "${IS_TAG}" = "true" ]; then
+            TAG="${REF_NAME#v}"
+            if [ "${ROOT}" != "${TAG}" ] || [ "${CARGO}" != "${TAG}" ] || [ "${CONF}" != "${TAG}" ]; then
+              echo "error: tag ${REF_NAME} must match every version. root Cargo.toml=${ROOT} desktop Cargo.toml=${CARGO} tauri.conf.json=${CONF}" >&2
+              exit 1
+            fi
           fi
           echo "version=${CONF}" >> "$GITHUB_OUTPUT"
 
