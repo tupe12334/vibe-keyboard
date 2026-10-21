@@ -33,7 +33,7 @@ pub fn app_toggle_script() -> String {
 /// Opens two iTerm2 windows, then raises and focuses the second one.
 pub fn open_windows() {
     osa(&format!(
-        r#"tell application "iTerm2"
+        r#"tell application id "com.googlecode.iterm2"
 activate
 set a to (create window with default profile)
 tell current session of a to set name to "{FIRST}"
@@ -49,7 +49,7 @@ pub struct CloseWindows;
 
 impl Drop for CloseWindows {
     fn drop(&mut self) {
-        let script = r#"tell application "iTerm2"
+        let script = r#"tell application id "com.googlecode.iterm2"
 repeat with w in (windows as list)
 set n to name of current session of w
 if n contains "vk-ui-" then close w
