@@ -10,8 +10,10 @@ pub fn open_editor_at_launch(value: Option<&str>) -> bool {
     value == Some("1")
 }
 
+/// Called on `RunEvent::Ready`, after setup and the event loop start. Calling it from setup showed nothing.
 pub fn open_at_launch(app: &AppHandle) {
     if open_editor_at_launch(std::env::var(ENV_VAR).ok().as_deref()) {
+        tracing::info!("editor: opened at launch (VK_OPEN_EDITOR=1)");
         show_editor(app);
     }
 }

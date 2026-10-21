@@ -60,7 +60,6 @@ pub fn setup_tray(app: &AppHandle) -> tauri::Result<()> {
             _ => {}
         })
         .build(app)?;
-    crate::editor_launch::open_at_launch(app);
     Ok(())
 }
 
