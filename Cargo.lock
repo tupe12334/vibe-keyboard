@@ -7115,6 +7115,7 @@ dependencies = [
  "fs4",
  "hidapi",
  "image",
+ "plist",
  "ratatui",
  "rfd",
  "serde",

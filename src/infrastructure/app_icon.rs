@@ -1,6 +1,6 @@
 //! Icons of installed macOS apps, looked up by bundle id.
 //!
-//! This file holds the pure logic: input checks, plist parsing, candidate
+//! This file holds the pure logic: input checks, `Info.plist` lookup, candidate
 //! selection. Process and file calls live in `app_icon/os.rs`.
 
 use std::path::{Path, PathBuf};
@@ -69,25 +69,19 @@ pub fn icns_file_name(name: &str) -> String {
     }
 }
 
-/// Icon file names to try, most specific first. Unsafe names are dropped.
-pub fn icon_candidates(info_xml: &str) -> Vec<String> {
+/// Icon file names to try, most specific first, from `Info.plist` bytes (binary or XML).
+/// Unsafe names are dropped. An unreadable plist yields only the fallback.
+pub fn icon_candidates(info_plist: &[u8]) -> Vec<String> {
+    let info: plist::Dictionary = plist::from_bytes(info_plist).unwrap_or_default();
     let mut names: Vec<String> = ["CFBundleIconFile", "CFBundleIconName"]
         .into_iter()
-        .filter_map(|key| plist_string(info_xml, key))
+        .filter_map(|key| info.get(key)?.as_string())
+        .map(str::trim)
         .filter(|name| is_safe_icon_name(name))
-        .map(|name| icns_file_name(&name))
+        .map(icns_file_name)
         .collect();
     names.push("AppIcon.icns".to_owned());
     names
-}
-
-/// Read the string value that follows `<key>{key}</key>` in XML plist text.
-fn plist_string(xml: &str, key: &str) -> Option<String> {
-    let key_tag = format!("<key>{key}</key>");
-    let after_key = xml.split_once(&key_tag)?.1.trim_start();
-    let body = after_key.strip_prefix("<string>")?;
-    let value = body.get(..body.find("</string>")?)?.trim();
-    (!value.is_empty()).then(|| value.to_owned())
 }
 
 #[cfg(test)]
