@@ -34,7 +34,9 @@ pub fn app_toggle_script() -> String {
 pub fn open_windows() {
     osa(&format!(
         r#"tell application id "com.googlecode.iterm2"
+launch
 activate
+delay 2
 set a to (create window with default profile)
 tell current session of a to set name to "{FIRST}"
 set b to (create window with default profile)
