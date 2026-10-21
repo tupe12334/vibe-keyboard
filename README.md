@@ -283,17 +283,13 @@ Rust source files are limited by [`linecheck`](https://crates.io/crates/linechec
 - **Per-file caps:** each Rust file that is over 100 lines has its own rule in `linecheck.yml`. The cap equals its line count when the rule was set. Rules are first-match, so per-file rules come before the general rule.
 - **Ratchet:** caps only go down. A capped file can shrink, never grow. When a file drops to 100 lines or fewer, delete its rule.
 - **Plan:** split the largest file in each PR, lower its cap, and remove rules as files reach 100.
-- **Run locally:** `cargo install linecheck --version 1.2.1 --locked`, then `linecheck .` from the repo root. `linecheck --status .` shows how close each file is to its cap.
+- **Run locally:** install linecheck at the version pinned in [ci.yml](.github/workflows/ci.yml), then `linecheck .` from the repo root. `linecheck --status .` shows how close each file is to its cap.
 
 ## Development
 
 ### Set up a dev machine
 
-```bash
-cargo install linecheck --version 1.2.1 --locked
-cargo install cargo-machete --version 0.9.1 --locked
-cargo install cargo-llvm-cov --version 0.8.7 --locked
-```
+Install linecheck, cargo-machete and cargo-llvm-cov at the versions pinned in [ci.yml](.github/workflows/ci.yml).
 
 ### What CI checks
 
