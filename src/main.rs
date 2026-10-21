@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex, PoisonError};
 use signal_hook::consts::{SIGINT, SIGTERM};
 use tracing::{info, warn};
 use vibe_keyboard::controller::{self, ControllerEvent, RunOptions};
-use vibe_keyboard::domain::accessibility::{push_to_talk_warning, uses_push_to_talk};
+use vibe_keyboard::domain::accessibility::{needs_accessibility, push_to_talk_warning};
 use vibe_keyboard::infrastructure::controller_lock::{self, AcquireError};
 use vibe_keyboard::infrastructure::keyboard::accessibility_trusted;
 use vibe_keyboard::infrastructure::login_path::apply_login_path;
@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("PATH extended at login: {login_path_dirs:?}");
     controller::load_profile(&state);
     // Push-to-talk does nothing without Accessibility. Say so once at startup.
-    let uses = uses_push_to_talk(&state.lock().unwrap_or_else(PoisonError::into_inner).profile);
+    let uses = needs_accessibility(&state.lock().unwrap_or_else(PoisonError::into_inner).profile);
     if let Some(text) = push_to_talk_warning(accessibility_trusted(), uses) {
         warn!("{text}");
     }

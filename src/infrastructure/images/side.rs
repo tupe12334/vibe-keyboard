@@ -4,14 +4,18 @@ use image::{imageops, DynamicImage, ImageBuffer, Rgb, RgbImage};
 
 use super::profile_key::source_image;
 use super::text::draw_label;
-use crate::domain::profile::{inner_rect, parse_color, PixelRect, SideConfig, SideInset};
+use crate::domain::profile::{parse_color, SideConfig, SideInset};
 use crate::infrastructure::system_metrics::Metrics;
 
 mod bars;
 mod cpu_bar;
+mod layout;
 mod value_text;
+mod widget_slot;
 pub(super) mod widgets;
 
+use layout::stack_rect;
+pub use layout::{safe_rect, SIDE_HEIGHT, SIDE_WIDTH};
 use widgets::draw_widgets;
 
 #[cfg(test)]
@@ -20,28 +24,6 @@ use crate::domain::profile::Widget;
 use crate::infrastructure::system_metrics::Disk;
 #[cfg(test)]
 use value_text::{free_text, percent, temperature_text};
-
-/// Side screen render size, portrait: the panel is a vertical column. The upload rotates
-/// it 90° counter-clockwise (`usb::side_upload`). Never render taller than this.
-pub const SIDE_WIDTH: u32 = 100;
-pub const SIDE_HEIGHT: u32 = 480;
-/// Gap between the widget stack and the edges of the visible rect.
-const MARGIN: u32 = 4;
-
-/// The visible part of the column after the side insets. Content goes inside it.
-pub fn safe_rect(inset: &SideInset) -> PixelRect {
-    inner_rect(SIDE_WIDTH, SIDE_HEIGHT, inset.top, inset.bottom, 0, 0)
-}
-
-/// Widget stack: the visible rect less `MARGIN` on each side.
-const fn stack_rect(safe: PixelRect) -> PixelRect {
-    PixelRect {
-        x: safe.x + MARGIN,
-        y: safe.y + MARGIN,
-        w: safe.w.saturating_sub(2 * MARGIN),
-        h: safe.h.saturating_sub(2 * MARGIN),
-    }
-}
 
 const FALLBACK_BG: [u8; 3] = [20, 20, 20];
 const FALLBACK_FG: [u8; 3] = [230, 230, 230];

@@ -16,4 +16,4 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run shellcheck
-        run: shellcheck -x assets/icons/render.sh packaging/macos/build-app.sh packaging/macos/uninstall.sh .cargo-husky/hooks/pre-commit .cargo-husky/hooks/pre-push
+        run: shellcheck -x assets/icons/render.sh packaging/macos/build-app.sh packaging/macos/uninstall.sh .cargo-husky/hooks/pre-commit .cargo-husky/hooks/pre-push scripts/precommit-needs-cargo.sh scripts/test/precommit-skip.sh

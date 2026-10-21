@@ -68,7 +68,7 @@ List screens (projects, issues) are paginated at 10 items per page.
 
 ### Download
 
-Prebuilt macOS installers (DMG and app zip) are on the [Releases page](https://github.com/tupe12334/vibe-keyboard/releases). The builds are unsigned: the first time, right-click the app and choose **Open**. Push-to-talk also needs the Accessibility step below. After each app update, macOS can drop the Accessibility grant (unsigned builds get a new signature), so push-to-talk stops; re-enable Vibe Keyboard in System Settings > Privacy & Security > Accessibility, then confirm `app.log` no longer shows `push to talk needs Accessibility` ([steps](#hold-a-key)).
+Prebuilt macOS installers (DMG and app zip) are on the [Releases page](https://github.com/tupe12334/vibe-keyboard/releases). Each release has `SHA256SUMS.txt`; check a download with `shasum -a 256 -c SHA256SUMS.txt` in the download folder. The builds are unsigned, so macOS blocks the first launch. Open the app once, then go to System Settings > Privacy & Security and click **Open Anyway** ([Apple](https://support.apple.com/en-us/102445)). Push-to-talk also needs the Accessibility step below. After each app update, macOS can drop the Accessibility grant (unsigned builds get a new signature), so push-to-talk stops; re-enable Vibe Keyboard in System Settings > Privacy & Security > Accessibility, then confirm `app.log` no longer shows `push to talk needs Accessibility` ([steps](#hold-a-key)).
 
 ### Install
 
@@ -109,7 +109,7 @@ Logs are written to `~/.config/vibe-keyboard/app.log`.
 
 `apps/desktop` is the app that `packaging/macos/build-app.sh` installs. It holds
 the device loop, a menu bar tray icon, and the key editor window. Closing the
-window hides it. Quit from the tray.
+window hides it. Quit from the tray. Set `VK_OPEN_EDITOR=1` to show the editor at launch.
 
 Needs Node 22+ and `pnpm`.
 
@@ -283,7 +283,19 @@ Rust source files are limited by [`linecheck`](https://crates.io/crates/linechec
 - **Per-file caps:** each Rust file that is over 100 lines has its own rule in `linecheck.yml`. The cap equals its line count when the rule was set. Rules are first-match, so per-file rules come before the general rule.
 - **Ratchet:** caps only go down. A capped file can shrink, never grow. When a file drops to 100 lines or fewer, delete its rule.
 - **Plan:** split the largest file in each PR, lower its cap, and remove rules as files reach 100.
-- **Run locally:** `cargo install linecheck --locked`, then `linecheck .` from the repo root. `linecheck --status .` shows how close each file is to its cap.
+- **Run locally:** install linecheck at the version pinned in [ci.yml](.github/workflows/ci.yml), then `linecheck .` from the repo root. `linecheck --status .` shows how close each file is to its cap.
+
+## Development
+
+### Set up a dev machine
+
+Install linecheck, cargo-machete and cargo-llvm-cov at the versions pinned in [ci.yml](.github/workflows/ci.yml).
+
+### What CI checks
+
+- [CI](.github/workflows/ci.yml)
+- [Advisories](.github/workflows/advisories.yml)
+- [Shellcheck](.github/workflows/shellcheck.yml)
 
 ## See also
 

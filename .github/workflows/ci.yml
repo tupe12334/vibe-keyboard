@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
@@ -15,20 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt, llvm-tools-preview
+      # Reads rust-toolchain.toml: installs the pinned toolchain with its components and targets.
+      - name: Install toolchain from rust-toolchain.toml
+        run: rustup show
 
       - uses: Swatinem/rust-cache@v2
 
       # The Tauri crate embeds apps/desktop/dist at compile time, so build the frontend first.
       - uses: pnpm/action-setup@v4
         with:
-          version: 12.4.1
+          package_json_file: apps/desktop/package.json
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
           cache-dependency-path: apps/desktop/pnpm-lock.yaml
 
@@ -39,7 +43,7 @@ jobs:
           pnpm build
 
       - name: Install linecheck
-        run: cargo install linecheck --locked
+        run: cargo install linecheck --version 1.2.1 --locked
 
       - name: Check file length
         run: linecheck .
@@ -49,6 +53,10 @@ jobs:
 
       - name: Build
         run: cargo build --workspace --all-targets --locked
+
+      # Releases are universal. This compiles the Intel slice so an Intel-only break cannot merge.
+      - name: Check Intel target
+        run: cargo check --workspace --all-targets --locked --target x86_64-apple-darwin
 
       # Compiles the iTerm2 AppleScripts too, so the runner needs the app bundle.
       - name: Install iTerm2
@@ -63,10 +71,23 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov@0.8.7
 
       - name: Coverage gate
         run: scripts/coverage.sh
 
+      - name: Install cargo-machete
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-machete@0.9.1
+
+      - name: Unused dependencies
+        run: cargo machete
+
       - name: Clippy
         run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: Docs
+        env:
+          RUSTDOCFLAGS: -D warnings
+        run: cargo doc --workspace --no-deps --locked
