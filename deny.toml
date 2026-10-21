@@ -6,3 +6,26 @@ ignore = [
     { id = "RUSTSEC-2026-0371", reason = "zbus_names unmaintained, transitive via atspi/accesskit_unix (eframe a11y), no fix released; zbus 6 merge needs upstream update" },
     { id = "RUSTSEC-2026-0372", reason = "zvariant_derive unmaintained, transitive via atspi/accesskit_unix (eframe a11y), no fix released; zbus 6 merge needs upstream update" },
 ]
+
+[licenses]
+confidence-threshold = 0.8
+allow = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "0BSD",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+    "Zlib",
+]
+
+# Font data crate. Both licenses permit bundling unmodified fonts in closed apps.
+[[licenses.exceptions]]
+name = "epaint_default_fonts"
+allow = ["OFL-1.1", "Ubuntu-font-1.0"]

@@ -80,5 +80,7 @@ pub fn init(state: Arc<Mutex<AppState>>) -> tracing_appender::non_blocking::Work
         .with(tui_layer)
         .init();
 
+    // First line of every run: names the exact build.
+    tracing::info!("{}", crate::build_info::startup_line());
     guard
 }

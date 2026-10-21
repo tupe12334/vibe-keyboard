@@ -15,6 +15,7 @@ mod commands;
 mod display_commands;
 #[cfg(test)]
 mod display_tests;
+mod editor_launch;
 #[cfg(test)]
 mod editor_preserve_hold_tests;
 #[cfg(test)]
@@ -91,9 +92,9 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error while building Vibe Keyboard")
-        .run(|app, event| {
-            if let RunEvent::ExitRequested { api, .. } = event {
-                quit::on_exit_requested(app, &api);
-            }
+        .run(|app, event| match event {
+            RunEvent::Ready => editor_launch::open_at_launch(app),
+            RunEvent::ExitRequested { api, .. } => quit::on_exit_requested(app, &api),
+            _ => {}
         });
 }
