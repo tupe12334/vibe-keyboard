@@ -5,6 +5,7 @@ use specta::Type;
 use std::sync::atomic::Ordering;
 use tauri::State;
 use vibe_keyboard::domain::profile::Profile;
+use vibe_keyboard::domain::profile_rules;
 use vibe_keyboard::infrastructure::profile_store;
 
 use crate::app::App;
@@ -39,7 +40,17 @@ pub fn save_profile(profile: Profile, force: bool, app: State<'_, App>) -> Resul
             "{}",
             editor_log::saved_line(&profile, &path.display().to_string())
         ),
-        Err(err) => tracing::warn!("{}", editor_log::save_failed_line(&format!("{err:?}"))),
+        Err(err) => {
+            let line = match err {
+                // Problem text can carry action payloads, so only the count is logged.
+                SaveError::Refused { .. } => match profile_rules::save_problems(&profile).len() {
+                    0 => editor_log::save_failed_line("write error, details not logged"),
+                    count => editor_log::save_refused_line(count),
+                },
+                SaveError::Conflict => editor_log::save_failed_line("file changed on disk"),
+            };
+            tracing::warn!("{}", line);
+        }
     }
     result
 }
