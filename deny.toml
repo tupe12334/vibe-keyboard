@@ -1,0 +1,8 @@
+[advisories]
+version = 2
+ignore = [
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser unmaintained, transitive via egui/ab_glyph (font stack), no fix released" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant unmaintained, transitive via atspi/accesskit_unix (eframe a11y), no fix released; zbus 6 merge needs upstream update" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names unmaintained, transitive via atspi/accesskit_unix (eframe a11y), no fix released; zbus 6 merge needs upstream update" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive unmaintained, transitive via atspi/accesskit_unix (eframe a11y), no fix released; zbus 6 merge needs upstream update" },
+]
