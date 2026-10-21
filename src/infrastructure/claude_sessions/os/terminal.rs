@@ -1,11 +1,10 @@
-//! osascript calls that focus a session tab, type a prompt into it, or open a new session window.
+//! osascript calls that focus a session tab or type a prompt into it.
 
 use super::front_tty::{find_tab, settle_on};
 use super::{FOCUS_TIMEOUT, PS_TIMEOUT};
-use crate::domain::actions::NewSessionTerminal;
 use crate::infrastructure::claude_sessions::{
-    focus_scripts, focused_bundle, is_frontmost, is_vscode_session, new_session_script,
-    resolve_session_pid, send_text_scripts,
+    focus_scripts, focused_bundle, is_frontmost, is_vscode_session, resolve_session_pid,
+    send_text_scripts,
 };
 use crate::infrastructure::frontmost::frontmost_bundle_id;
 use crate::infrastructure::process::run;
@@ -94,7 +93,7 @@ pub fn send_prompt(pid: u32, tty: &str, text: &str) -> bool {
     sent
 }
 
-/// Open a new window in `app` that runs `claude`. Blocks until done, so call it from a thread.
-pub fn open_new_session(app: NewSessionTerminal) {
-    run("osascript", &["-e", new_session_script(app)], FOCUS_TIMEOUT);
+/// Run `script` from `new_session_script` to open a new session window. Blocks; call from a thread.
+pub fn open_new_session(script: &str) {
+    run("osascript", &["-e", script], FOCUS_TIMEOUT);
 }

@@ -142,6 +142,12 @@ export type BarStyle_Serialize = {
 };
 
 /**  Device came up. Sent by the controller. */
+/**  The `[claude_sessions]` table of `profile.toml`. */
+export type ClaudeSessionsConfig = {
+	/**  Open each new Claude session window in macOS full screen. */
+	new_session_fullscreen?: boolean,
+};
+
 export type DeviceConnected = Record<string, never>;
 
 /**  Device went away, or the controller stopped. */
@@ -280,6 +286,8 @@ export type Profile_Deserialize = {
 	display?: DisplaySettings_Deserialize,
 	/**  Timing of key holds. Absent means the defaults, so older files still load. */
 	input?: InputConfig,
+	/**  Options for the Claude session screens. Absent means the defaults. */
+	claude_sessions?: ClaudeSessionsConfig,
 };
 
 /**  The whole user layout: an ordered list of main pages, and the prompts a session action sends. */
@@ -291,6 +299,8 @@ export type Profile_Serialize = {
 	display?: DisplaySettings_Serialize,
 	/**  Timing of key holds. Absent means the defaults, so older files still load. */
 	input?: InputConfig,
+	/**  Options for the Claude session screens. Absent means the defaults. */
+	claude_sessions?: ClaudeSessionsConfig,
 };
 
 /**  A prompt a session action types into a Claude Code session, followed by Enter. */

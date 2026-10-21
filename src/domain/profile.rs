@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 mod bar_style;
 mod builtins;
+mod claude_sessions_config;
 mod color;
 mod display;
 mod input_config;
@@ -14,6 +15,7 @@ mod page;
 mod prompt;
 pub use bar_style::*;
 pub use builtins::BUILTIN_NAMES;
+pub use claude_sessions_config::ClaudeSessionsConfig;
 #[cfg(test)]
 use color::DEFAULT_BG;
 pub use color::{format_color, parse_color};
@@ -45,49 +47,15 @@ pub struct Profile {
     /// Timing of key holds. Absent means the defaults, so older files still load.
     #[serde(default, skip_serializing_if = "InputConfig::is_default")]
     pub input: InputConfig,
+    /// Options for the Claude session screens. Absent means the defaults.
+    #[serde(default, skip_serializing_if = "ClaudeSessionsConfig::is_default")]
+    pub claude_sessions: ClaudeSessionsConfig,
 }
 
 /// True for macOS bundle ids such as `com.apple.Terminal`: dotted, no spaces.
 /// Names ending in `.app` are app names (`Google Chrome.app`), not bundle ids.
 pub fn is_bundle_id(text: &str) -> bool {
     text.contains('.') && !text.contains(' ') && !text.ends_with(".app")
-}
-
-impl Action {
-    pub const fn kind(&self) -> ActionKind {
-        match self {
-            Self::None => ActionKind::None,
-            Self::OpenUrl { .. } => ActionKind::OpenUrl,
-            Self::RunCommand { .. } => ActionKind::RunCommand,
-            Self::OpenApp { .. } => ActionKind::OpenApp,
-            Self::Hotkey { .. } => ActionKind::Hotkey,
-            Self::GoToPage { .. } => ActionKind::GoToPage,
-            Self::Builtin { .. } => ActionKind::Builtin,
-            Self::PushToTalk { .. } => ActionKind::PushToTalk,
-        }
-    }
-
-    /// A fresh action of `kind` with empty or first-choice fields.
-    pub fn default_of(kind: ActionKind) -> Self {
-        match kind {
-            ActionKind::None => Self::None,
-            ActionKind::OpenUrl => Self::OpenUrl { url: String::new() },
-            ActionKind::RunCommand => Self::RunCommand {
-                command: String::new(),
-            },
-            ActionKind::OpenApp => Self::OpenApp {
-                name: String::new(),
-            },
-            ActionKind::Hotkey => Self::Hotkey {
-                keys: String::new(),
-            },
-            ActionKind::GoToPage => Self::GoToPage { page: 0 },
-            ActionKind::PushToTalk => Self::PushToTalk { key: None },
-            ActionKind::Builtin => Self::Builtin {
-                name: BUILTIN_NAMES[0].into(),
-            },
-        }
-    }
 }
 
 #[cfg(test)]
@@ -97,3 +65,7 @@ mod tests;
 #[cfg(test)]
 #[path = "profile_input_tests.rs"]
 mod input_tests;
+
+#[cfg(test)]
+#[path = "profile_claude_sessions_tests.rs"]
+mod claude_sessions_tests;

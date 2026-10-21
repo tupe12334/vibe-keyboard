@@ -48,6 +48,7 @@ fn prompt_problems_flag_empty_multiline_and_long_text() {
         ],
         display: DisplaySettings::default(),
         input: InputConfig::default(),
+        claude_sessions: ClaudeSessionsConfig::default(),
     };
     let problems = profile.problems();
     assert_eq!(problems.len(), 6, "{problems:?}");
