@@ -111,6 +111,21 @@ git -C "$R" mv src/a.rs docs-a.md
 run_hook "$R"
 verdict "rename out of src/ runs cargo" run
 
+# A git failure in the matcher must run cargo, not skip it. Docs-only stage, fake git exits 128.
+n=$((n + 1))
+R="$TMP/case$n"
+new_repo "$R"
+: > "$R/README.md"
+git -C "$R" add -- README.md
+mkdir -p "$TMP/badgit"
+printf '#!/bin/sh\nexit 128\n' > "$TMP/badgit/git"
+chmod +x "$TMP/badgit/git"
+OLDPATH=$PATH
+PATH="$TMP/badgit:$PATH"
+run_hook "$R"
+PATH=$OLDPATH
+verdict "git failure in matcher runs cargo" run
+
 if [ "$fails" -gt 0 ]; then
   echo "$fails check(s) failed"
   exit 1
