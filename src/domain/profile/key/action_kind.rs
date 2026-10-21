@@ -1,3 +1,5 @@
+use crate::domain::profile::{Action, BUILTIN_NAMES};
+
 /// The kind of an `Action`, without its fields. Used by the editor's type picker.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ActionKind {
@@ -33,6 +35,43 @@ impl ActionKind {
             Self::GoToPage => "Go to page",
             Self::Builtin => "Built-in",
             Self::PushToTalk => "Push to talk",
+        }
+    }
+}
+
+impl Action {
+    pub const fn kind(&self) -> ActionKind {
+        match self {
+            Self::None => ActionKind::None,
+            Self::OpenUrl { .. } => ActionKind::OpenUrl,
+            Self::RunCommand { .. } => ActionKind::RunCommand,
+            Self::OpenApp { .. } => ActionKind::OpenApp,
+            Self::Hotkey { .. } => ActionKind::Hotkey,
+            Self::GoToPage { .. } => ActionKind::GoToPage,
+            Self::Builtin { .. } => ActionKind::Builtin,
+            Self::PushToTalk { .. } => ActionKind::PushToTalk,
+        }
+    }
+
+    /// A fresh action of `kind` with empty or first-choice fields.
+    pub fn default_of(kind: ActionKind) -> Self {
+        match kind {
+            ActionKind::None => Self::None,
+            ActionKind::OpenUrl => Self::OpenUrl { url: String::new() },
+            ActionKind::RunCommand => Self::RunCommand {
+                command: String::new(),
+            },
+            ActionKind::OpenApp => Self::OpenApp {
+                name: String::new(),
+            },
+            ActionKind::Hotkey => Self::Hotkey {
+                keys: String::new(),
+            },
+            ActionKind::GoToPage => Self::GoToPage { page: 0 },
+            ActionKind::PushToTalk => Self::PushToTalk { key: None },
+            ActionKind::Builtin => Self::Builtin {
+                name: BUILTIN_NAMES[0].into(),
+            },
         }
     }
 }

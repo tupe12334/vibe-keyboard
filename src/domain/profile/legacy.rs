@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use super::{Action, DisplaySettings, InputConfig, KeyConfig, Page, Profile};
+use super::{Action, ClaudeSessionsConfig, DisplaySettings, InputConfig, KeyConfig, Page, Profile};
 
 impl Profile {
     /// The layout that matches the hard-coded main pages before profiles existed.
@@ -13,6 +13,7 @@ impl Profile {
         Self {
             prompts: Vec::new(),
             input: InputConfig::default(),
+            claude_sessions: ClaudeSessionsConfig::default(),
             pages: vec![
                 Page {
                     name: "Main".into(),

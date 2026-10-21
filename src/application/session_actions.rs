@@ -4,13 +4,14 @@ use tracing::info;
 
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::infrastructure::claude_sessions::{
-    blink_session, focus_session, open_new_session, send_prompt,
+    blink_session, focus_session, new_session_script, open_new_session, send_prompt,
 };
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
 use super::input_modes::{self, NumberEdit};
 use super::key_action::Action;
+use super::lock;
 use super::pages::{open_confirm_exit, open_session_actions, show_focus_only};
 use super::{prompt_return, render_screen, DeviceState};
 
@@ -68,8 +69,10 @@ pub(super) fn session_action(
         }
         Action::NewSession { terminal } => {
             info!("claude sessions: new session in {terminal:?}");
+            let fullscreen = lock(state).profile.claude_sessions.new_session_fullscreen;
+            let script = new_session_script(terminal, fullscreen);
             // Off the device loop: osascript can take a while to answer.
-            std::thread::spawn(move || open_new_session(terminal));
+            std::thread::spawn(move || open_new_session(&script));
             // Back to the list. The new session shows on the next refresh.
             nav.back();
             render_screen(nav, handle, state, dev_state);
