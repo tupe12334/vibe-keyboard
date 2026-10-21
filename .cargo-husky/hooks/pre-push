@@ -16,6 +16,10 @@ fi
 
 # Tool check: find every missing tool before the slow steps run, then fail once.
 VK_MISSING=""
+if ! command -v cargo >/dev/null 2>&1; then
+  VK_MISSING="${VK_MISSING}  cargo: install Rust with rustup from https://rustup.rs
+"
+fi
 if ! command -v linecheck >/dev/null 2>&1; then
   VK_MISSING="${VK_MISSING}  linecheck: cargo install linecheck --version 1.2.1 --locked
 "
