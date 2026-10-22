@@ -15,4 +15,6 @@ fn bundle_id_detection() {
     assert!(!is_bundle_id("Terminal"));
     assert!(!is_bundle_id("My App.app"));
     assert!(!is_bundle_id("Chrome.app"));
+    assert!(!is_bundle_id("Chrome.App"));
+    assert!(!is_bundle_id("Chrome.APP"));
 }

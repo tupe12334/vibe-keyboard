@@ -54,8 +54,10 @@ pub struct Profile {
 
 /// True for macOS bundle ids such as `com.apple.Terminal`: dotted, no spaces.
 /// Names ending in `.app` are app names (`Google Chrome.app`), not bundle ids.
+/// The suffix is matched case-insensitively, because macOS file systems are
+/// case-insensitive by default and an app can be named `Foo.App`.
 pub fn is_bundle_id(text: &str) -> bool {
-    text.contains('.') && !text.contains(' ') && !text.ends_with(".app")
+    text.contains('.') && !text.contains(' ') && !text.to_ascii_lowercase().ends_with(".app")
 }
 
 #[cfg(test)]

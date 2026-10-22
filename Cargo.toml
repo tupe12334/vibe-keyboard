@@ -157,6 +157,14 @@ if_not_else = "deny"
 implicit_clone = "deny"
 allow_attributes_without_reason = "deny"
 print_stderr = "deny"
+# Flag `path.ends_with(".ext")` style checks that compare a file extension
+# case-sensitively. macOS file systems are case-insensitive by default, so a
+# bundle or file can legitimately be named `Foo.App` or `icon.PNG`, and a
+# literal `ends_with(".app")` silently skips it — a correctness bug, not a
+# style nit. The fix is a case-insensitive comparison (the crate already does
+# this in `icns_file_name`) or `Path::extension()`. All call sites have been
+# migrated, so `deny` locks in the clean state.
+case_sensitive_file_extension_comparisons = "deny"
 
 [package.metadata.cargo-machete]
 ignored = ["hidapi", "mirajazz", "tokio"]
