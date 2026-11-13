@@ -34,6 +34,10 @@ fn parse_pid(output: &str) -> Option<i32> {
     output.trim().strip_prefix("\"pid\"=")?.parse().ok()
 }
 
+#[path = "frontmost/front_fields.rs"]
+mod front_fields;
+use front_fields::{bundle_within, pid_within};
+
 /// Poll state. Each tick costs one `lsappinfo front` call. The bundle lookup
 /// runs only when the ASN changes (or the last lookup failed).
 #[derive(Default)]

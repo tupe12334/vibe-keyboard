@@ -1,9 +1,9 @@
 //! Process spawns for `lsappinfo`. Excluded from the coverage gate; the
 //! logic that decides what to do with the output lives in `frontmost.rs`.
 
-use super::{parse_bundle_id, parse_pid, Watcher};
+use super::{bundle_within, parse_bundle_id, pid_within, Watcher};
 use std::sync::mpsc::{self, Receiver};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// Hard limit for one `lsappinfo` call. A hung `LaunchServices` call must not
 /// stall the watcher.
@@ -16,7 +16,8 @@ pub fn frontmost_bundle_id() -> Option<String> {
 
 /// Like `frontmost_bundle_id`, but each `lsappinfo` call is cut off after `limit`.
 pub fn frontmost_bundle_id_within(limit: Duration) -> Option<String> {
-    bundle_of_within(&lsappinfo(&["front"], limit)?, limit)
+    let start = Instant::now();
+    bundle_within(limit, &|| start.elapsed(), &lsappinfo)
 }
 
 /// Pid of the frontmost app: the app that gets typed keys. None if unknown.
@@ -26,8 +27,8 @@ pub fn frontmost_pid() -> Option<i32> {
 
 /// Like `frontmost_pid`, but each `lsappinfo` call is cut off after `limit`.
 pub fn frontmost_pid_within(limit: Duration) -> Option<i32> {
-    let asn = lsappinfo(&["front"], limit)?;
-    parse_pid(&lsappinfo(&["info", "-only", "pid", &asn], limit)?)
+    let start = Instant::now();
+    pid_within(limit, &|| start.elapsed(), &lsappinfo)
 }
 
 /// Spawn a thread that polls every `interval` and sends the bundle id on each

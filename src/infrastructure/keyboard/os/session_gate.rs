@@ -6,8 +6,8 @@ use std::time::{Duration, Instant};
 
 use tracing::warn;
 
-use crate::infrastructure::claude_sessions::{tty_landed_within, ITERM_BUNDLE, TERMINAL_BUNDLE};
-use crate::infrastructure::frontmost::{frontmost_bundle_id_within, frontmost_pid_within};
+use super::session_reads::{FrontReads, Os};
+use crate::infrastructure::claude_sessions::{ITERM_BUNDLE, TERMINAL_BUNDLE};
 
 /// Wall-clock budget for the whole gate. Every OS read gets only the time left.
 const GATE_DEADLINE: Duration = Duration::from_millis(300);
@@ -23,7 +23,7 @@ pub(super) fn session_front_pid(tty: &str) -> Option<i32> {
         GATE_DEADLINE,
         GATE_STEP,
         &elapsed,
-        &|left: &dyn Fn() -> Duration| landed_pid(tty, left),
+        &|left: &dyn Fn() -> Duration| landed_pid(&Os, tty, left),
         &|step: Duration| thread::sleep(step),
     );
     if landed.is_none() {
@@ -32,15 +32,15 @@ pub(super) fn session_front_pid(tty: &str) -> Option<i32> {
     landed
 }
 
-/// Pid of the frontmost app when it is a terminal that shows `tty`. Each read gets `left()`, the
-/// time still allowed, so no single read can run past the deadline.
-fn landed_pid(tty: &str, left: &dyn Fn() -> Duration) -> Option<i32> {
-    let before = frontmost_pid_within(left())?;
-    let index = terminal_index(frontmost_bundle_id_within(left()).as_deref())?;
-    if !tty_landed_within(index, tty, left()) {
+/// Pid of the frontmost app when it is a terminal that shows `tty`. Reads run in this order:
+/// pid, bundle, tty, pid. Each read gets `left()`, the time still allowed.
+fn landed_pid(reads: &impl FrontReads, tty: &str, left: &dyn Fn() -> Duration) -> Option<i32> {
+    let before = reads.front_pid(left())?;
+    let index = terminal_index(reads.front_bundle(left()).as_deref())?;
+    if !reads.tty_shown(index, tty, left()) {
         return None;
     }
-    same_pid(before, frontmost_pid_within(left()))
+    same_pid(before, reads.front_pid(left()))
 }
 
 /// The pid read before the terminal check, when the pid read after it is the same app.
@@ -86,3 +86,7 @@ fn first_landed_pid(
 #[cfg(test)]
 #[path = "session_gate_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "session_check_tests.rs"]
+mod check_tests;
