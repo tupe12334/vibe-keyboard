@@ -30,15 +30,16 @@ pub fn hold_end(key: u8) {
 /// Key down for the hold reserved by `hold_begin`, then repeats until `hold_end` or a release.
 /// Does nothing if the generation is stale, another hold is active, no app has focus, or
 /// Accessibility is off. The repeats and the focus checks run on their own threads.
-/// `tty` is the selected session, when the hold dictates into one. Its probe checks iTerm2's tab.
+/// `tty` is the selected session, when the hold dictates into one. The repeat probes check its tab.
 pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey, tty: Option<&str>) {
     let Some(code) = key_code(&hotkey.key) else {
         error!("push to talk: no key code for this key");
         return;
     };
     let flags = modifier_flags(&hotkey.modifiers);
-    // Read the OS before taking the lock.
-    let probe = read_probe(tty);
+    // Read the OS before taking the lock. `start` ignores `session_moved`, and the caller's
+    // `settle_on` already confirmed the tab, so skip the iTerm2 read here.
+    let probe = read_probe(None);
     if !lock().start(generation, key, code, flags, probe, Instant::now()) {
         return;
     }

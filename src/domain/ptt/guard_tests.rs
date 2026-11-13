@@ -36,6 +36,20 @@ fn start_is_refused_without_focus_or_trust() {
 }
 
 #[test]
+fn start_ignores_session_moved() {
+    let (mut guard, log) = setup();
+    let now = Instant::now();
+    let generation = guard.begin(1);
+    let moved = Probe {
+        front: Some(APP),
+        trusted: true,
+        session_moved: true,
+    };
+    assert!(guard.start(generation, 1, SPACE, 0, moved, now));
+    assert_eq!(log.borrow().len(), 1);
+}
+
+#[test]
 fn stale_begin_cannot_start_after_its_key_up() {
     let (mut guard, log) = setup();
     let old = guard.begin(1);

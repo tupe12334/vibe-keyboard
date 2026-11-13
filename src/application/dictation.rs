@@ -2,7 +2,6 @@
 
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 use tracing::{error, info};
 
@@ -14,9 +13,6 @@ use crate::infrastructure::keyboard;
 use crate::infrastructure::persistence::DeviceState;
 use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
-
-/// Time a session key waits after focus before dictation starts. The terminal needs it to take focus.
-const FOCUS_SETTLE: Duration = Duration::from_millis(150);
 
 /// A hold reached the threshold. Push-to-talk presses its key down; other actions run now.
 pub(super) fn start_hold(
@@ -60,7 +56,7 @@ pub(super) fn start_voice(key: u8, nav: &NavigationStack) {
     }
 }
 
-/// Session key held: focus its tab, let the terminal settle, then start dictation.
+/// Session key held: focus its tab, then start dictation. Focus waits until the tab is frontmost.
 /// Runs off the device loop, because focusing waits for osascript.
 pub(super) fn start_session_dictation(tty: String, key: u8) {
     let generation = keyboard::hold_begin(key);
@@ -80,14 +76,13 @@ pub(super) fn start_session_dictation(tty: String, key: u8) {
     });
 }
 
-/// Focus, let the terminal settle, then run `start`. `start` runs only when focus succeeded,
-/// so Space never reaches an app other than the session's terminal.
+/// Focus, then run `start`. `start` runs only when focus succeeded, so Space never reaches an app
+/// other than the session's terminal. `focus` returns only after the tab is frontmost (`settle_on`).
 fn dictate_once_focused(focus: impl FnOnce() -> bool, start: impl FnOnce()) -> bool {
     if !focus() {
         error!("claude sessions: NO FOCUS, dictation not started");
         return false;
     }
-    thread::sleep(FOCUS_SETTLE);
     start();
     true
 }
