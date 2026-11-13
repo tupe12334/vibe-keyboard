@@ -4,7 +4,8 @@ use std::sync::{Arc, Mutex};
 
 use tracing::{error, info};
 
-use super::background_fetch::{start_fetch, Fetched};
+use super::background_fetch::start_fetch;
+use super::fetch_result::Fetched;
 use super::{
     open_claude_terminal, open_config_in_vscode, open_in_chrome, open_log_file, open_terminal,
 };
@@ -24,7 +25,9 @@ pub(super) fn run_builtin(
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     match name {
-        "centy_projects" => start_fetch(state, || Fetched::Projects(fetch_centy_projects())),
+        "centy_projects" => start_fetch(state, nav.screen_id(), || {
+            Fetched::Projects(fetch_centy_projects())
+        }),
         "terminal" => {
             info!("opening Terminal");
             open_terminal();
@@ -52,7 +55,13 @@ pub(super) fn run_builtin(
             info!("opening config in VS Code");
             open_config_in_vscode();
         }
-        "claude_sessions" => start_fetch(state, || Fetched::Sessions(list_sessions())),
+        "claude_sessions" => {
+            start_fetch(
+                state,
+                nav.screen_id(),
+                || Fetched::Sessions(list_sessions()),
+            );
+        }
         "moadim" => crate::application::pages::moadim::open_routines(nav, handle, state, dev_state),
         other => error!("profile: unknown built-in '{other}'"),
     }

@@ -32,6 +32,7 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
     redraw_on_icon_change(c, handle);
     confirm_filter(c, handle);
     let read_lost = input::read_key(c, handle);
+    poll_pending(&mut c.nav, handle, &c.app_state, &c.dev_state);
     poll_holds(handle, &mut c.nav, &c.app_state, &c.dev_state);
     release_on_page_change(c);
     side::tick(c, handle);

@@ -4,6 +4,7 @@ mod builtin;
 mod centy;
 pub(crate) mod claude;
 pub(crate) mod effects;
+mod fetch_result;
 mod log_file;
 mod profile;
 #[cfg(test)]
