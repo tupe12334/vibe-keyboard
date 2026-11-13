@@ -46,6 +46,8 @@ sysinfo = "0.39.6"
 ureq = "3"
 core-graphics = "0.23"
 foreign-types = "0.5"
+ab_glyph = "0.2.32"
+unicode-bidi = "0.3.18"
 
 [lints.clippy]
 # Group at lower priority so the specific lints below (which may set a

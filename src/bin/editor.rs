@@ -58,7 +58,8 @@ fn main() -> eframe::Result {
                 .with_min_inner_size([900.0, 600.0]),
             ..Default::default()
         },
-        Box::new(|_cc| {
+        Box::new(|cc| {
+            cc.egui_ctx.set_fonts(vibe_keyboard::fonts::egui_fonts());
             let app: Box<dyn eframe::App> = Box::new(Editor::new());
             Ok(app)
         }),
