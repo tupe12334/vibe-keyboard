@@ -1,3 +1,4 @@
+mod background_fetch;
 mod browser;
 mod builtin;
 mod centy;
@@ -10,6 +11,7 @@ mod profile_kinds;
 pub(crate) mod terminal;
 mod vscode_config;
 
+pub use background_fetch::poll_pending;
 pub use browser::open_in_chrome;
 pub use centy::open_centy_workspace;
 pub use claude::open_claude_terminal;

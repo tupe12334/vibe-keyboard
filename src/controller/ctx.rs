@@ -29,6 +29,8 @@ pub struct Ctx {
     pub shutdown: Arc<AtomicBool>,
     pub events: EventSink,
     pub frontmost_rx: Receiver<String>,
+    /// Latest bundle id the watcher sent. Read on the device loop instead of a blocking lookup.
+    pub last_frontmost: Option<String>,
     pub icon_generation: u64,
     pub was_on_main_page: bool,
     /// Screen last seen, to end the holds when any screen changes.
@@ -60,6 +62,7 @@ impl Ctx {
             shutdown,
             events,
             frontmost_rx: frontmost::watch(FRONTMOST_POLL),
+            last_frontmost: None,
             icon_generation: app_icon_generation(),
             last_heartbeat: Instant::now(),
             pages: Refresh::default(),

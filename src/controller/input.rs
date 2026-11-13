@@ -3,7 +3,6 @@ use super::ctx::Ctx;
 use super::event::ControllerEvent;
 use super::keys::key_press;
 use crate::application::{handle_frontmost, handle_key_event, read_wait};
-use crate::infrastructure::frontmost;
 use crate::infrastructure::usb::{keep_alive, read_event, Device};
 use std::time::{Duration, Instant};
 use tracing::warn;
@@ -46,7 +45,7 @@ pub fn heartbeat(c: &mut Ctx, handle: &Device) {
 pub fn back_on_main_page(c: &mut Ctx, handle: &Device) {
     let on_main_page = c.nav.main_page().is_some();
     if on_main_page && !c.was_on_main_page {
-        if let Some(bundle_id) = frontmost::frontmost_bundle_id() {
+        if let Some(bundle_id) = c.last_frontmost.clone() {
             handle_frontmost(&bundle_id, &mut c.nav, handle, &c.app_state, &c.dev_state);
         }
     }
