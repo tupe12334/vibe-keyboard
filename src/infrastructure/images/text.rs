@@ -2,13 +2,13 @@ use image::{Rgb, RgbImage};
 
 mod glyphs;
 mod raster;
+mod ttf;
 mod wrap;
 
 use glyphs::glyph;
 use raster::draw_glyph;
 use wrap::wrap;
-// ponytail: fixed 3x5 pixel font, A-Z 0-9 and a few symbols, scaled 3x. Other characters draw
-// blank. Add a real font crate (ab_glyph) when labels need lowercase or non-ASCII text.
+// Fixed 3x5 pixel font for ASCII. Any non-ASCII string goes to `ttf` (real font, bidi order).
 const SCALE: u32 = 3;
 const GLYPH_W: u32 = 3;
 const GLYPH_H: u32 = 5;
@@ -31,6 +31,9 @@ pub fn draw_label_scaled(img: &mut RgbImage, text: &str, fg: Rgb<u8>, scale: u32
 
 /// One line of small text (scale 1, 5 px tall) in the top-right corner of `img`. Fits a 12 px bar.
 pub fn draw_tag(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
+    if !text.is_ascii() {
+        return ttf::draw_tag(img, text, fg);
+    }
     let width = text.chars().count() as u32 * (GLYPH_W + 1);
     let mut x = img.width().saturating_sub(width + 2);
     for c in text.chars() {
@@ -40,6 +43,9 @@ pub fn draw_tag(img: &mut RgbImage, text: &str, fg: Rgb<u8>) {
 }
 
 fn draw_wrapped(img: &mut RgbImage, text: &str, fg: Rgb<u8>, max_lines: usize, scale: u32) {
+    if !text.is_ascii() {
+        return ttf::draw_wrapped(img, text, fg, max_lines, scale);
+    }
     let advance = (GLYPH_W + 1) * scale;
     let line_h = (GLYPH_H + 1) * scale;
     let per_line = (img.width() / advance) as usize;
@@ -77,6 +83,9 @@ pub fn draw_line_within(
     fg: Rgb<u8>,
     scale: u32,
 ) {
+    if !text.is_ascii() {
+        return ttf::draw_centered_within(img, x, width, y, text, fg, scale);
+    }
     let advance = (GLYPH_W + 1) * scale;
     let text_w = text.chars().count() as u32 * advance;
     let left = x + width.saturating_sub(text_w) / 2;
