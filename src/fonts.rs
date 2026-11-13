@@ -21,3 +21,18 @@ pub fn egui_fonts() -> eframe::egui::FontDefinitions {
     }
     fonts
 }
+
+#[cfg(test)]
+mod tests {
+    use eframe::egui::FontFamily;
+
+    #[test]
+    fn egui_fonts_adds_hebrew_as_last_fallback() {
+        let fonts = super::egui_fonts();
+        assert!(fonts.font_data.contains_key("noto_sans_hebrew"));
+        for family in [FontFamily::Proportional, FontFamily::Monospace] {
+            let names = &fonts.families[&family];
+            assert_eq!(names.last().map(String::as_str), Some("noto_sans_hebrew"));
+        }
+    }
+}
