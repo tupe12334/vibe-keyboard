@@ -9,6 +9,8 @@ mod beat;
 mod hold;
 mod panic;
 mod post;
+mod session_gate;
+mod session_reads;
 
 pub use accessibility::accessibility_trusted;
 pub use hold::{hold_begin, hold_end, hold_touch, push_to_talk_start, release_all};

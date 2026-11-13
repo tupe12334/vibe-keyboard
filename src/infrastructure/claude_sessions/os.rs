@@ -13,7 +13,7 @@ mod terminal;
 mod tty_age;
 pub use blink::blink_session;
 pub use discovery::list_sessions;
-pub use front_tty::iterm_moved_from;
+pub use front_tty::{iterm_moved_from, tty_landed_within};
 pub use fullscreen::full_screen_session;
 pub use terminal::{focus_session, open_new_session, send_prompt};
 
