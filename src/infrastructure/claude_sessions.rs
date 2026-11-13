@@ -19,8 +19,8 @@ mod vscode_owner;
 
 pub use applescript::{applescript_string, is_valid_tty};
 pub use focus_check::{
-    first_landed_pid, focused_bundle, is_frontmost, is_selected, scan_result, session_moved,
-    terminal_index, Scan, ITERM_BUNDLE, TERMINAL_BUNDLE,
+    focused_bundle, is_frontmost, is_selected, scan_result, session_moved, Scan, ITERM_BUNDLE,
+    TERMINAL_BUNDLE,
 };
 pub use fullscreen::{full_screen_steps, FullScreenStep};
 pub use highlight::highlight_target;
