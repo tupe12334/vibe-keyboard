@@ -57,6 +57,7 @@ fn key_gate_retries_then_refuses_when_no_terminal_is_in_front() {
         || {},
     );
     assert_eq!(third, Some(42));
+    assert_eq!(terminal_index(Some("com.googlecode.iterm2")), Some(0));
     assert_eq!(terminal_index(Some("com.apple.Terminal")), Some(1));
     assert_eq!(terminal_index(Some("com.google.Chrome")), None);
 }
