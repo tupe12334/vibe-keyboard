@@ -56,7 +56,8 @@ struct Output {
 fn capture(program: &str, args: &[&str], timeout: Duration) -> io::Result<Option<Output>> {
     let deadline = Instant::now() + timeout;
     let mut cmd = Command::new(program);
-    cmd.args(args).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.args(args).stdin(Stdio::null());
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
     // Its own process group, so a timeout can also end the children it started.
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
