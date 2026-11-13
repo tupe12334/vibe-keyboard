@@ -3,15 +3,15 @@
 use super::child::{kill_group, read_in_background};
 use super::failure_message::{emit, exit_message, Logging};
 use std::io;
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
 #[cfg(test)]
 #[path = "os_tests.rs"]
 mod tests;
 
-/// After the child exits, how long its pipes may still take to drain. A grandchild can hold a
-/// pipe open after the child exits. Past this, the pipes are given up.
+/// How long past the deadline the pipes may still drain. A grandchild that holds a pipe longer
+/// is given up.
 const READ_GRACE: Duration = Duration::from_millis(100);
 
 /// Run a program with no shell. Returns its stdout when it ends within `timeout`. The exit
@@ -61,10 +61,15 @@ fn capture(program: &str, args: &[&str], timeout: Duration) -> io::Result<Option
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
     let mut child = cmd.spawn()?;
-    let (Some(stdout), Some(stderr)) = (child.stdout.take(), child.stderr.take()) else {
-        kill_group(&mut child);
-        return Ok(None);
-    };
+    let out = collect(&mut child, deadline);
+    // Every path after spawn ends the group, so no grandchild outlives the call.
+    kill_group(&mut child);
+    Ok(out)
+}
+
+/// Wait for the child and read its pipes. `None` on timeout or a pipe that stays open or fails.
+fn collect(child: &mut Child, deadline: Instant) -> Option<Output> {
+    let (stdout, stderr) = (child.stdout.take()?, child.stderr.take()?);
     // Read both pipes on their own threads. A full pipe would otherwise stall the child until timeout.
     let out_rx = read_in_background(stdout);
     let err_rx = read_in_background(stderr);
@@ -72,29 +77,22 @@ fn capture(program: &str, args: &[&str], timeout: Duration) -> io::Result<Option
         match child.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
-            _ => {
-                kill_group(&mut child);
-                return Ok(None);
-            }
+            _ => return None,
         }
     };
     // Never join the readers: a grandchild may hold a pipe open forever. Wait a bounded time.
-    let read_until = deadline.max(Instant::now() + READ_GRACE);
+    let read_until = deadline + READ_GRACE;
     let stdout = out_rx
         .recv_timeout(read_until.saturating_duration_since(Instant::now()))
         .ok()
-        .and_then(|bytes| String::from_utf8(bytes).ok());
-    let Some(stdout) = stdout else {
-        kill_group(&mut child);
-        return Ok(None);
-    };
+        .and_then(|bytes| String::from_utf8(bytes).ok())?;
     let stderr = err_rx
         .recv_timeout(read_until.saturating_duration_since(Instant::now()))
         .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
         .unwrap_or_default();
-    Ok(Some(Output {
+    Some(Output {
         stdout,
         stderr,
         status,
-    }))
+    })
 }

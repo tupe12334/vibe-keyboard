@@ -1,7 +1,7 @@
 //! Pipe readers and process-group teardown for `os.rs`.
 
 use std::io::Read;
-use std::process::{Child, Command};
+use std::process::{Child, Command, Stdio};
 use std::sync::mpsc::{self, Receiver};
 
 /// Drain a pipe on its own thread. The bytes arrive on the channel once the pipe closes.
@@ -23,6 +23,8 @@ pub(super) fn kill_group(child: &mut Child) {
     let group = format!("-{}", child.id());
     let _ = Command::new("kill")
         .args(["-s", "KILL", "--", &group])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
         .status();
     let _ = child.kill();
     let _ = child.wait();
