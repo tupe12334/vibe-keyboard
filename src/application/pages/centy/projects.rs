@@ -6,7 +6,7 @@ use crate::domain::actions::CentyProject;
 use crate::infrastructure::process::probe;
 
 // ponytail: pnpm dlx may download centy on first run. A hung call is killed so the loading tile clears.
-const CENTY_TIMEOUT: Duration = Duration::from_secs(10);
+pub(super) const CENTY_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub fn fetch_centy_projects() -> Vec<CentyProject> {
     info!("running centy list projects");

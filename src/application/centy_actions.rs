@@ -7,11 +7,12 @@ use crate::infrastructure::usb::Device;
 use crate::presentation::tui;
 
 use super::actions::{
-    open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path,
+    open_centy_workspace, open_in_chrome, open_terminal_in_path, open_vscode_in_path, start_fetch,
+    Fetched,
 };
 use super::key_action::Action;
 use super::pages::fetch_centy_issues;
-use super::{lock, render_screen, DeviceState};
+use super::{render_screen, DeviceState};
 
 /// Centy project and issue keys. Each opens a page, a folder, the browser or a workspace.
 pub(super) fn centy_action(
@@ -42,19 +43,14 @@ pub(super) fn centy_action(
             open_in_chrome(&url);
         }
         Action::FetchIssues { project_name, org } => {
-            lock(state).loading = true;
-            let issues = fetch_centy_issues(&project_name);
-            lock(state).loading = false;
-            if !issues.is_empty() {
-                nav.push(Screen::CentyIssueList {
+            start_fetch(state, nav.screen_id(), move || {
+                let issues = fetch_centy_issues(&project_name);
+                Fetched::Issues {
                     issues,
-                    page: 0,
                     project_name,
                     org,
-                    filter: None,
-                });
-                render_screen(nav, handle, state, dev_state);
-            }
+                }
+            });
         }
         Action::SelectIssue {
             issues,

@@ -14,7 +14,7 @@ use crate::presentation::tui;
 static PENDING: Mutex<Option<Pending>> = Mutex::new(None);
 
 /// Run `fetch` on a thread and set `loading`. `poll_pending` shows the result. Never blocks.
-pub(super) fn start_fetch(
+pub(crate) fn start_fetch(
     state: &Arc<Mutex<tui::AppState>>,
     from: ScreenId,
     fetch: impl FnOnce() -> Fetched + Send + 'static,

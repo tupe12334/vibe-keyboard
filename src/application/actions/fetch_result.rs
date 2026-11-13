@@ -4,13 +4,18 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 
 use tracing::info;
 
-use crate::domain::actions::{CentyProject, ClaudeSession};
+use crate::domain::actions::{CentyIssue, CentyProject, ClaudeSession};
 use crate::domain::navigation::{Screen, ScreenId};
 
 /// A page's list, fetched on a background thread.
-pub(super) enum Fetched {
+pub(crate) enum Fetched {
     Projects(Vec<CentyProject>),
     Sessions(Vec<ClaudeSession>),
+    Issues {
+        issues: Vec<CentyIssue>,
+        project_name: String,
+        org: String,
+    },
 }
 
 /// A fetch in flight, and the screen that was open when it started.
@@ -62,6 +67,18 @@ fn next_screen(fetched: Fetched) -> Option<Screen> {
             info!("claude sessions: {} found", sessions.len());
             Some(Screen::ClaudeSessions { sessions, page: 0 })
         }
+        Fetched::Issues { issues, .. } if issues.is_empty() => None,
+        Fetched::Issues {
+            issues,
+            project_name,
+            org,
+        } => Some(Screen::CentyIssueList {
+            issues,
+            page: 0,
+            project_name,
+            org,
+            filter: None,
+        }),
     }
 }
 

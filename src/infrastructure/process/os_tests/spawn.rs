@@ -26,3 +26,16 @@ fn spawn_failure_is_logged_at_the_chosen_level() {
         "{log}"
     );
 }
+
+#[test]
+fn probe_returns_at_its_deadline_when_a_grandchild_holds_the_pipe() {
+    // The shell exits 0, but its background sleep keeps stdout open.
+    let started = Instant::now();
+    let out = probe(
+        "sh",
+        &["-c", "sleep 30 & exit 0"],
+        Duration::from_millis(300),
+    );
+    assert!(out.is_none());
+    assert!(started.elapsed() < Duration::from_secs(5));
+}
