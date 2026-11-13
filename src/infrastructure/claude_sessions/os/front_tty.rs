@@ -19,8 +19,13 @@ const POLL: Duration = Duration::from_millis(50);
 
 /// The tty shown in front by the terminal at `index` (0 iTerm2, 1 Terminal.app). None when unknown.
 fn front_tty(index: usize) -> Option<String> {
+    front_tty_within(index, READ_TIMEOUT)
+}
+
+/// Like `front_tty`, but the osascript call is cut off after `limit`.
+fn front_tty_within(index: usize, limit: Duration) -> Option<String> {
     let script = [ITERM_FRONT_TTY, TERMINAL_FRONT_TTY].get(index)?;
-    let out = run("osascript", &["-e", script], READ_TIMEOUT)?;
+    let out = run("osascript", &["-e", script], limit)?;
     Some(out.trim().to_string()).filter(|tty| !tty.is_empty())
 }
 
@@ -70,8 +75,8 @@ pub fn settle_on(index: usize, tty: &str) -> bool {
 }
 
 /// True when the terminal at `index` shows `tty` in front. Read once, for the key gate.
-pub fn tty_landed(index: usize, tty: &str) -> bool {
-    is_selected(front_tty(index).as_deref(), tty)
+pub fn tty_landed_within(index: usize, tty: &str, limit: Duration) -> bool {
+    is_selected(front_tty_within(index, limit).as_deref(), tty)
 }
 
 /// True when iTerm2's current session is no longer `tty`. Read once, for the push-to-talk probe.

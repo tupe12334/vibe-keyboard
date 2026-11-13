@@ -2,26 +2,29 @@
 //! Excluded from the coverage gate, like `hold.rs`. The bundle ids live in `claude_sessions/focus_check.rs`.
 
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tracing::warn;
 
-use crate::infrastructure::claude_sessions::{tty_landed, ITERM_BUNDLE, TERMINAL_BUNDLE};
-use crate::infrastructure::frontmost::{frontmost_bundle_id, frontmost_pid};
+use crate::infrastructure::claude_sessions::{tty_landed_within, ITERM_BUNDLE, TERMINAL_BUNDLE};
+use crate::infrastructure::frontmost::{frontmost_bundle_id_within, frontmost_pid_within};
 
-/// Gate: 15 tries, 20 ms apart, so about 300 ms plus the time of each read.
-const GATE_ATTEMPTS: usize = 15;
+/// Wall-clock budget for the whole gate. Every OS read gets only the time left.
+const GATE_DEADLINE: Duration = Duration::from_millis(300);
+/// Pause between tries.
 const GATE_STEP: Duration = Duration::from_millis(20);
 
-/// Pid of the frontmost terminal when it shows `tty`. None when no terminal shows it in time, and
-/// the caller posts no key then.
+/// Pid of the frontmost terminal when it shows `tty`. None when no terminal shows it within
+/// `GATE_DEADLINE`, and the caller posts no key then.
 pub(super) fn session_front_pid(tty: &str) -> Option<i32> {
+    let start = Instant::now();
+    let elapsed = || start.elapsed();
     let landed = first_landed_pid(
-        GATE_ATTEMPTS,
-        || landed_pid(tty),
-        || {
-            thread::sleep(GATE_STEP);
-        },
+        GATE_DEADLINE,
+        GATE_STEP,
+        &elapsed,
+        &|left: &dyn Fn() -> Duration| landed_pid(tty, left),
+        &|step: Duration| thread::sleep(step),
     );
     if landed.is_none() {
         warn!("push to talk: {tty} not frontmost in its terminal, no key posted");
@@ -29,12 +32,21 @@ pub(super) fn session_front_pid(tty: &str) -> Option<i32> {
     landed
 }
 
-/// Pid of the frontmost app when it is a terminal that shows `tty`. The pid is read again after
-/// the tty check, so a switch in between fails this read.
-fn landed_pid(tty: &str) -> Option<i32> {
-    let pid = frontmost_pid()?;
-    let index = terminal_index(frontmost_bundle_id().as_deref())?;
-    (tty_landed(index, tty) && frontmost_pid() == Some(pid)).then_some(pid)
+/// Pid of the frontmost app when it is a terminal that shows `tty`. Each read gets `left()`, the
+/// time still allowed, so no single read can run past the deadline.
+fn landed_pid(tty: &str, left: &dyn Fn() -> Duration) -> Option<i32> {
+    let before = frontmost_pid_within(left())?;
+    let index = terminal_index(frontmost_bundle_id_within(left()).as_deref())?;
+    if !tty_landed_within(index, tty, left()) {
+        return None;
+    }
+    same_pid(before, frontmost_pid_within(left()))
+}
+
+/// The pid read before the terminal check, when the pid read after it is the same app.
+/// A switch in between gives another pid, so no pid is returned.
+fn same_pid(before: i32, after: Option<i32>) -> Option<i32> {
+    (after == Some(before)).then_some(before)
 }
 
 /// Terminal index (0 iTerm2, 1 Terminal.app) of the frontmost bundle id. None for any other app.
@@ -46,22 +58,29 @@ fn terminal_index(front: Option<&str>) -> Option<usize> {
     }
 }
 
-/// Calls `landed` until it returns a pid, at most `attempts` times, pausing between calls.
-/// None when no call landed. The caller posts no key then.
+/// Calls `landed` until it returns a pid or `budget` runs out, pausing `step` between calls. The
+/// pause never runs past the deadline. `elapsed` is the time since the gate began.
 fn first_landed_pid(
-    attempts: usize,
-    mut landed: impl FnMut() -> Option<i32>,
-    mut pause: impl FnMut(),
+    budget: Duration,
+    step: Duration,
+    elapsed: &dyn Fn() -> Duration,
+    landed: &dyn Fn(&dyn Fn() -> Duration) -> Option<i32>,
+    pause: &dyn Fn(Duration),
 ) -> Option<i32> {
-    for attempt in 0..attempts {
-        if attempt > 0 {
-            pause();
+    let left = || budget.saturating_sub(elapsed());
+    loop {
+        if left().is_zero() {
+            return None;
         }
-        if let Some(pid) = landed() {
+        if let Some(pid) = landed(&left) {
             return Some(pid);
         }
+        let rest = left();
+        if rest.is_zero() {
+            return None;
+        }
+        pause(step.min(rest));
     }
-    None
 }
 
 #[cfg(test)]

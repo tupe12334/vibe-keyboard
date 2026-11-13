@@ -11,17 +11,23 @@ const TIMEOUT: Duration = Duration::from_secs(1);
 
 /// Bundle id of the frontmost app, e.g. `com.google.Chrome`. None if unknown.
 pub fn frontmost_bundle_id() -> Option<String> {
-    bundle_of(&lsappinfo(&["front"])?)
+    frontmost_bundle_id_within(TIMEOUT)
+}
+
+/// Like `frontmost_bundle_id`, but each `lsappinfo` call is cut off after `limit`.
+pub fn frontmost_bundle_id_within(limit: Duration) -> Option<String> {
+    bundle_of_within(&lsappinfo(&["front"], limit)?, limit)
 }
 
 /// Pid of the frontmost app: the app that gets typed keys. None if unknown.
 pub fn frontmost_pid() -> Option<i32> {
-    parse_pid(&lsappinfo(&[
-        "info",
-        "-only",
-        "pid",
-        &lsappinfo(&["front"])?,
-    ])?)
+    frontmost_pid_within(TIMEOUT)
+}
+
+/// Like `frontmost_pid`, but each `lsappinfo` call is cut off after `limit`.
+pub fn frontmost_pid_within(limit: Duration) -> Option<i32> {
+    let asn = lsappinfo(&["front"], limit)?;
+    parse_pid(&lsappinfo(&["info", "-only", "pid", &asn], limit)?)
 }
 
 /// Spawn a thread that polls every `interval` and sends the bundle id on each
@@ -34,7 +40,8 @@ pub fn watch(interval: Duration) -> Receiver<String> {
     std::thread::spawn(move || {
         let mut watcher = Watcher::default();
         loop {
-            if let Some(id) = watcher.tick(lsappinfo(&["front"]), bundle_of) {
+            let front = lsappinfo(&["front"], TIMEOUT);
+            if let Some(id) = watcher.tick(front, |asn| bundle_of_within(asn, TIMEOUT)) {
                 if tx.send(id).is_err() {
                     break;
                 }
@@ -45,12 +52,12 @@ pub fn watch(interval: Duration) -> Receiver<String> {
     rx
 }
 
-fn bundle_of(asn: &str) -> Option<String> {
-    parse_bundle_id(&lsappinfo(&["info", "-only", "bundleid", asn])?)
+fn bundle_of_within(asn: &str, limit: Duration) -> Option<String> {
+    parse_bundle_id(&lsappinfo(&["info", "-only", "bundleid", asn], limit)?)
 }
 
 #[cfg(target_os = "macos")]
-fn lsappinfo(args: &[&str]) -> Option<String> {
+fn lsappinfo(args: &[&str], timeout: Duration) -> Option<String> {
     use std::io::Read;
     use std::process::{Command, Stdio};
     use std::time::Instant;
@@ -61,7 +68,7 @@ fn lsappinfo(args: &[&str]) -> Option<String> {
         .stderr(Stdio::null())
         .spawn()
         .ok()?;
-    let deadline = Instant::now() + TIMEOUT;
+    let deadline = Instant::now() + timeout;
     loop {
         match child.try_wait().ok()? {
             Some(status) => {
@@ -81,6 +88,6 @@ fn lsappinfo(args: &[&str]) -> Option<String> {
 
 /// Off macOS there is no LaunchServices. Every lookup is None.
 #[cfg(not(target_os = "macos"))]
-fn lsappinfo(_args: &[&str]) -> Option<String> {
+fn lsappinfo(_args: &[&str], _timeout: Duration) -> Option<String> {
     None
 }

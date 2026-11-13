@@ -31,7 +31,8 @@ pub fn hold_end(key: u8) {
 /// Key down for the hold reserved by `hold_begin`, then repeats until `hold_end` or a release.
 /// Does nothing if the generation is stale, another hold is active, Accessibility is off, or
 /// no app has focus. With `tty`, it also posts nothing unless a terminal showing that session
-/// is frontmost within about 300 ms. The repeats and the focus checks run on their own threads.
+/// is frontmost before the gate's 300 ms wall-clock deadline. The repeats and the focus checks
+/// run on their own threads.
 pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey, tty: Option<&str>) {
     let Some(code) = key_code(&hotkey.key) else {
         error!("push to talk: no key code for this key");

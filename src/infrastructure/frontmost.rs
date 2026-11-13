@@ -16,7 +16,9 @@ mod os;
     unused_imports,
     reason = "re-export keeps the module surface stable across platforms"
 )]
-pub use os::{frontmost_bundle_id, frontmost_pid, watch};
+pub use os::{
+    frontmost_bundle_id, frontmost_bundle_id_within, frontmost_pid, frontmost_pid_within, watch,
+};
 
 /// Parses `"CFBundleIdentifier"="com.googlecode.iterm2"` into the bundle id.
 fn parse_bundle_id(output: &str) -> Option<String> {

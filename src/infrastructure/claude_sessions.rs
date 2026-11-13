@@ -31,7 +31,7 @@ pub(crate) use os::tab_scripts::{
 };
 pub use os::{
     blink_session, focus_session, full_screen_session, iterm_moved_from, list_sessions,
-    open_new_session, send_prompt, tty_landed,
+    open_new_session, send_prompt, tty_landed_within,
 };
 pub use process_list::{claude_processes, cwds_from_lsof};
 pub use remote_control::{mark_remote_control, remote_control_on};
