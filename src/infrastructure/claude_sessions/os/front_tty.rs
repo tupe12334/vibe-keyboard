@@ -69,6 +69,11 @@ pub fn settle_on(index: usize, tty: &str) -> bool {
     }
 }
 
+/// True when the terminal at `index` shows `tty` in front. Read once, for the key gate.
+pub fn tty_landed(index: usize, tty: &str) -> bool {
+    is_selected(front_tty(index).as_deref(), tty)
+}
+
 /// True when iTerm2's current session is no longer `tty`. Read once, for the push-to-talk probe.
 pub fn iterm_moved_from(tty: &str) -> bool {
     session_moved(front_tty(0).as_deref(), tty)

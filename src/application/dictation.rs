@@ -56,8 +56,8 @@ pub(super) fn start_voice(key: u8, nav: &NavigationStack) {
     }
 }
 
-/// Session key held: focus its tab, then start dictation. Focus waits until the tab is frontmost.
-/// Runs off the device loop, because focusing waits for osascript.
+/// Session key held: focus its tab, then start dictation. Runs off the device loop, because
+/// focusing waits for osascript.
 pub(super) fn start_session_dictation(tty: String, key: u8) {
     let generation = keyboard::hold_begin(key);
     info!("claude sessions: dictate in {tty}");
@@ -76,8 +76,8 @@ pub(super) fn start_session_dictation(tty: String, key: u8) {
     });
 }
 
-/// Focus, then run `start`. `start` runs only when focus succeeded, so Space never reaches an app
-/// other than the session's terminal. `focus` returns only after the tab is frontmost (`settle_on`).
+/// Focus, then run `start`. `start` runs only when focus succeeded. `focus` returns after the
+/// session's tty shows in front. The key gate in `hold.rs` then checks the frontmost app before key down.
 fn dictate_once_focused(focus: impl FnOnce() -> bool, start: impl FnOnce()) -> bool {
     if !focus() {
         error!("claude sessions: NO FOCUS, dictation not started");

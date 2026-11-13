@@ -33,6 +33,35 @@ fn frontmost_must_match_the_expected_bundle() {
 }
 
 #[test]
+fn key_gate_retries_then_refuses_when_no_terminal_is_in_front() {
+    let mut reads = 0;
+    let mut pauses = 0;
+    let never = first_landed_pid(
+        4,
+        || {
+            reads += 1;
+            None
+        },
+        || pauses += 1,
+    );
+    assert_eq!(never, None, "a wrong app in front posts nothing");
+    assert_eq!((reads, pauses), (4, 3));
+
+    let mut calls = 0;
+    let third = first_landed_pid(
+        4,
+        || {
+            calls += 1;
+            (calls == 3).then_some(42)
+        },
+        || {},
+    );
+    assert_eq!(third, Some(42));
+    assert_eq!(terminal_index(Some("com.apple.Terminal")), Some(1));
+    assert_eq!(terminal_index(Some("com.google.Chrome")), None);
+}
+
+#[test]
 fn scan_result_separates_missing_from_failed() {
     assert_eq!(scan_result(Some("found\n")), Scan::Found);
     assert_eq!(scan_result(Some("missing")), Scan::Missing);

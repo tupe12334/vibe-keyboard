@@ -8,6 +8,7 @@ use tracing::error;
 
 use super::beat::{beat, watch_focus};
 use super::post::{trusted, CgPoster};
+use super::session_gate::session_front_pid;
 use crate::domain::hotkey::{key_code, modifier_flags, Hotkey};
 use crate::domain::ptt::{Probe, PttGuard, Release};
 use crate::infrastructure::claude_sessions::iterm_moved_from;
@@ -28,18 +29,30 @@ pub fn hold_end(key: u8) {
 }
 
 /// Key down for the hold reserved by `hold_begin`, then repeats until `hold_end` or a release.
-/// Does nothing if the generation is stale, another hold is active, no app has focus, or
-/// Accessibility is off. The repeats and the focus checks run on their own threads.
-/// `tty` is the selected session, when the hold dictates into one. The repeat probes check its tab.
+/// Does nothing if the generation is stale, another hold is active, Accessibility is off, or
+/// no app has focus. With `tty`, it also posts nothing unless a terminal showing that session
+/// is frontmost within about 300 ms. The repeats and the focus checks run on their own threads.
 pub fn push_to_talk_start(generation: u64, key: u8, hotkey: &Hotkey, tty: Option<&str>) {
     let Some(code) = key_code(&hotkey.key) else {
         error!("push to talk: no key code for this key");
         return;
     };
     let flags = modifier_flags(&hotkey.modifiers);
-    // Read the OS before taking the lock. `start` ignores `session_moved`, and the caller's
-    // `settle_on` already confirmed the tab, so skip the iTerm2 read here.
-    let probe = read_probe(None);
+    // Read the OS before taking the lock. The hold's pid comes from the gate, so the key down
+    // goes to the terminal that shows the session.
+    let probe = match tty {
+        Some(tty) => {
+            let Some(pid) = session_front_pid(tty) else {
+                return;
+            };
+            Probe {
+                front: Some(pid),
+                trusted: trusted(),
+                session_moved: false,
+            }
+        }
+        None => read_probe(None),
+    };
     if !lock().start(generation, key, code, flags, probe, Instant::now()) {
         return;
     }

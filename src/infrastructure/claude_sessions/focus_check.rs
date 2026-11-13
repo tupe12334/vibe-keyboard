@@ -18,6 +18,33 @@ pub const fn focused_bundle(index: usize) -> Option<&'static str> {
     }
 }
 
+/// Terminal index (0 iTerm2, 1 Terminal.app) of the frontmost bundle id. None for any other app.
+pub fn terminal_index(front: Option<&str>) -> Option<usize> {
+    match front {
+        Some(ITERM_BUNDLE) => Some(0),
+        Some(TERMINAL_BUNDLE) => Some(1),
+        _ => None,
+    }
+}
+
+/// Calls `landed` until it returns a pid, at most `attempts` times, pausing between calls.
+/// None when no call landed. The caller posts no key then.
+pub fn first_landed_pid(
+    attempts: usize,
+    mut landed: impl FnMut() -> Option<i32>,
+    mut pause: impl FnMut(),
+) -> Option<i32> {
+    for attempt in 0..attempts {
+        if attempt > 0 {
+            pause();
+        }
+        if let Some(pid) = landed() {
+            return Some(pid);
+        }
+    }
+    None
+}
+
 /// True when `front` is the `expected` bundle id. An unknown frontmost app is never a match.
 pub fn is_frontmost(front: Option<&str>, expected: &str) -> bool {
     front == Some(expected)

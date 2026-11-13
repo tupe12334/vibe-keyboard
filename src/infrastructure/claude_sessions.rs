@@ -19,8 +19,8 @@ mod vscode_owner;
 
 pub use applescript::{applescript_string, is_valid_tty};
 pub use focus_check::{
-    focused_bundle, is_frontmost, is_selected, scan_result, session_moved, Scan, ITERM_BUNDLE,
-    TERMINAL_BUNDLE,
+    first_landed_pid, focused_bundle, is_frontmost, is_selected, scan_result, session_moved,
+    terminal_index, Scan, ITERM_BUNDLE, TERMINAL_BUNDLE,
 };
 pub use fullscreen::{full_screen_steps, FullScreenStep};
 pub use highlight::highlight_target;
@@ -31,7 +31,7 @@ pub(crate) use os::tab_scripts::{
 };
 pub use os::{
     blink_session, focus_session, full_screen_session, iterm_moved_from, list_sessions,
-    open_new_session, send_prompt,
+    open_new_session, send_prompt, tty_landed,
 };
 pub use process_list::{claude_processes, cwds_from_lsof};
 pub use remote_control::{mark_remote_control, remote_control_on};
