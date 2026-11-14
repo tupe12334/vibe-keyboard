@@ -29,7 +29,8 @@ pub const fn hotkey_log(trusted: bool) -> Option<&'static str> {
 }
 
 /// Whether any key of `profile` sends keystrokes, as a tap or as a hold: push-to-talk
-/// (CoreGraphics posts) or a key combo (System Events).
+/// (CoreGraphics posts), a key combo (System Events), or the Claude sessions page (its
+/// held session keys dictate through push-to-talk).
 pub fn needs_accessibility(profile: &Profile) -> bool {
     profile
         .pages
@@ -43,10 +44,19 @@ pub fn needs_accessibility(profile: &Profile) -> bool {
         })
 }
 
-const fn sends_keys(action: &Action) -> bool {
-    matches!(action, Action::PushToTalk { .. } | Action::Hotkey { .. })
+fn sends_keys(action: &Action) -> bool {
+    match action {
+        Action::PushToTalk { .. } | Action::Hotkey { .. } => true,
+        // The only builtin that posts keys: dictation on its session pages.
+        Action::Builtin { name } => name.as_str() == "claude_sessions",
+        _ => false,
+    }
 }
 
 #[cfg(test)]
 #[path = "accessibility_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "accessibility_builtin_tests.rs"]
+mod builtin_tests;
