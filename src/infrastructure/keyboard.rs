@@ -6,5 +6,5 @@ mod os;
 
 pub use os::{
     accessibility_trusted, hold_begin, hold_end, hold_touch, install_panic_release,
-    push_to_talk_start, release_all, tap,
+    push_to_talk_start, release_all, request_accessibility, request_accessibility_once, tap,
 };

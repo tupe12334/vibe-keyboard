@@ -45,6 +45,7 @@ fs4 = "1.1.0"
 sysinfo = "0.39.6"
 ureq = "3"
 core-graphics = "0.23"
+core-foundation = "0.10"
 foreign-types = "0.5"
 
 [lints.clippy]

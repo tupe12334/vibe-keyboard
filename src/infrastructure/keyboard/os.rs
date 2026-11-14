@@ -10,7 +10,7 @@ mod hold;
 mod panic;
 mod post;
 
-pub use accessibility::accessibility_trusted;
+pub use accessibility::{accessibility_trusted, request_accessibility, request_accessibility_once};
 pub use hold::{hold_begin, hold_end, hold_touch, push_to_talk_start, release_all};
 pub use panic::install_panic_release;
 pub use post::tap;
