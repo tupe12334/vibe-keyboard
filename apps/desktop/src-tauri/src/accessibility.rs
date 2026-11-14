@@ -7,7 +7,7 @@ use tracing::{error, warn};
 use vibe_keyboard::domain::accessibility::{
     needs_accessibility, push_to_talk_warning, PUSH_TO_TALK_WARNING,
 };
-use vibe_keyboard::infrastructure::keyboard::accessibility_trusted;
+use vibe_keyboard::infrastructure::keyboard::{accessibility_trusted, request_accessibility_once};
 
 use crate::app::App;
 use crate::tray::TrayItems;
@@ -30,7 +30,11 @@ impl App {
                 .unwrap_or_else(PoisonError::into_inner)
                 .profile,
         );
-        let warning = push_to_talk_warning(accessibility_trusted(), uses);
+        let trusted = accessibility_trusted();
+        if uses && !trusted {
+            request_accessibility_once();
+        }
+        let warning = push_to_talk_warning(trusted, uses);
         if let Some(text) = warning {
             warn!("{text}");
         }

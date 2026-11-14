@@ -204,6 +204,8 @@ Claude Code dictation (checked on 2026-10-20):
 
 Push-to-talk posts keys with CoreGraphics. macOS only lets a process post keys when it has Accessibility permission:
 
+On first launch without the grant, macOS shows a dialog. Click Open System Settings and turn Vibe Keyboard on.
+
 1. Open System Settings > Privacy & Security > Accessibility.
 2. Click `+`. Add the app that runs `listen`: your terminal app when you start it by hand, or `Vibe Keyboard` for the desktop app.
 3. Turn the switch on.

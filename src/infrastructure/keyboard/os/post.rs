@@ -8,7 +8,7 @@ use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 use foreign_types::ForeignType;
 use tracing::{error, info, warn};
 
-use super::accessibility::accessibility_trusted;
+use super::accessibility::request_accessibility_once;
 use super::panic::{HELD_CODE, HELD_FLAGS, HELD_PID};
 use crate::domain::hotkey::{key_code, modifier_flags, Hotkey};
 use crate::domain::ptt::{KeyEvent, KeyPoster};
@@ -48,7 +48,7 @@ impl KeyPoster for CgPoster {
 
 /// Whether this process may post key events. Logs the fix when it may not.
 pub(super) fn trusted() -> bool {
-    let ok = accessibility_trusted();
+    let ok = request_accessibility_once();
     if !ok {
         warn!(
             "push to talk needs Accessibility for this process: System Settings > Privacy & Security > Accessibility, then add or enable the app that runs listen (see README)"
