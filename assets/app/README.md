@@ -21,8 +21,9 @@ done
 iconutil -c icns "$SET" -o "$A/AppIcon.icns"
 ```
 
-`packaging/macos/build-app.sh` copies `AppIcon.icns` into the app bundle's
-`Contents/Resources/`, and `CFBundleIconFile` points at `AppIcon`.
+`packaging/macos/build-app.sh` does not copy `AppIcon.icns`. The Tauri app
+bundle takes its icon from `apps/desktop/src-tauri/icons/` (`bundle.icon` in
+`apps/desktop/src-tauri/tauri.conf.json`).
 
 ## License
 

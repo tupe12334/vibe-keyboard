@@ -48,7 +48,7 @@ Navigation is managed by a `NavigationStack` (domain layer) with three dedicated
 | 12     | Out — pop current screen from stack |
 | 13     | Forward — cycle page right / next page |
 
-Screens: `MainPage` → `CentyProjectList` → `CentyProjectActions` → `CentyIssueList` → `CentyIssueActions`. `InputNumber` is reachable directly from `MainPage`.
+Screens: `MainPage` → `CentyProjectList` → `CentyProjectActions` → `CentyIssueList` → `CentyIssueActions`. `InputNumber` is reachable directly from `MainPage`. The `claude_sessions` built-in opens `ClaudeSessions` → `NewSessionChoice` or `SessionActions` → `ConfirmExit`. The `moadim` built-in opens `MoadimList` → `MoadimRoutine`.
 
 ### Pages
 
@@ -169,11 +169,25 @@ action = { type = "builtin", name = "claude_sessions" }
 Action types: `none`, `open_url`, `run_command`, `open_app`, `hotkey`, `go_to_page` (0-based index), `builtin`, `push_to_talk`.
 `open_app` takes an app name (`open -a`), or a bundle id (`open -b`) when the value contains a dot and no spaces. Names ending in `.app` are app names.
 `run_command` runs `sh -c` with the text stored in `profile.toml`. Anyone who can write that file can run commands, so track it only in a repo you trust.
-Built-in names: `centy_projects`, `terminal`, `claude`, `centy_web`, `numpad`, `log_file`, `vscode_config`, `claude_sessions`.
+Built-in names: `centy_projects`, `terminal`, `claude`, `centy_web`, `numpad`, `log_file`, `vscode_config`, `claude_sessions`, `moadim`.
 `claude_sessions` lists open Claude Code sessions (`claude` processes on a terminal). Each key shows the session's tab title, with a status bar: amber when Claude waits for you, green while it works. Press a session to focus its iTerm2 or Terminal.app tab. Other terminals (VS Code) activate VS Code. Key 15 pages when there are more than 10.
 Keys 11, 12 and 13 are navigation and cannot be bound.
 A built-in key shows its icon unless `image` is set.
 A malformed file is logged with its line and column. The controller keeps the last good layout.
+`moadim` lists [Moadim](https://moadim.io/) routines, one key per routine, paged like the sessions list.
+
+Press a Claude session, then use its action page. Keys 1 to 8 send prompts from `[[prompts]]`, each followed by Enter. A `label` holds up to 40 characters. A `text` holds up to 2000 characters. Key 15 shows the next prompt page, or EXIT on the last page.
+
+```toml
+[[prompts]]
+label = "Tests"
+text = "Run the tests and fix any failure."
+
+[claude_sessions]
+new_session_fullscreen = true   # open new session windows in macOS full screen
+```
+
+`[display]` sets the band the bezel hides, in pixels. `key_inset` (`top`, `bottom`, `left`, `right`) applies to the 85x85 key image. `side_inset` (`top`, `bottom`) applies to the side screen. By default the top 8 px of each key is hidden.
 
 Run the controller headless (no window, no tray) with `listen --headless`. The desktop app runs the same controller. It runs the same device loop and actions, with no TUI. Logs go to `~/.config/vibe-keyboard/app.log`. It exits cleanly on SIGINT or SIGTERM.
 
@@ -268,9 +282,12 @@ Track the config directory in git. Keep runtime files out of it:
 ```gitignore
 # ~/.config/vibe-keyboard/.gitignore
 state.toml
-*.log
-*.toml.tmp
+app.log
+*.tmp
+.DS_Store
 ```
+
+The app writes this `.gitignore` when the file is missing.
 
 Commit `profile.toml` and `images/`. The controller never writes `profile.toml`. Only the editor (and the first-run default) writes it.
 Runtime state (current page, brightness, auto or manual page) stays out of it: `state.toml` and `app.log` are the ignored files.
@@ -298,6 +315,7 @@ Install linecheck, cargo-machete and cargo-llvm-cov at the versions pinned in [c
 - [CI](.github/workflows/ci.yml)
 - [Advisories](.github/workflows/advisories.yml)
 - [Shellcheck](.github/workflows/shellcheck.yml)
+- [Frontend lint](.github/workflows/frontend-lint.yml)
 
 ## See also
 
