@@ -4,12 +4,13 @@ use std::sync::{Arc, Mutex};
 
 use tracing::{error, info};
 
+use super::background_fetch::start_fetch;
+use super::fetch_result::Fetched;
 use super::{
     open_claude_terminal, open_config_in_vscode, open_in_chrome, open_log_file, open_terminal,
 };
 use crate::application::pages::fetch_centy_projects;
 use crate::application::render_screen;
-use crate::domain::actions::CentyProject;
 use crate::domain::navigation::{NavigationStack, Screen};
 use crate::infrastructure::claude_sessions::list_sessions;
 use crate::infrastructure::persistence::DeviceState;
@@ -24,19 +25,9 @@ pub(super) fn run_builtin(
     dev_state: &Arc<Mutex<DeviceState>>,
 ) {
     match name {
-        "centy_projects" => {
-            crate::application::lock(state).loading = true;
-            let projects: Vec<CentyProject> = fetch_centy_projects();
-            crate::application::lock(state).loading = false;
-            if !projects.is_empty() {
-                nav.push(Screen::CentyProjectList {
-                    projects,
-                    page: 0,
-                    filter: None,
-                });
-                render_screen(nav, handle, state, dev_state);
-            }
-        }
+        "centy_projects" => start_fetch(state, nav.screen_id(), || {
+            Fetched::Projects(fetch_centy_projects())
+        }),
         "terminal" => {
             info!("opening Terminal");
             open_terminal();
@@ -65,12 +56,11 @@ pub(super) fn run_builtin(
             open_config_in_vscode();
         }
         "claude_sessions" => {
-            crate::application::lock(state).loading = true;
-            let sessions = list_sessions();
-            crate::application::lock(state).loading = false;
-            info!("claude sessions: {} found", sessions.len());
-            nav.push(Screen::ClaudeSessions { sessions, page: 0 });
-            render_screen(nav, handle, state, dev_state);
+            start_fetch(
+                state,
+                nav.screen_id(),
+                || Fetched::Sessions(list_sessions()),
+            );
         }
         "moadim" => crate::application::pages::moadim::open_routines(nav, handle, state, dev_state),
         other => error!("profile: unknown built-in '{other}'"),

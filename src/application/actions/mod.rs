@@ -1,8 +1,10 @@
+mod background_fetch;
 mod browser;
 mod builtin;
 mod centy;
 pub(crate) mod claude;
 pub(crate) mod effects;
+mod fetch_result;
 mod log_file;
 mod profile;
 #[cfg(test)]
@@ -10,9 +12,12 @@ mod profile_kinds;
 pub(crate) mod terminal;
 mod vscode_config;
 
+pub use background_fetch::poll_pending;
+pub(crate) use background_fetch::start_fetch;
 pub use browser::open_in_chrome;
 pub use centy::open_centy_workspace;
 pub use claude::open_claude_terminal;
+pub(crate) use fetch_result::Fetched;
 pub use log_file::open_log_file;
 pub use profile::run_action;
 pub use terminal::{open_terminal, open_terminal_in_path};

@@ -1,14 +1,16 @@
-use std::process::Command;
 use tracing::info;
 
 use super::issues_json::parse_centy_issues_json;
+use super::projects::CENTY_TIMEOUT;
 use crate::domain::actions::CentyIssue;
+use crate::infrastructure::process::probe;
 
 pub fn fetch_centy_issues(project_name: &str) -> Vec<CentyIssue> {
     info!("running centy list issues for {}", project_name);
 
-    let output = Command::new("pnpm")
-        .args([
+    let Some(stdout) = probe(
+        "pnpm",
+        &[
             "dlx",
             "centy",
             "list",
@@ -16,24 +18,15 @@ pub fn fetch_centy_issues(project_name: &str) -> Vec<CentyIssue> {
             "--project",
             project_name,
             "--json",
-        ])
-        .output();
-
-    let output = match output {
-        Ok(o) => o,
-        Err(e) => {
-            info!("centy issues error: {e}");
-            return vec![];
-        }
-    };
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        info!("centy issues failed: {}", stderr.trim());
+        ],
+        CENTY_TIMEOUT,
+    ) else {
+        info!(
+            "centy: no issues output, failed, or timed out for {}",
+            project_name
+        );
         return vec![];
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    };
     let issues = parse_centy_issues_json(&stdout);
 
     if issues.is_empty() {

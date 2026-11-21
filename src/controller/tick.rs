@@ -4,6 +4,7 @@ use super::event::ControllerEvent;
 use super::input;
 use super::reload::reload_profile;
 use super::side;
+use crate::application::actions::poll_pending;
 use crate::application::{
     handle_filter_query, handle_frontmost, poll_holds, prompt_return, release_all_holds,
     render_screen,
@@ -25,10 +26,13 @@ pub fn step(c: &mut Ctx, handle: &Device) -> Flow {
     poll_profile(c, handle);
     while let Ok(bundle_id) = c.frontmost_rx.try_recv() {
         handle_frontmost(&bundle_id, &mut c.nav, handle, &c.app_state, &c.dev_state);
+        c.last_frontmost = Some(bundle_id);
     }
+    poll_pending(&mut c.nav, handle, &c.app_state, &c.dev_state);
     redraw_on_icon_change(c, handle);
     confirm_filter(c, handle);
     let read_lost = input::read_key(c, handle);
+    poll_pending(&mut c.nav, handle, &c.app_state, &c.dev_state);
     poll_holds(handle, &mut c.nav, &c.app_state, &c.dev_state);
     release_on_page_change(c);
     side::tick(c, handle);

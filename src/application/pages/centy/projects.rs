@@ -1,30 +1,24 @@
-use std::process::Command;
+use std::time::Duration;
+
 use tracing::info;
 
 use crate::domain::actions::CentyProject;
+use crate::infrastructure::process::probe;
+
+// ponytail: pnpm dlx may download centy on first run. A hung call is killed so the loading tile clears.
+pub(super) const CENTY_TIMEOUT: Duration = Duration::from_secs(10);
 
 pub fn fetch_centy_projects() -> Vec<CentyProject> {
     info!("running centy list projects");
 
-    let output = Command::new("pnpm")
-        .args(["dlx", "centy", "list", "projects", "--json"])
-        .output();
-
-    let output = match output {
-        Ok(o) => o,
-        Err(e) => {
-            info!("centy error: {e}");
-            return vec![];
-        }
-    };
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        info!("centy failed: {}", stderr.trim());
+    let Some(stdout) = probe(
+        "pnpm",
+        &["dlx", "centy", "list", "projects", "--json"],
+        CENTY_TIMEOUT,
+    ) else {
+        info!("centy: no output, failed, or timed out");
         return vec![];
-    }
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
+    };
     let projects = parse_centy_json(&stdout);
 
     if projects.is_empty() {

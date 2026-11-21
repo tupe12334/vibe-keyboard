@@ -1,13 +1,18 @@
 //! Process spawns with a time limit. Excluded from the coverage gate.
 
+use super::child::{kill_group, read_in_background};
 use super::failure_message::{emit, exit_message, Logging};
-use std::io::{self, Read};
-use std::process::{Command, ExitStatus, Stdio};
+use std::io;
+use std::process::{Child, Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
 #[cfg(test)]
 #[path = "os_tests.rs"]
 mod tests;
+
+/// How long past the deadline the pipes may still drain. A grandchild that holds a pipe longer
+/// is given up.
+const READ_GRACE: Duration = Duration::from_millis(100);
 
 /// Run a program with no shell. Returns its stdout when it ends within `timeout`. The exit
 /// status does not change the result, because `lsof` exits non-zero when one pid has already
@@ -46,44 +51,49 @@ struct Output {
     status: ExitStatus,
 }
 
-/// Spawn, wait, and collect both pipes. `Err` on spawn failure. `Ok(None)` on timeout or when a
-/// pipe cannot be read.
+/// Spawn, wait, and collect both pipes. `Err` on spawn failure. `Ok(None)` on timeout, or when
+/// a pipe stays open past the deadline or cannot be read.
 fn capture(program: &str, args: &[&str], timeout: Duration) -> io::Result<Option<Output>> {
-    let mut child = Command::new(program)
-        .args(args)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-    let (Some(mut stdout), Some(mut stderr)) = (child.stdout.take(), child.stderr.take()) else {
-        return Ok(None);
-    };
-    // Read both pipes on their own threads. A full pipe would otherwise stall the child until timeout.
-    let out_reader = std::thread::spawn(move || {
-        let mut text = String::new();
-        stdout.read_to_string(&mut text).map(|_| text)
-    });
-    let err_reader = std::thread::spawn(move || {
-        let mut bytes = Vec::new();
-        let _ = stderr.read_to_end(&mut bytes);
-        String::from_utf8_lossy(&bytes).into_owned()
-    });
     let deadline = Instant::now() + timeout;
+    let mut cmd = Command::new(program);
+    cmd.args(args).stdin(Stdio::null());
+    cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
+    // Its own process group, so a timeout can also end the children it started.
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut cmd, 0);
+    let mut child = cmd.spawn()?;
+    let out = collect(&mut child, deadline);
+    // Every path after spawn ends the group, so no grandchild outlives the call.
+    kill_group(&mut child);
+    Ok(out)
+}
+
+/// Wait for the child and read its pipes. `None` on timeout or a pipe that stays open or fails.
+fn collect(child: &mut Child, deadline: Instant) -> Option<Output> {
+    let (stdout, stderr) = (child.stdout.take()?, child.stderr.take()?);
+    // Read both pipes on their own threads. A full pipe would otherwise stall the child until timeout.
+    let out_rx = read_in_background(stdout);
+    let err_rx = read_in_background(stderr);
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break status,
             Ok(None) if Instant::now() < deadline => std::thread::sleep(Duration::from_millis(10)),
-            _ => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Ok(None);
-            }
+            _ => return None,
         }
     };
-    let stderr = err_reader.join().unwrap_or_default();
-    let stdout = out_reader.join().ok().and_then(Result::ok);
-    Ok(stdout.map(|stdout| Output {
+    // Never join the readers: a grandchild may hold a pipe open forever. Wait a bounded time.
+    let read_until = deadline + READ_GRACE;
+    let stdout = out_rx
+        .recv_timeout(read_until.saturating_duration_since(Instant::now()))
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())?;
+    let stderr = err_rx
+        .recv_timeout(read_until.saturating_duration_since(Instant::now()))
+        .map(|bytes| String::from_utf8_lossy(&bytes).into_owned())
+        .unwrap_or_default();
+    Some(Output {
         stdout,
         stderr,
         status,
-    }))
+    })
 }
