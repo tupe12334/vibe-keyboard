@@ -1,4 +1,4 @@
-//! Process and file calls for `app_icon`: `mdfind`, `plutil`, `sips`, and the
+//! Process and file calls for `app_icon`: `mdfind`, `sips`, and the
 //! PNG cache. Excluded from the coverage gate in `.cargo-husky/hooks/pre-push`.
 
 use std::path::{Path, PathBuf};
@@ -41,20 +41,10 @@ fn find_app(bundle_id: &str) -> Option<PathBuf> {
 
 /// Find the `.icns` file that an app bundle names in its `Info.plist`.
 fn icns_path(app: &Path) -> Option<PathBuf> {
-    let info = plist_xml(&app.join("Contents").join("Info.plist"))?;
+    let info = std::fs::read(app.join("Contents").join("Info.plist")).ok()?;
     let resources = app.join("Contents").join("Resources");
     icon_candidates(&info)
         .into_iter()
         .map(|name| resources.join(name))
         .find(|path| path.is_file())
-}
-
-/// Convert a binary or XML plist to XML text with `plutil`.
-fn plist_xml(plist: &Path) -> Option<String> {
-    let out = run_capture(
-        Command::new("plutil")
-            .args(["-convert", "xml1", "-o", "-"])
-            .arg(plist),
-    )?;
-    String::from_utf8(out).ok()
 }
