@@ -1,3 +1,4 @@
+use super::ttf::visual_order;
 use super::*;
 
 #[test]
@@ -29,4 +30,36 @@ fn scaled_label_uses_the_larger_glyphs() {
     // A 5x glyph is 15 pixels wide per column; the top-left block must be lit.
     let lit = img.pixels().filter(|p| p.0 == [255, 255, 255]).count();
     assert!(lit > 25 * 5, "only {lit} lit pixels");
+}
+
+#[test]
+fn hebrew_label_paints_foreground_pixels() {
+    let mut img = RgbImage::from_pixel(100, 100, Rgb([0, 0, 0]));
+    draw_label(&mut img, "שלום", Rgb([255, 255, 255]));
+    assert!(img.pixels().any(|p| p.0 != [0, 0, 0]));
+}
+
+#[test]
+fn hebrew_tag_paints_foreground_pixels() {
+    let mut img = RgbImage::from_pixel(60, 12, Rgb([0, 0, 0]));
+    draw_tag(&mut img, "שלום", Rgb([255, 255, 255]));
+    assert!(img.pixels().any(|p| p.0 != [0, 0, 0]));
+}
+
+#[test]
+fn mixed_line_is_reordered_to_visual_order() {
+    // Hebrew run is reversed for left-to-right drawing; Latin run keeps its order.
+    assert_eq!(visual_order("Hi שלום"), "Hi םולש");
+    assert_eq!(visual_order("abc"), "abc");
+}
+
+#[test]
+fn long_hebrew_label_wraps_without_panicking() {
+    let mut img = RgbImage::from_pixel(72, 72, Rgb([0, 0, 0]));
+    draw_label(
+        &mut img,
+        "שלום עולם שלום עולם שלום עולם",
+        Rgb([255, 255, 255]),
+    );
+    assert!(img.pixels().any(|p| p.0 != [0, 0, 0]));
 }
