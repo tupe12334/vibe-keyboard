@@ -70,3 +70,11 @@ fn pick_app_falls_back_to_first_hit_or_none() {
     assert_eq!(pick_app("not an app\n", None), None);
     assert_eq!(pick_app("", None), None);
 }
+
+#[test]
+fn pick_app_matches_the_app_suffix_case_insensitively() {
+    assert_eq!(
+        pick_app("/Applications/Weird.App\n", None),
+        Some(PathBuf::from("/Applications/Weird.App"))
+    );
+}

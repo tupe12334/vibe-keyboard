@@ -38,11 +38,14 @@ pub fn cache_file_name(bundle_id: &str, size: u32) -> String {
 }
 
 /// Pick the app from `mdfind` output. Apps in standard folders win over other hits such as Downloads.
+///
+/// The `.app` suffix is matched case-insensitively: macOS file systems are
+/// case-insensitive by default, so `mdfind` can report `Foo.App`.
 pub fn pick_app(mdfind_stdout: &str, home: Option<&Path>) -> Option<PathBuf> {
     let apps: Vec<PathBuf> = mdfind_stdout
         .lines()
         .map(str::trim)
-        .filter(|line| line.ends_with(".app"))
+        .filter(|line| line.to_ascii_lowercase().ends_with(".app"))
         .map(PathBuf::from)
         .collect();
     let standard = apps.iter().find(|app| is_standard_app_dir(app, home));
